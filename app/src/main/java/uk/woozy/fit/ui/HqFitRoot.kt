@@ -338,6 +338,7 @@ fun HqFitRoot(
                     db = db,
                     sessionId = id,
                     onLeave = { nav.popBackStack() },
+                    onHistory = { nav.navigate("${Routes.HISTORY}/$it") },
                     onFinished = {
                         nav.navigate("${Routes.SUMMARY}/$id") { popUpTo(Routes.TODAY) }
                     },

@@ -140,6 +140,24 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
             }
         }
 
+        SectionLabel("Import from Everfit")
+        HqCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                HqText("Adds your past Everfit strength workouts (weights and reps) so history, previous values and records work from day one. Cardio and bodyweight-only entries were not captured. Safe to run twice.", 13.sp, color = c.muted)
+                HqPillButton("Import Everfit history", style = PillStyle.Outline, onClick = {
+                    scope.launch {
+                        message = try {
+                            val text = withContext(Dispatchers.IO) { context.assets.open("everfit_history.tsv").use { it.readBytes().toString(Charsets.UTF_8) } }
+                            val n = uk.woozy.fit.data.imports.EverfitImport.import(db, text)
+                            if (n == 0) "Nothing new: Everfit history is already imported" else "Imported $n workouts from Everfit"
+                        } catch (e: Exception) {
+                            "Import failed: ${e.javaClass.simpleName}"
+                        }
+                    }
+                })
+            }
+        }
+
         SectionLabel("Export to a spreadsheet")
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

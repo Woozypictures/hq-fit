@@ -297,6 +297,9 @@ interface SessionDao {
     @Query("UPDATE set_log SET setType = :type WHERE id = :id")
     suspend fun updateType(id: Long, type: String)
 
+    @Query("UPDATE set_log SET note = :note WHERE sessionId = :sessionId AND position = :position")
+    suspend fun updateNote(sessionId: Long, position: Int, note: String)
+
     @Query("UPDATE set_log SET rpe = :rpe WHERE id = :id")
     suspend fun updateRpe(id: Long, rpe: Double?)
 
@@ -323,6 +326,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM exercise WHERE id = :id")
     suspend fun exercise(id: Long): ExerciseEntity?
+
+    @Query("SELECT COUNT(*) FROM workout_session WHERE startedMs = :startedMs AND name = :name")
+    suspend fun countAt(startedMs: Long, name: String): Int
 
     @Query("SELECT * FROM workout_session WHERE status = 'done' AND endedMs IS NOT NULL AND startedMs >= :from ORDER BY startedMs")
     suspend fun doneSince(from: Long): List<WorkoutSessionEntity>

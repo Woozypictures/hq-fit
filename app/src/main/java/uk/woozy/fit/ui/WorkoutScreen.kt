@@ -27,6 +27,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -118,6 +122,7 @@ fun ActiveWorkoutScreen(
     db: HqFitDatabase,
     sessionId: Long,
     onLeave: () -> Unit,
+    onHistory: (Long) -> Unit,
     onFinished: () -> Unit,
     onDiscarded: () -> Unit,
 ) {
@@ -220,6 +225,7 @@ fun ActiveWorkoutScreen(
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { sectionKeys.size + 1 })
     val phases = remember { androidx.compose.runtime.mutableStateMapOf<String, SectionPhase>() }
     var infoFor by remember { mutableStateOf<String?>(null) }
+    var noteFor by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var menu by remember { mutableStateOf(false) }
 
     fun pagesOf(sec: String): List<List<List<SetLogEntity>>> {
@@ -288,6 +294,8 @@ fun ActiveWorkoutScreen(
                 onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
                 onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
                 onInfo = { infoFor = first.exerciseName },
+                onHistory = { onHistory(first.exerciseId) },
+                onNote = { noteFor = first.position to first.note },
                 onMarkAll = { scope.launch { markAllDone(db, group) } },
             )
         }
@@ -433,6 +441,16 @@ fun ActiveWorkoutScreen(
             }
         }
         infoFor?.let { ExerciseDetailSheet(db, it) { infoFor = null } }
+        noteFor?.let { (pos, current) ->
+            var text by remember(pos) { mutableStateOf(current) }
+            AlertDialog(
+                onDismissRequest = { noteFor = null },
+                title = { HqText("Exercise note", 18.sp, FontWeight.SemiBold) },
+                text = { OutlinedTextField(value = text, onValueChange = { text = it }, placeholder = { HqText("Seat height, grip, how it felt", 14.sp, color = c.muted) }, modifier = Modifier.fillMaxWidth()) },
+                confirmButton = { TextButton(onClick = { scope.launch { db.sessions().updateNote(sessionId, pos, text.trim()) }; noteFor = null }) { HqText("Save", 15.sp, FontWeight.SemiBold, c.primary) } },
+                dismissButton = { TextButton(onClick = { noteFor = null }) { HqText("Cancel", 15.sp, color = c.muted) } },
+            )
+        }
 
         if (editing != null) {
             val e = editing!!
@@ -506,11 +524,12 @@ private fun ExerciseCard(
     onSetRpe: (SetLogEntity, Double?) -> Unit,
     onInfo: () -> Unit,
     onMarkAll: () -> Unit,
+    onHistory: () -> Unit,
+    onNote: () -> Unit,
     showThumb: Boolean = true,
 ) {
     val c = HqTheme.colors
     val first = group.first()
-    var menu by remember { mutableStateOf(false) }
     HqCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -530,23 +549,13 @@ private fun ExerciseCard(
                 }
                 }
                 if (first.supersetGroup != null) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
-                Box {
-                    Icon(
-                        Icons.Rounded.MoreVert, contentDescription = "Exercise options", tint = c.muted,
-                        modifier = Modifier.size(40.dp).clip(CircleShape).clickable(role = Role.Button) { menu = true }.padding(8.dp),
-                    )
-                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                        listOf(
-                            "Replace exercise" to PickMode.REPLACE,
-                            "Add exercise before" to PickMode.BEFORE,
-                            "Add exercise after" to PickMode.AFTER,
-                            "Add superset" to PickMode.SUPERSET,
-                        ).forEach { (label, mode) ->
-                            DropdownMenuItem(text = { HqText(label, 15.sp) }, onClick = { menu = false; onPick(mode) })
-                        }
-                    }
-                }
             }
+            ExerciseIconRow(
+                hasNote = first.note.isNotBlank(),
+                onHistory = onHistory, onNote = onNote,
+                onReplace = { onPick(PickMode.REPLACE) },
+                onAdd = onPick, onInfo = onInfo, onMarkAll = onMarkAll,
+            )
             if (first.note.isNotBlank()) {
                 HqText(first.note, 13.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
             }
@@ -856,5 +865,49 @@ private fun SectionComplete(title: String, count: Int, last: Boolean, onEdit: ()
             }
         }
         TextButton(onClick = onEdit, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { HqText("Edit", 14.sp, FontWeight.SemiBold, c.primary) }
+    }
+}
+
+
+/** Everfit-style row under the exercise name: history, note, replace, add, more. */
+@Composable
+private fun ExerciseIconRow(
+    hasNote: Boolean,
+    onHistory: () -> Unit,
+    onNote: () -> Unit,
+    onReplace: () -> Unit,
+    onAdd: (PickMode) -> Unit,
+    onInfo: () -> Unit,
+    onMarkAll: () -> Unit,
+) {
+    val c = HqTheme.colors
+    var addMenu by remember { mutableStateOf(false) }
+    var moreMenu by remember { mutableStateOf(false) }
+    @Composable
+    fun Tool(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, tint: androidx.compose.ui.graphics.Color = c.muted, onClick: () -> Unit) {
+        Icon(
+            icon, contentDescription = label, tint = tint,
+            modifier = Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onClick).padding(10.dp),
+        )
+    }
+    Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Tool(Icons.Rounded.History, "Exercise history", onClick = onHistory)
+        Tool(Icons.Rounded.EditNote, if (hasNote) "Edit note" else "Add note", tint = if (hasNote) c.primary else c.muted, onClick = onNote)
+        Tool(Icons.Rounded.SwapHoriz, "Replace exercise", onClick = onReplace)
+        Box {
+            Tool(Icons.Rounded.Add, "Add exercise", onClick = { addMenu = true })
+            DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                listOf("Add exercise before" to PickMode.BEFORE, "Add exercise after" to PickMode.AFTER, "Add superset" to PickMode.SUPERSET).forEach { (label, mode) ->
+                    DropdownMenuItem(text = { HqText(label, 15.sp) }, onClick = { addMenu = false; onAdd(mode) })
+                }
+            }
+        }
+        Box {
+            Tool(Icons.Rounded.MoreVert, "More options", onClick = { moreMenu = true })
+            DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
+                DropdownMenuItem(text = { HqText("How to do it", 15.sp) }, onClick = { moreMenu = false; onInfo() })
+                DropdownMenuItem(text = { HqText("Mark all complete", 15.sp) }, onClick = { moreMenu = false; onMarkAll() })
+            }
+        }
     }
 }

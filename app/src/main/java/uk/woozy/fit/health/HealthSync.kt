@@ -34,7 +34,7 @@ object HealthSync {
                     .forEach { hc.writeMeal(it.id, it.name, it.meal, it.createdMs, Nutrients.decode(it.nutrients)); wrote++ }
                 db.water().since(from).forEach { hc.writeWater(it.id, it.epochMs, it.ml); wrote++ }
                 db.weights().ownSince(from).forEach { hc.writeWeight(it.id, it.epochMs, it.kg); wrote++ }
-                db.sessions().doneSince(from).forEach { hc.writeWorkout(it.id, it.name, it.startedMs, it.endedMs ?: it.startedMs); wrote++ }
+                db.sessions().doneSince(from).filter { it.scheduledId != uk.woozy.fit.data.imports.EverfitImport.MARKER }.forEach { hc.writeWorkout(it.id, it.name, it.startedMs, it.endedMs ?: it.startedMs); wrote++ }
             }
             if (full) prefs(c).edit().putLong("full", nowMs).apply()
             var imported = 0
