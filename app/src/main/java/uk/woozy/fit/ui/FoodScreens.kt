@@ -426,7 +426,7 @@ private fun QuickAddSheet(db: HqFitDatabase, meal: Meal, date: String, onDismiss
 }
 
 @Composable
-fun NumberField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier.fillMaxWidth()) {
+fun NumberField(label: String, value: String, modifier: Modifier = Modifier.fillMaxWidth(), onChange: (String) -> Unit) {
     OutlinedTextField(
         value = value,
         onValueChange = { onChange(it.filter { ch -> ch.isDigit() || ch == '.' }) },
