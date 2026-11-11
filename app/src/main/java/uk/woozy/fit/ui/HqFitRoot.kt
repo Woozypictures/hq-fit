@@ -65,6 +65,7 @@ private object Routes {
     const val RECORDS = "records"
     const val ADD = "add"
     const val CUSTOM_FOOD = "customfood"
+    const val SCAN = "scan"
     const val HISTORY = "history"
     const val PREVIEW = "preview"
     const val LIBRARY = "library"
@@ -91,6 +92,7 @@ private fun NavHostController.navigateTab(route: String) {
 @Composable
 fun HqFitRoot(
     db: HqFitDatabase,
+    off: uk.woozy.fit.data.off.OffClient,
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
     scheme: String,
@@ -187,11 +189,36 @@ fun HqFitRoot(
                     meal = Meal.fromKey(backStack.arguments?.getString("meal").orEmpty()),
                     date = backStack.arguments?.getString("date") ?: todayText,
                     startQuick = backStack.arguments?.getBoolean("quick") ?: false,
+                    off = off,
                     onBack = { nav.popBackStack() },
                     onCustom = { nav.navigate(Routes.CUSTOM_FOOD) },
+                    onScan = {
+                        val m = backStack.arguments?.getString("meal").orEmpty()
+                        val d = backStack.arguments?.getString("date") ?: todayText
+                        nav.navigate("${Routes.SCAN}/$m/$d")
+                    },
                 )
             }
-            composable(Routes.CUSTOM_FOOD) { CustomFoodScreen(db = db, onBack = { nav.popBackStack() }) }
+            composable(
+                "${Routes.SCAN}/{meal}/{date}",
+                arguments = listOf(navArgument("meal") { type = NavType.StringType }, navArgument("date") { type = NavType.StringType }),
+            ) { backStack ->
+                ScanScreen(
+                    db = db,
+                    off = off,
+                    meal = Meal.fromKey(backStack.arguments?.getString("meal").orEmpty()),
+                    date = backStack.arguments?.getString("date") ?: todayText,
+                    onBack = { nav.popBackStack() },
+                    onCreate = { nav.navigate("${Routes.CUSTOM_FOOD}?barcode=$it") },
+                    onLogged = { nav.popBackStack(Routes.DIARY, inclusive = false) },
+                )
+            }
+            composable(
+                "${Routes.CUSTOM_FOOD}?barcode={barcode}",
+                arguments = listOf(navArgument("barcode") { type = NavType.StringType; nullable = true; defaultValue = null }),
+            ) { backStack ->
+                CustomFoodScreen(db = db, barcode = backStack.arguments?.getString("barcode"), onBack = { nav.popBackStack() })
+            }
             composable(Routes.PROGRESS) { ProgressScreen() }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
@@ -263,6 +290,10 @@ fun HqFitRoot(
                 quickAdd = false
                 nav.navigate("${Routes.ADD}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText?quick=true")
             },
+            onScanBarcode = {
+                quickAdd = false
+                nav.navigate("${Routes.SCAN}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText")
+            },
             onWater = {
                 quickAdd = false
                 scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) }
@@ -285,6 +316,7 @@ fun HqFitRoot(
 private fun QuickAddSheet(
     onSearchFood: () -> Unit,
     onQuickAdd: () -> Unit,
+    onScanBarcode: () -> Unit,
     onWater: () -> Unit,
     onDismiss: () -> Unit,
     onStartWorkout: () -> Unit,
@@ -297,7 +329,7 @@ private fun QuickAddSheet(
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { SectionLabel("Quick add") }
             ListRow(Icons.Rounded.Search, "Add food", "Search your foods or create one", onClick = onSearchFood)
-            ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Arrives in milestone 6", enabled = false)
+            ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Look a product up", onClick = onScanBarcode)
             ListRow(Icons.Rounded.WaterDrop, "Add water", "One glass", onClick = onWater)
             ListRow(Icons.Rounded.EditNote, "Quick add", "A name and calories", onClick = onQuickAdd)
             ListRow(Icons.Rounded.PlayArrow, "Start workout", "Today's workout, or resume the one running", onClick = onStartWorkout)

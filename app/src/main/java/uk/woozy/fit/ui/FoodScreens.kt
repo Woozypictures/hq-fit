@@ -25,6 +25,8 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -296,10 +298,16 @@ fun AddFoodScreen(
     meal: Meal,
     date: String,
     startQuick: Boolean,
+    off: uk.woozy.fit.data.off.OffClient,
     onBack: () -> Unit,
     onCustom: () -> Unit,
+    onScan: () -> Unit,
 ) {
     val c = HqTheme.colors
+    val scope = rememberCoroutineScope()
+    var online by remember { mutableStateOf<List<uk.woozy.fit.data.off.FoodDraft>?>(null) }
+    var onlineMsg by remember { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
     var text by remember { mutableStateOf("") }
     var results by remember { mutableStateOf(emptyList<FoodEntity>()) }
     var picked by remember { mutableStateOf<FoodEntity?>(null) }
@@ -318,6 +326,7 @@ fun AddFoodScreen(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
         HqCard(Modifier.fillMaxWidth().padding(16.dp)) {
+            ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Look a product up in Open Food Facts", onClick = onScan)
             ListRow(Icons.Rounded.Add, "Create a custom food", "Your own figures per 100 g", onClick = onCustom)
             ListRow(Icons.Rounded.EditNote, "Quick add", "A name and calories, no food needed", onClick = { quick = true })
         }
@@ -328,13 +337,50 @@ fun AddFoodScreen(
                 14.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
+        if (text.trim().length >= 2) {
+            ListRow(
+                Icons.Rounded.Search,
+                if (searching) "Searching Open Food Facts…" else "Search Open Food Facts for \"${text.trim()}\"",
+                if (onlineMsg.isNotEmpty()) onlineMsg else "Online. Results are saved on this phone",
+                onClick = {
+                    if (!searching) {
+                        searching = true
+                        onlineMsg = ""
+                        scope.launch {
+                            when (val r = off.search(text)) {
+                                is uk.woozy.fit.data.off.OffResult.Found -> { online = r.value; if (r.value.isEmpty()) onlineMsg = "No matches" }
+                                uk.woozy.fit.data.off.OffResult.Missing -> onlineMsg = "No matches"
+                                uk.woozy.fit.data.off.OffResult.Offline -> onlineMsg = "Could not reach Open Food Facts. Nothing was changed."
+                            }
+                            searching = false
+                        }
+                    }
+                },
+            )
+        }
         LazyColumn(Modifier.weight(1f)) {
+            online?.let { drafts ->
+                items(drafts.size) { i ->
+                    val d = drafts[i]
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) {
+                            scope.launch { picked = uk.woozy.fit.data.db.Foods.saveDraft(db, d, System.currentTimeMillis()) }
+                        }.padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        HqText(d.name, 16.sp, FontWeight.Medium)
+                        HqText(
+                            listOf(d.brand, d.per100[Nutrients.ENERGY]?.let { "${formatWhole(it)} kcal per 100 g" } ?: "Incomplete data").filter { it.isNotBlank() }.joinToString(" · "),
+                            13.sp, color = c.muted,
+                        )
+                    }
+                }
+            }
             items(results, key = { it.id }) { f ->
                 Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { picked = f }.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     HqText(f.name, 16.sp, FontWeight.Medium)
                     val kcal = Nutrients.decode(f.per100)[Nutrients.ENERGY]
                     HqText(
-                        listOf(f.brand, kcal?.let { "${formatWhole(it)} kcal per 100 g" } ?: "").filter { it.isNotBlank() }.joinToString(" · "),
+                        listOf(f.brand, kcal?.let { "${formatWhole(it)} kcal per 100 g" } ?: "", if (f.incomplete) "Incomplete data" else "").filter { it.isNotBlank() }.joinToString(" · "),
                         13.sp, color = c.muted,
                     )
                 }
@@ -350,7 +396,7 @@ fun AddFoodScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AmountSheet(
+internal fun AmountSheet(
     db: HqFitDatabase,
     food: FoodEntity,
     meal: Meal,
@@ -369,6 +415,7 @@ private fun AmountSheet(
         Column(Modifier.navigationBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             HqText(food.name, 20.sp, FontWeight.Bold)
             if (food.brand.isNotBlank()) HqText(food.brand, 14.sp, color = c.muted)
+            if (food.incomplete) HqText("Incomplete data: the source left out some figures, so totals may be low.", 13.sp, color = c.muted)
             OutlinedTextField(
                 value = grams, onValueChange = { grams = it.filter { ch -> ch.isDigit() || ch == '.' } },
                 label = { HqText("Amount (g)", 13.sp, color = c.muted) }, singleLine = true,
@@ -441,7 +488,7 @@ fun NumberField(label: String, value: String, modifier: Modifier = Modifier.fill
 
 /** Your own food, figures per 100 g. The extra nutrients are optional. */
 @Composable
-fun CustomFoodScreen(db: HqFitDatabase, onBack: () -> Unit) {
+fun CustomFoodScreen(db: HqFitDatabase, barcode: String?, onBack: () -> Unit) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
@@ -458,7 +505,7 @@ fun CustomFoodScreen(db: HqFitDatabase, onBack: () -> Unit) {
     var servingLabel by remember { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Custom food", onBack) }
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar(if (barcode != null) "New food from $barcode" else "Custom food", onBack) }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { HqText("Name", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = brand, onValueChange = { brand = it }, label = { HqText("Brand (optional)", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -479,7 +526,7 @@ fun CustomFoodScreen(db: HqFitDatabase, onBack: () -> Unit) {
                     scope.launch {
                         db.foods().insert(
                             FoodEntity(
-                                name = name.trim(), brand = brand.trim(), source = "custom", servingG = serving.toDoubleOrNull(),
+                                name = name.trim(), brand = brand.trim(), barcode = barcode, source = "custom", servingG = serving.toDoubleOrNull(),
                                 servingLabel = servingLabel.trim(), per100 = Nutrients.encode(withEnergy), createdMs = System.currentTimeMillis(),
                             ),
                         )

@@ -9,6 +9,7 @@ import uk.woozy.fit.data.db.DatabaseProvider
 class AppContainer(context: Context) {
     val themeSettings = ThemeSettings(context)
     val database = DatabaseProvider(context)
+    val off = uk.woozy.fit.data.off.OffClient()
 }
 
 class HqFitApplication : Application() {

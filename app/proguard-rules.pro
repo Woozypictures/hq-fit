@@ -4,3 +4,5 @@
 # SQLCipher calls back into these from native code.
 -keep class net.zetetic.database.** { *; }
 -keepclassmembers class net.zetetic.database.** { *; }
+
+# ML Kit and CameraX ship their own consumer rules; nothing extra needed.

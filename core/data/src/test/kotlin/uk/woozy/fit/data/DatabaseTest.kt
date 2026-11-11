@@ -20,6 +20,8 @@ import uk.woozy.fit.data.db.ExerciseEntity
 import uk.woozy.fit.data.db.HqFitDatabase
 import uk.woozy.fit.data.db.Sessions
 import uk.woozy.fit.data.db.Diary
+import uk.woozy.fit.data.db.Foods
+import uk.woozy.fit.data.off.FoodDraft
 import uk.woozy.fit.data.db.FoodEntity
 import uk.woozy.fit.data.db.RecurringFoodEntity
 import uk.woozy.fit.model.Meal
@@ -408,5 +410,22 @@ class DatabaseTest {
         db.water().insert(WaterEntryEntity(epochMs = 200, ml = 250))
         db.water().deleteLatestBetween(0, 1_000)
         assertEquals(250, db.water().totalBetween(0, 1_000))
+    }
+
+    @Test
+    fun fetchedFoodIsCachedByBarcodeAndNotDuplicated() = runBlocking {
+        val draft = FoodDraft("Yogurt", "Tesco", "5000169003651", 150.0, "150 g", mapOf("energy" to 97.0), false)
+        val a = Foods.saveDraft(db, draft, 1)
+        val b = Foods.saveDraft(db, draft.copy(name = "Yogurt (changed)"), 2)
+        assertEquals(a.id, b.id)
+        assertEquals(1, db.foods().count())
+        assertEquals("Yogurt", db.foods().byBarcode("5000169003651")!!.name)
+        assertEquals("off", a.source)
+    }
+
+    @Test
+    fun incompleteFlagIsKept() = runBlocking {
+        val f = Foods.saveDraft(db, FoodDraft("Mystery", "", "1234567", null, "", emptyMap(), true), 1)
+        assertEquals(true, db.foods().get(f.id)!!.incomplete)
     }
 }

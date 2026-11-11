@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                         DbGate.NeedsRecovery -> RecoveryScreen(container.database) { gate = DbGate.Ready }
                         DbGate.Ready -> HqFitRoot(
                             db = container.database.db!!,
+                            off = container.off,
                             themeMode = mode,
                             onThemeMode = {
                                 mode = it
