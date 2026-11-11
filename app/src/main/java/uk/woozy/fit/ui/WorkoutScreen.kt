@@ -27,6 +27,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -210,19 +214,120 @@ fun ActiveWorkoutScreen(
 
     val groups = sets.groupBy { it.position }.toSortedMap().values.toList()
     val notTicked = sets.count { !it.done }
+    val sectionKeys = groups.map { it.first().section }.distinct()
+    val finishIndex = sectionKeys.size
+    val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { sectionKeys.size + 1 })
+    val phases = remember { androidx.compose.runtime.mutableStateMapOf<String, SectionPhase>() }
+    var infoFor by remember { mutableStateOf<String?>(null) }
+    var menu by remember { mutableStateOf(false) }
+
+    fun pagesOf(sec: String): List<List<List<SetLogEntity>>> {
+        val out = mutableListOf<MutableList<List<SetLogEntity>>>()
+        groups.filter { it.first().section == sec }.forEach { g ->
+            val sg = g.first().supersetGroup
+            val prev = out.lastOrNull()
+            if (sg != null && prev != null && prev.first().first().supersetGroup == sg) prev.add(g) else out.add(mutableListOf(g))
+        }
+        return out
+    }
+
+    // Work out where each section stands from the ticked sets, then open on the first unfinished one.
+    var jumped by remember { mutableStateOf(false) }
+    LaunchedEffect(sectionKeys, isDone) {
+        sectionKeys.forEach { sec ->
+            val mine = sets.filter { it.section == sec }
+            if (sec !in phases || (isDone && phases[sec] == SectionPhase.INTRO)) {
+                phases[sec] = when {
+                    isDone -> SectionPhase.ACTIVE
+                    mine.isNotEmpty() && mine.all { it.done } -> SectionPhase.COMPLETE
+                    mine.any { it.done } -> SectionPhase.ACTIVE
+                    else -> SectionPhase.INTRO
+                }
+            }
+        }
+        if (!jumped && sectionKeys.isNotEmpty()) {
+            jumped = true
+            val i = sectionKeys.indexOfFirst { phases[it] != SectionPhase.COMPLETE }
+            if (i > 0) pager.scrollToPage(i)
+        }
+    }
+    // Swiping past the last section finishes the workout (or leaves, when editing a finished one).
+    LaunchedEffect(pager.settledPage, sectionKeys.size) {
+        if (sectionKeys.isNotEmpty() && pager.settledPage == finishIndex) {
+            if (isDone) onLeave()
+            else if (notTicked > 0) confirmFinish = true
+            else { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
+        }
+    }
+
+    @Composable
+    fun ExerciseBlock(group: List<SetLogEntity>) {
+        val first = group.first()
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            ExerciseHero(first.exerciseName, onClick = { infoFor = first.exerciseName })
+            ExerciseCard(
+                group = group,
+                previous = previous,
+                editing = editing,
+                showThumb = false,
+                onToggle = ::toggle,
+                onEdit = { set, weight ->
+                    val text = if (weight) set.weightKg?.let { NumberEntry.format(it) }.orEmpty() else set.reps?.toString().orEmpty()
+                    editing = Editing(set.id, weight, text, true)
+                },
+                onAddSet = {
+                    scope.launch {
+                        val last = group.last()
+                        db.sessions().insertSet(last.copy(id = 0, setIndex = last.setIndex + 1, reps = null, done = false, doneAtMs = null))
+                    }
+                },
+                onDeleteLast = { if (group.size > 1) scope.launch { db.sessions().deleteSet(group.last().id) } },
+                onPick = { mode -> picking = first.position to mode },
+                onDeleteSet = { set -> lastDeleted = set; scope.launch { db.sessions().deleteSet(set.id) } },
+                onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
+                onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
+                onInfo = { infoFor = first.exerciseName },
+                onMarkAll = { scope.launch { markAllDone(db, group) } },
+            )
+        }
+    }
 
     Column(Modifier.fillMaxSize()) {
         GradientHeader {
-            Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp)) {
+            Column(Modifier.statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    HqText("WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, Modifier.weight(1f), letterSpacing = 1.sp)
-                    HqText(session?.let { clock((it.endedMs ?: now) - it.startedMs) } ?: "", 16.sp, FontWeight.Bold, c.onGradient)
+                    Icon(
+                        androidx.compose.material.icons.Icons.Rounded.KeyboardArrowDown, contentDescription = "Close, keep running", tint = c.onGradient,
+                        modifier = Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClick = onLeave).padding(8.dp),
+                    )
+                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                        HqText(
+                            "Total Duration: " + (session?.let { clock((it.endedMs ?: now) - it.startedMs) } ?: ""),
+                            13.sp, FontWeight.SemiBold, c.onGradient,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        Dots(sectionKeys.size + 1, pager.currentPage, c.onGradient)
+                    }
+                    Box {
+                        Icon(
+                            Icons.Rounded.MoreVert, contentDescription = "Workout options", tint = c.onGradient,
+                            modifier = Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button) { menu = true }.padding(8.dp),
+                        )
+                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { HqText(if (isDone) "Save and close" else "Finish workout now", 15.sp) },
+                                onClick = {
+                                    menu = false
+                                    if (isDone) onLeave() else if (notTicked > 0) confirmFinish = true
+                                    else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
+                                },
+                            )
+                            if (!isDone) DropdownMenuItem(text = { HqText("Discard workout", 15.sp) }, onClick = { menu = false; confirmDiscard = true })
+                        }
+                    }
                 }
-                Spacer(Modifier.height(4.dp))
-                SpacedTitle(session?.name ?: "", color = c.onGradient, size = 20.sp)
                 if (restLeft > 0) {
-                    Spacer(Modifier.height(10.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         HqText("Rest ${clock(restLeft + 999)}", 15.sp, FontWeight.SemiBold, c.onGradient, Modifier.weight(1f))
                         HqText(
                             "Skip", 14.sp, FontWeight.SemiBold, c.onGradient,
@@ -240,122 +345,89 @@ fun ActiveWorkoutScreen(
                 TextButton(onClick = { lastDeleted = null }) { HqText("Dismiss", 14.sp, color = c.muted) }
             }
         }
-        val sectionKeys = groups.map { it.first().section }.distinct()
-        val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { sectionKeys.size.coerceAtLeast(1) })
-        var started by remember { mutableStateOf(setOf<String>()) }
-        var completed by remember { mutableStateOf(setOf<String>()) }
-        var infoFor by remember { mutableStateOf<String?>(null) }
-        fun isStarted(sec: String) = isDone || sec in started || sets.any { it.section == sec && it.done }
-        fun isComplete(sec: String) = sec in completed || sets.filter { it.section == sec }.let { l -> l.isNotEmpty() && l.all { it.done } }
-        // Open on the first section that is not finished, once the sets have loaded.
-        var jumped by remember { mutableStateOf(false) }
-        LaunchedEffect(sectionKeys.size) {
-            if (!jumped && sectionKeys.isNotEmpty()) {
-                jumped = true
-                val i = sectionKeys.indexOfFirst { !isComplete(it) }
-                if (i > 0) pager.scrollToPage(i)
-            }
-        }
-        if (sectionKeys.size > 1) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                sectionKeys.forEachIndexed { i, sec ->
-                    val selected = pager.currentPage == i
-                    HqText(
-                        (if (isComplete(sec)) "✓ " else "") + Section.fromKey(sec).title, 13.sp, FontWeight.SemiBold,
-                        if (selected) c.onPrimary else c.muted,
-                        Modifier.clip(CircleShape).background(if (selected) c.primary else c.track)
-                            .clickable(role = Role.Tab) { scope.launch { pager.animateScrollToPage(i) } }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                    )
-                }
-            }
-        }
+
         androidx.compose.foundation.pager.HorizontalPager(
             state = pager,
             modifier = Modifier.weight(1f),
+            userScrollEnabled = phases[sectionKeys.getOrNull(pager.currentPage)] != SectionPhase.ACTIVE,
             beyondViewportPageCount = 1,
-            key = { sectionKeys.getOrNull(it) ?: it },
         ) { page ->
-            val sec = sectionKeys.getOrNull(page)
-            val sectionGroups = groups.filter { it.first().section == sec }
-            val go = isStarted(sec ?: "")
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            SectionLabel(Section.fromKey(sec ?: "workout").title)
-                            HqText("${sectionGroups.size} exercises · ${sectionGroups.sumOf { it.size }} sets", 13.sp, color = c.muted)
-                        }
-                        if (sec != null && !go) HqPillButton("Start", onClick = { started = started + sec })
-                    }
-                }
-                itemsIndexed(sectionGroups, key = { _, g -> g.first().position }) { _, group ->
-                    val first = group.first()
-                    if (!go) {
-                        HqCard(Modifier.fillMaxWidth()) {
-                            Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                                ExerciseThumb(first.exerciseName, 44.dp, Modifier.padding(end = 10.dp))
-                                Column(Modifier.weight(1f)) {
-                                    HqText(first.exerciseName, 16.sp, FontWeight.SemiBold)
-                                    HqText("${group.size} sets", 13.sp, color = c.muted)
-                                }
+            if (page >= sectionKeys.size) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { HqText("Finishing", 16.sp, color = c.muted) }
+            } else {
+                val sec = sectionKeys[page]
+                val title = Section.fromKey(sec).title
+                val pages = pagesOf(sec)
+                val count = pages.sumOf { it.size }
+                when (phases[sec] ?: SectionPhase.INTRO) {
+                    SectionPhase.INTRO -> SectionIntro(title, count, pages.flatten(), onStart = { phases[sec] = SectionPhase.ACTIVE })
+                    SectionPhase.COMPLETE -> SectionComplete(
+                        title, count, last = page == sectionKeys.lastIndex,
+                        onEdit = { phases[sec] = SectionPhase.ACTIVE },
+                    )
+                    SectionPhase.ACTIVE -> {
+                        val inner = androidx.compose.foundation.pager.rememberPagerState(pageCount = { pages.size.coerceAtLeast(1) })
+                        var innerJumped by remember { mutableStateOf(false) }
+                        LaunchedEffect(pages.size) {
+                            if (!innerJumped && pages.isNotEmpty()) {
+                                innerJumped = true
+                                val i = pages.indexOfFirst { pg -> pg.any { g -> g.any { !it.done } } }
+                                if (i > 0) inner.scrollToPage(i)
                             }
                         }
-                    } else {
-                        ExerciseCard(
-                            group = group,
-                            previous = previous,
-                            editing = editing,
-                            onToggle = ::toggle,
-                            onEdit = { set, weight ->
-                                val text = if (weight) set.weightKg?.let { NumberEntry.format(it) }.orEmpty() else set.reps?.toString().orEmpty()
-                                editing = Editing(set.id, weight, text, true)
-                            },
-                            onAddSet = {
-                                scope.launch {
-                                    val last = group.last()
-                                    db.sessions().insertSet(last.copy(id = 0, setIndex = last.setIndex + 1, reps = null, done = false, doneAtMs = null))
-                                }
-                            },
-                            onDeleteLast = {
-                                if (group.size > 1) scope.launch { db.sessions().deleteSet(group.last().id) }
-                            },
-                            onPick = { mode -> picking = first.position to mode },
-                            onDeleteSet = { set -> lastDeleted = set; scope.launch { db.sessions().deleteSet(set.id) } },
-                            onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
-                            onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
-                            onInfo = { infoFor = first.exerciseName },
-                            onMarkAll = {
-                                scope.launch {
-                                    val now = System.currentTimeMillis()
-                                    group.filter { !it.done }.forEach { set ->
-                                        if (set.durationSec == null && set.reps == null) {
-                                            db.sessions().updateValues(set.id, set.weightKg, set.targetRepsMax ?: set.targetRepsMin)
-                                        }
-                                        db.sessions().updateDone(set.id, true, now)
+                        Column(Modifier.fillMaxSize()) {
+                            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Rounded.Close, contentDescription = "Back to section overview", tint = c.muted,
+                                    modifier = Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button) { phases[sec] = SectionPhase.INTRO }.padding(10.dp),
+                                )
+                                HqText(title, 16.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                                Spacer(Modifier.size(44.dp))
+                            }
+                            androidx.compose.foundation.pager.HorizontalPager(
+                                state = inner,
+                                modifier = Modifier.weight(1f),
+                                key = { pages.getOrNull(it)?.first()?.first()?.position ?: it },
+                            ) { i ->
+                                val pg = pages.getOrNull(i) ?: return@HorizontalPager
+                                val allDone = pg.all { g -> g.all { it.done } }
+                                var wasDone by remember { mutableStateOf(allDone) }
+                                LaunchedEffect(allDone) {
+                                    if (allDone && !wasDone && i < pages.lastIndex) {
+                                        delay(500)
+                                        inner.animateScrollToPage(i + 1)
                                     }
+                                    wasDone = allDone
                                 }
-                            },
-                        )
+                                Column(
+                                    Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                                ) {
+                                    if (pg.size > 1) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
+                                    pg.forEach { g -> androidx.compose.runtime.key(g.first().position) { ExerciseBlock(g) } }
+                                    if (pg.size > 1 && !allDone) {
+                                        TextButton(onClick = { scope.launch { pg.forEach { g -> markAllDone(db, g) } } }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                                            HqText("Mark all supersets", 14.sp, FontWeight.SemiBold, c.primary)
+                                        }
+                                    }
+                                    if (i == pages.lastIndex) {
+                                        HqPillButton(
+                                            "Complete section",
+                                            onClick = {
+                                                phases[sec] = SectionPhase.COMPLETE
+                                                if (page < sectionKeys.lastIndex) scope.launch { delay(1200); pager.animateScrollToPage(page + 1) }
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
+                                    Spacer(Modifier.height(24.dp))
+                                }
+                            }
+                            Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                                Dots(pages.size, inner.currentPage, c.primary, c.track)
+                            }
+                        }
                     }
-                }
-                if (sec != null && go) item {
-                    val last = page >= sectionKeys.lastIndex
-                    HqPillButton(
-                        if (last) "Complete section and finish" else "Complete section",
-                        onClick = {
-                            completed = completed + sec
-                            if (last) {
-                                if (isDone) onLeave() else if (notTicked > 0) confirmFinish = true
-                                else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
-                            } else scope.launch { pager.animateScrollToPage(page + 1) }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
             }
         }
@@ -365,13 +437,7 @@ fun ActiveWorkoutScreen(
             val e = editing!!
             NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "${NumberEntry.format(weightStep)} kg" else "1 rep")
         } else {
-            Column(Modifier.navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                HqPillButton(if (isDone) "Save changes" else "Finish workout", onClick = { if (isDone) { onLeave() } else if (notTicked > 0) confirmFinish = true else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() } }, modifier = Modifier.fillMaxWidth())
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = onLeave) { HqText("Close, keep running", 14.sp, color = c.muted) }
-                    if (!isDone) TextButton(onClick = { confirmDiscard = true }) { HqText("Discard", 14.sp, color = c.muted) }
-                }
-            }
+            Spacer(Modifier.navigationBarsPadding())
         }
     }
 
@@ -395,7 +461,7 @@ fun ActiveWorkoutScreen(
 
     if (confirmFinish) {
         AlertDialog(
-            onDismissRequest = { confirmFinish = false },
+            onDismissRequest = { confirmFinish = false; scope.launch { pager.animateScrollToPage((finishIndex - 1).coerceAtLeast(0)) } },
             title = { HqText("Finish workout?", 18.sp, FontWeight.SemiBold) },
             text = { HqText("$notTicked sets are not ticked. They will not count.", 14.sp, color = c.muted) },
             confirmButton = {
@@ -404,7 +470,7 @@ fun ActiveWorkoutScreen(
                     scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
                 }) { HqText("Finish", 15.sp, FontWeight.SemiBold, c.primary) }
             },
-            dismissButton = { TextButton(onClick = { confirmFinish = false }) { HqText("Keep going", 15.sp, color = c.muted) } },
+            dismissButton = { TextButton(onClick = { confirmFinish = false; scope.launch { pager.animateScrollToPage((finishIndex - 1).coerceAtLeast(0)) } }) { HqText("Keep going", 15.sp, color = c.muted) } },
         )
     }
     if (confirmDiscard) {
@@ -439,6 +505,7 @@ private fun ExerciseCard(
     onSetRpe: (SetLogEntity, Double?) -> Unit,
     onInfo: () -> Unit,
     onMarkAll: () -> Unit,
+    showThumb: Boolean = true,
 ) {
     val c = HqTheme.colors
     val first = group.first()
@@ -447,7 +514,7 @@ private fun ExerciseCard(
         Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClickLabel = "Show how to do it", onClick = onInfo), verticalAlignment = Alignment.CenterVertically) {
-                    ExerciseThumb(first.exerciseName, 44.dp, Modifier.padding(end = 10.dp))
+                    if (showThumb) ExerciseThumb(first.exerciseName, 44.dp, Modifier.padding(end = 10.dp))
                 Column(Modifier.weight(1f)) {
                     HqText(first.exerciseName, 16.sp, FontWeight.SemiBold)
                     val timed = first.durationSec
@@ -679,5 +746,114 @@ internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, onPic
                 }
             }
         }
+    }
+}
+
+
+private enum class SectionPhase { INTRO, ACTIVE, COMPLETE }
+
+/** Ticks every remaining set of one exercise, filling the target reps where none were typed. No rest timer. */
+private suspend fun markAllDone(db: HqFitDatabase, group: List<SetLogEntity>) {
+    val now = System.currentTimeMillis()
+    group.filter { !it.done }.forEach { set ->
+        if (set.durationSec == null && set.reps == null) {
+            db.sessions().updateValues(set.id, set.weightKg, set.targetRepsMax ?: set.targetRepsMin)
+        }
+        db.sessions().updateDone(set.id, true, now)
+    }
+}
+
+@Composable
+private fun Dots(count: Int, current: Int, on: androidx.compose.ui.graphics.Color, off: androidx.compose.ui.graphics.Color = on.copy(alpha = 0.35f)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        repeat(count) { i ->
+            Box(Modifier.size(if (i == current) 8.dp else 6.dp).clip(CircleShape).background(if (i == current) on else off))
+        }
+    }
+}
+
+/** Before a section starts: its name, size, Start Section and the exercises it holds. */
+@Composable
+private fun SectionIntro(title: String, count: Int, groups: List<List<SetLogEntity>>, onStart: () -> Unit) {
+    val c = HqTheme.colors
+    androidx.compose.foundation.lazy.LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item {
+            Column(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                HqText(title, 24.sp, FontWeight.Bold)
+                HqText("$count exercises", 14.sp, color = c.muted)
+                Spacer(Modifier.height(8.dp))
+                HqPillButton("Start Section", onClick = onStart)
+            }
+        }
+        itemsIndexed(groups, key = { _, g -> g.first().position }) { _, g ->
+            val first = g.first()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                ExerciseThumb(first.exerciseName, 56.dp, Modifier.padding(end = 12.dp))
+                Column(Modifier.weight(1f)) {
+                    HqText(first.exerciseName, 16.sp, FontWeight.SemiBold)
+                    val target = when {
+                        first.durationSec != null -> formatDuration(first.durationSec!!)
+                        first.targetRepsMin != null && first.targetRepsMax != null && first.targetRepsMin != first.targetRepsMax -> "${first.targetRepsMin}-${first.targetRepsMax} reps"
+                        first.targetRepsMax != null -> "${first.targetRepsMax} reps"
+                        else -> ""
+                    }
+                    if (target.isNotEmpty()) HqText(target, 13.sp, color = c.muted)
+                    if (first.supersetGroup != null) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
+                }
+                HqText("x${g.size}", 14.sp, color = c.muted)
+            }
+        }
+    }
+}
+
+/** Shown after Complete section: a badge with the exercise count. The last section says to swipe to finish. */
+@Composable
+private fun SectionComplete(title: String, count: Int, last: Boolean, onEdit: () -> Unit) {
+    val c = HqTheme.colors
+    val bits = listOf(c.primary, c.protein, c.fat, c.carbs, c.warn)
+    Box(Modifier.fillMaxSize()) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            listOf(0.12f to 0.08f, 0.3f to 0.15f, 0.5f to 0.06f, 0.7f to 0.14f, 0.88f to 0.1f, 0.2f to 0.3f, 0.82f to 0.32f, 0.6f to 0.24f).forEachIndexed { i, (x, y) ->
+                androidx.compose.ui.graphics.drawscope.rotate(20f * i + 15f, androidx.compose.ui.geometry.Offset(w * x, h * y)) {
+                    drawRect(bits[i % bits.size], androidx.compose.ui.geometry.Offset(w * x, h * y), androidx.compose.ui.geometry.Size(14f, 24f))
+                }
+            }
+        }
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
+                androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+                    val r = size.minDimension / 2
+                    val cx = size.width / 2
+                    val cy = size.height / 2
+                    val path = androidx.compose.ui.graphics.Path()
+                    for (k in 0 until 6) {
+                        val ang = Math.toRadians(60.0 * k - 90)
+                        val x = cx + (r * Math.cos(ang)).toFloat()
+                        val y = cy + (r * Math.sin(ang)).toFloat()
+                        if (k == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+                    path.close()
+                    drawPath(path, c.primary)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    HqText("$count", 40.sp, FontWeight.Bold, c.onPrimary)
+                    HqText(if (count == 1) "exercise" else "exercises", 13.sp, color = c.onPrimary)
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            HqText("COMPLETED", 12.sp, FontWeight.SemiBold, c.primary, letterSpacing = 1.sp)
+            HqText(title, 22.sp, FontWeight.Bold)
+            if (last) {
+                Spacer(Modifier.height(16.dp))
+                HqText("Swipe to complete workout", 15.sp, FontWeight.SemiBold, c.muted)
+            }
+        }
+        TextButton(onClick = onEdit, modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp)) { HqText("Edit", 14.sp, FontWeight.SemiBold, c.primary) }
     }
 }

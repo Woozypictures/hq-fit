@@ -2,6 +2,7 @@ package uk.woozy.fit.ui
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,6 +77,20 @@ fun ExerciseThumb(name: String, size: Dp = 48.dp, modifier: Modifier = Modifier)
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier.size(size).clip(RoundedCornerShape(10.dp)).background(c.track),
+    )
+}
+
+/** The start-position still across the top of an exercise page; tap for both pictures and the steps. */
+@Composable
+fun ExerciseHero(name: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val id = rememberImageId(name) ?: return
+    val c = HqTheme.colors
+    AsyncImage(
+        model = ExerciseMedia.urls(id)[0],
+        contentDescription = "$name. Tap for how to do it",
+        contentScale = ContentScale.Crop,
+        modifier = modifier.fillMaxWidth().aspectRatio(16f / 10f).clip(RoundedCornerShape(16.dp)).background(c.track)
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
     )
 }
 
