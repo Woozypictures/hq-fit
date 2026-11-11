@@ -105,10 +105,10 @@ object FullBodyProgramme {
         PlanWorkout(
             "Fullbody A", "Quad focus",
             warmUp() + prehab() + listOf(
-                main("Decline Chest Press Machine", 8, 12, 50.0, 180, "pectorals", "leverage machine"),
+                main("Decline Chest Press Machine", 8, 12, 70.0, 180, "pectorals", "leverage machine"),
                 main("Seated Cable Rows", 8, 12, 50.0, 180, "upper back", "cable"),
                 main("Leg Press", 10, 15, 100.0, 180, "quads", "leverage machine", "Feet high on platform. Pain-free depth only (left knee)."),
-                main("Hyperextensions (Back Extensions)", 10, 15, null, 180, "spine", "body weight"),
+                main("Hyperextensions (Back Extensions)", 10, 15, 10.0, 180, "spine", "body weight"),
                 main("Machine Lateral Raise", 12, 15, 35.0, 120, "delts", "leverage machine"),
             ) + armPair(
                 main("Preacher Curl", 10, 12, 22.5, 0, "biceps", "ez barbell"),
