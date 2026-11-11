@@ -52,6 +52,9 @@ fun SettingsScreen(
     onScale: () -> Unit,
     onHealth: () -> Unit,
     onBackup: () -> Unit,
+    onProfile: () -> Unit,
+    onWorkoutSettings: () -> Unit,
+    onHqConnection: () -> Unit,
     onTargets: () -> Unit,
 ) {
     val c = HqTheme.colors
@@ -102,12 +105,12 @@ fun SettingsScreen(
             ListRow(Icons.Rounded.Backup, "Backup and restore", "Encrypted backups, restore, CSV export", onClick = onBackup)
         }
 
-        SectionLabel("Coming")
+        SectionLabel("More")
         HqCard(Modifier.fillMaxWidth()) {
-            ListRow(Icons.Rounded.Person, "Profile", "Units and height · milestone 5", enabled = false)
-            ListRow(Icons.Rounded.FitnessCenter, "Workout", "Rest time, weight steps, RPE · milestone 4", enabled = false)
-            ListRow(Icons.Rounded.Link, "HQ connection", "Share a summary with HQ · milestone 8", enabled = false)
-            ListRow(Icons.Rounded.SwapVert, "Import and export", "Cronometer, Everfit, CSV · milestone 9", enabled = false)
+            ListRow(Icons.Rounded.Person, "Profile", "Name and height", onClick = onProfile)
+            ListRow(Icons.Rounded.FitnessCenter, "Workout", "Weight step, rest timer", onClick = onWorkoutSettings)
+            ListRow(Icons.Rounded.Link, "HQ connection", "What HQ can read from this app", onClick = onHqConnection)
+            ListRow(Icons.Rounded.SwapVert, "Import and export", "Cronometer import, CSV, backups", onClick = onBackup)
         }
 
         SectionLabel("About")

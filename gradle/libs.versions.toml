@@ -19,6 +19,7 @@ mlkitBarcode = "17.3.0"
 healthConnect = "1.1.0-alpha10"
 
 [libraries]
+coil-compose = { module = "io.coil-kt:coil-compose", version = "2.7.0" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }

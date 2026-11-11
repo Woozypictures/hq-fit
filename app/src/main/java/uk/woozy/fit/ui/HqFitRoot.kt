@@ -174,6 +174,7 @@ fun HqFitRoot(
         NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.padding(padding)) {
             composable(Routes.TODAY) {
                 TodayScreen(
+                    name = remember { ProfilePrefs.name(syncContext) },
                     onSettings = { nav.navigate(Routes.SETTINGS) },
                     onStartWorkout = {
                         val a = active
@@ -283,6 +284,9 @@ fun HqFitRoot(
                     onScale = { nav.navigate(Routes.SCALE) },
                     onHealth = { nav.navigate(Routes.HEALTH) },
                     onBackup = { nav.navigate(Routes.BACKUP) },
+                    onProfile = { nav.navigate("profile") },
+                    onWorkoutSettings = { nav.navigate("workoutsettings") },
+                    onHqConnection = { nav.navigate("hqconnection") },
                     onTargets = { nav.navigate(Routes.TARGETS) },
                 )
             }
@@ -307,6 +311,9 @@ fun HqFitRoot(
             }
             composable(Routes.PAST) { PastWorkoutsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
             composable(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
+            composable("profile") { ProfileScreen(onBack = { nav.popBackStack() }) }
+            composable("workoutsettings") { WorkoutSettingsScreen(onBack = { nav.popBackStack() }) }
+            composable("hqconnection") { HqConnectionScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.TARGETS) { TargetsEditorScreen(db = db, onBack = { nav.popBackStack() }) }
             composable("${Routes.NUTRIENTS}/{date}", arguments = listOf(navArgument("date") { type = NavType.StringType })) { backStack ->
                 NutrientSummaryScreen(db = db, date = backStack.arguments?.getString("date") ?: LocalDate.now().toString(), onBack = { nav.popBackStack() })
