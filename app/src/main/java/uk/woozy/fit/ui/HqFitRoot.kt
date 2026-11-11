@@ -64,6 +64,7 @@ private object Routes {
     const val HEALTH = "health"
     const val BACKUP = "backup"
     const val EDIT = "edit"
+    const val PAST = "past"
     const val NEW_EXERCISE = "newexercise"
     const val WORKOUT = "workout"
     const val SUMMARY = "summary"
@@ -201,6 +202,7 @@ fun HqFitRoot(
                     onRecords = { nav.navigate(Routes.RECORDS) },
                     onNewWorkout = { scope.launch { nav.navigate("${Routes.EDIT}/${createWorkout(db, "New workout")}") } },
                     onNewExercise = { nav.navigate(Routes.NEW_EXERCISE) },
+                    onPast = { nav.navigate(Routes.PAST) },
                 )
             }
             composable(Routes.DIARY) {
@@ -282,6 +284,7 @@ fun HqFitRoot(
             composable("${Routes.EDIT}/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { backStack ->
                 TemplateEditorScreen(db = db, templateId = backStack.arguments?.getLong("id") ?: 0L, onBack = { nav.popBackStack() })
             }
+            composable(Routes.PAST) { PastWorkoutsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
             composable(Routes.NEW_EXERCISE) { NewExerciseScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.RECORDS) {
                 RecordsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.HISTORY}/$it") })
@@ -316,6 +319,7 @@ fun HqFitRoot(
                     db = db,
                     sessionId = backStack.arguments?.getLong("id") ?: 0L,
                     onDone = { nav.popBackStack(Routes.TODAY, inclusive = false) },
+                    onEdit = { nav.navigate("${Routes.WORKOUT}/${backStack.arguments?.getLong("id") ?: 0L}") },
                 )
             }
         }

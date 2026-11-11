@@ -83,6 +83,7 @@ fun TrainScreen(
     onRecords: () -> Unit,
     onNewWorkout: () -> Unit = {},
     onNewExercise: () -> Unit = {},
+    onPast: () -> Unit = {},
 ) {
     val c = HqTheme.colors
     val today = remember { LocalDate.now() }
@@ -165,6 +166,7 @@ fun TrainScreen(
             ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Editing arrives next; Full body A / B / C is in place", enabled = false)
             ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
             ListRow(Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
+            ListRow(Icons.Rounded.CalendarMonth, "Past workouts", "Open one to fix a weight or rep", onClick = onPast)
             ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own and put it on the calendar", onClick = onNewWorkout)
             ListRow(Icons.Rounded.FitnessCenter, "New exercise", "Add your own to the library", onClick = onNewExercise)
         }

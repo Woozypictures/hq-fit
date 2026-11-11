@@ -175,6 +175,8 @@ data class SetLogEntity(
     val reps: Int?,
     val done: Boolean = false,
     val doneAtMs: Long? = null,
+    /** Rate of perceived exertion, 6 to 10, when you chose to note it. */
+    val rpe: Double? = null,
 )
 
 /**

@@ -22,7 +22,7 @@ sealed interface DbGate {
 class DatabaseProvider(private val context: Context) {
     private val vault = KeyVault(context)
     private val dbName = "hqfit.db"
-    private val SCHEMA_VERSION = 5
+    private val SCHEMA_VERSION = 6
 
     @Volatile
     var db: HqFitDatabase? = null

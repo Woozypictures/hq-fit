@@ -285,6 +285,15 @@ interface SessionDao {
     @Query("DELETE FROM set_log WHERE id = :id")
     suspend fun deleteSet(id: Long)
 
+    @Query("UPDATE set_log SET setType = :type WHERE id = :id")
+    suspend fun updateType(id: Long, type: String)
+
+    @Query("UPDATE set_log SET rpe = :rpe WHERE id = :id")
+    suspend fun updateRpe(id: Long, rpe: Double?)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun restoreSet(row: SetLogEntity)
+
     @Query("UPDATE set_log SET exerciseId = :exerciseId, exerciseName = :name, done = 0, doneAtMs = NULL, reps = NULL WHERE sessionId = :sessionId AND position = :position")
     suspend fun replaceExercise(sessionId: Long, position: Int, exerciseId: Long, name: String)
 

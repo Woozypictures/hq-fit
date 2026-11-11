@@ -2,6 +2,10 @@ package uk.woozy.fit.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -156,6 +160,8 @@ fun ActiveWorkoutScreen(
     var editing by remember { mutableStateOf<Editing?>(null) }
     var confirmFinish by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
+    var lastDeleted by remember { mutableStateOf<SetLogEntity?>(null) }
+    val isDone = session?.status == "done"
 
     fun toggle(set: SetLogEntity) {
         scope.launch {
@@ -209,7 +215,7 @@ fun ActiveWorkoutScreen(
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     HqText("WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, Modifier.weight(1f), letterSpacing = 1.sp)
-                    HqText(session?.let { clock(now - it.startedMs) } ?: "", 16.sp, FontWeight.Bold, c.onGradient)
+                    HqText(session?.let { clock((it.endedMs ?: now) - it.startedMs) } ?: "", 16.sp, FontWeight.Bold, c.onGradient)
                 }
                 Spacer(Modifier.height(4.dp))
                 SpacedTitle(session?.name ?: "", color = c.onGradient, size = 20.sp)
@@ -226,6 +232,13 @@ fun ActiveWorkoutScreen(
             }
         }
 
+        lastDeleted?.let { gone ->
+            Row(Modifier.fillMaxWidth().background(c.card).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                HqText("Set deleted", 14.sp, color = c.muted, modifier = Modifier.weight(1f))
+                TextButton(onClick = { scope.launch { db.sessions().restoreSet(gone); lastDeleted = null } }) { HqText("Undo", 14.sp, FontWeight.SemiBold, c.primary) }
+                TextButton(onClick = { lastDeleted = null }) { HqText("Dismiss", 14.sp, color = c.muted) }
+            }
+        }
         LazyColumn(
             modifier = Modifier.weight(1f),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -255,6 +268,9 @@ fun ActiveWorkoutScreen(
                             if (group.size > 1) scope.launch { db.sessions().deleteSet(group.last().id) }
                         },
                         onPick = { mode -> picking = first.position to mode },
+                        onDeleteSet = { set -> lastDeleted = set; scope.launch { db.sessions().deleteSet(set.id) } },
+                        onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
+                        onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
                     )
                 }
             }
@@ -265,10 +281,10 @@ fun ActiveWorkoutScreen(
             NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "2.5 kg" else "1 rep")
         } else {
             Column(Modifier.navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                HqPillButton("Finish workout", onClick = { if (notTicked > 0) confirmFinish = true else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() } }, modifier = Modifier.fillMaxWidth())
+                HqPillButton(if (isDone) "Save changes" else "Finish workout", onClick = { if (isDone) { onLeave() } else if (notTicked > 0) confirmFinish = true else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() } }, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onLeave) { HqText("Close, keep running", 14.sp, color = c.muted) }
-                    TextButton(onClick = { confirmDiscard = true }) { HqText("Discard", 14.sp, color = c.muted) }
+                    if (!isDone) TextButton(onClick = { confirmDiscard = true }) { HqText("Discard", 14.sp, color = c.muted) }
                 }
             }
         }
@@ -332,6 +348,9 @@ private fun ExerciseCard(
     onAddSet: () -> Unit,
     onDeleteLast: () -> Unit,
     onPick: (PickMode) -> Unit,
+    onDeleteSet: (SetLogEntity) -> Unit,
+    onSetType: (SetLogEntity, String) -> Unit,
+    onSetRpe: (SetLogEntity, Double?) -> Unit,
 ) {
     val c = HqTheme.colors
     val first = group.first()
@@ -377,19 +396,46 @@ private fun ExerciseCard(
             } else {
                 SetTableHeader()
                 group.forEach { set ->
-                    val e = editing?.takeIf { it.setId == set.id }
-                    SetRow(
-                        number = set.setIndex.toString(),
-                        previous = previous[set.exerciseId to set.setIndex].orEmpty(),
-                        weight = if (e != null && e.weight) e.buffer else set.weightKg?.let { NumberEntry.format(it) }.orEmpty(),
-                        reps = if (e != null && !e.weight) e.buffer else set.reps?.toString().orEmpty(),
-                        done = set.done,
-                        onToggle = { onToggle(set) },
-                        onWeightClick = { onEdit(set, true) },
-                        onRepsClick = { onEdit(set, false) },
-                        weightActive = e?.weight == true,
-                        repsActive = e != null && !e.weight,
-                    )
+                    androidx.compose.runtime.key(set.id) {
+                        val e = editing?.takeIf { it.setId == set.id }
+                        var setMenu by remember { mutableStateOf(false) }
+                        val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
+                            if (v == SwipeToDismissBoxValue.EndToStart && group.size > 1) { onDeleteSet(set); true } else false
+                        })
+                        SwipeToDismissBox(
+                            state = dismiss,
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                Box(Modifier.fillMaxSize().background(c.track), contentAlignment = Alignment.CenterEnd) {
+                                    HqText("Delete", 14.sp, FontWeight.SemiBold, c.muted, Modifier.padding(end = 20.dp))
+                                }
+                            },
+                        ) {
+                            Box(Modifier.background(c.card).combinedClickable(onClick = {}, onLongClick = { setMenu = true })) {
+                                SetRow(
+                                    number = when (set.setType) { "warmup" -> "W"; "drop" -> "D"; "failure" -> "F"; else -> set.setIndex.toString() },
+                                    previous = previous[set.exerciseId to set.setIndex].orEmpty() + (set.rpe?.let { "  @${NumberEntry.format(it)}" } ?: ""),
+                                    weight = if (e != null && e.weight) e.buffer else set.weightKg?.let { NumberEntry.format(it) }.orEmpty(),
+                                    reps = if (e != null && !e.weight) e.buffer else set.reps?.toString().orEmpty(),
+                                    done = set.done,
+                                    onToggle = { onToggle(set) },
+                                    onWeightClick = { onEdit(set, true) },
+                                    onRepsClick = { onEdit(set, false) },
+                                    weightActive = e?.weight == true,
+                                    repsActive = e != null && !e.weight,
+                                )
+                                DropdownMenu(expanded = setMenu, onDismissRequest = { setMenu = false }) {
+                                    listOf("normal" to "Normal set", "warmup" to "Warm-up set", "drop" to "Drop set", "failure" to "Failure set").forEach { (k, label) ->
+                                        DropdownMenuItem(text = { HqText(label, 15.sp) }, onClick = { setMenu = false; onSetType(set, k) })
+                                    }
+                                    listOf(6.0, 7.0, 8.0, 9.0, 10.0).forEach { r ->
+                                        DropdownMenuItem(text = { HqText("RPE ${r.toInt()}", 15.sp) }, onClick = { setMenu = false; onSetRpe(set, r) })
+                                    }
+                                    DropdownMenuItem(text = { HqText("Clear RPE", 15.sp) }, onClick = { setMenu = false; onSetRpe(set, null) })
+                                }
+                            }
+                        }
+                    }
                 }
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onAddSet) { HqText("Add set", 14.sp, FontWeight.SemiBold, c.primary) }
@@ -429,7 +475,7 @@ private fun TimedRow(set: SetLogEntity, onToggle: (SetLogEntity) -> Unit) {
 
 /** After finishing: how long, how much, any records, and how it felt. */
 @Composable
-fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit) {
+fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit, onEdit: () -> Unit = {}) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
     val summary by produceState<SessionSummary?>(null, sessionId) { value = Sessions.summary(db, sessionId, System.currentTimeMillis()) }
@@ -487,6 +533,7 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit)
         }
         Column(Modifier.navigationBarsPadding().padding(16.dp)) {
             HqPillButton("Done", onClick = onDone, modifier = Modifier.fillMaxWidth(), style = PillStyle.Filled)
+            HqPillButton("Edit sets", onClick = onEdit, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), style = PillStyle.Outline)
         }
     }
 }
