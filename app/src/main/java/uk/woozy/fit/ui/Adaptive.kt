@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DragIndicator
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -197,7 +199,7 @@ fun CardColumn(
                     Modifier.size(44.dp).clip(CircleShape).background(c.card.copy(alpha = 0.92f))
                         .pointerInput(Unit) { detectTapGestures(onTap = { prefs.setHidden(prefs.hidden + key) }) },
                     contentAlignment = Alignment.Center,
-                ) { Icon(androidx.compose.material.icons.Icons.Rounded.VisibilityOff, contentDescription = "Hide ${names[key] ?: key}", tint = c.ink, modifier = Modifier.size(20.dp)) }
+                ) { Icon(Icons.Rounded.VisibilityOff, contentDescription = "Hide ${names[key] ?: key}", tint = c.ink, modifier = Modifier.size(20.dp)) }
                 Box(
                     Modifier.size(44.dp).clip(CircleShape).background(c.card.copy(alpha = 0.92f)).pointerInput(key) {
                         detectDragGestures(
@@ -263,6 +265,3 @@ fun CardColumn(
         }
     }
 }
-
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectTapGestures(onTap: () -> Unit) =
-    androidx.compose.foundation.gestures.detectTapGestures(onTap = { onTap() })
