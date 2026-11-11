@@ -56,7 +56,12 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 | 2 Database and encryption | Built; CI green (run 5, JVM tests passed). Phone checks 8 to 11 below still open. Foundation tables only; each later milestone adds its tables by migration |
 | 3 Library, programmes, calendar | First slice built, CI green (run 10, tests passed): library, your Full body A/B/C seeded and scheduled, Train calendar, move a day, Today hero. Editors for workouts and programmes not yet built |
 | 4 Active workout | First slice built, CI green (run 13, tests passed): log sets with the keypad, previous column, rest timer, records, summary. Not yet: swipe actions, replace or add exercise, rest-timer service and notification, edit after saving, history and PR screens |
-| 5 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
+| 4b Active workout, rest of it | Built, CI green (run 15): rest timer notification and alarm, replace and add exercise, records screen, exercise history |
+| 5 Food diary | First slice built, CI green (run 17): diary, add food, quick add, water, repeating foods, nutrient snapshots. Not yet: recipes and meals, targets editor, full nutrient summary |
+| 6 Barcode and food data | Built, CI green (run 18): CameraX and ML Kit scanner, Open Food Facts lookup and search, cached foods, custom foods. No bundled CoFID or USDA database yet (needs your export or a file) |
+| 7 Scale and Health Connect | Built, CI green (runs 20 and 22): Qingniu packet decoder (tested on hand-built frames, not real ones), Bluetooth session, Scale screen with manual entry, packet log and weekly reminder; Health Connect permissions, today's steps, sleep, resting HR and calories, weight import, optional send of weights and workouts. Not yet: nutrition and water writing, mirroring deletes, steps on Today |
+| 8 Provider for HQ | Provider built, CI green (run 23): `content://uk.woozy.fit.summary/today`, signature permission `uk.woozy.fit.permission.READ_SUMMARY`, read-only. HQ side not changed yet |
+| 9 to 11 | Not started (backups, import and export, charts, switch-over). Order and scope are in Stage 4 of the Doc |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
 
@@ -93,12 +98,23 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 19. Finish: summary shows time, sets and volume; a second session with heavier weights shows records; the day on Train turns green.
 20. Discard: removes the session and the day stays planned.
 16. First launch after updating from the previous version keeps your data (database upgrade 1 to 2) and adds the library and programme.
+21. Rest notification: tick a set, leave the app; a countdown notification appears, and "Rest over" with a vibration when it ends. Allow notifications when asked.
+22. Replace and add exercise in a workout; Records and exercise history screens show finished sessions.
+23. Diary: add food, quick add, change an amount, add water, repeating foods appear once per day.
+24. Scanner: the camera permission prompt appears; a barcode looks the food up on Open Food Facts; search works; a found food is cached and works offline.
+25. Scale (Settings > Scale and weight): allow Bluetooth when asked; Find scale lists the scale after you step on it; tap it; the weight appears and saves once it settles. If it does not pair, open the packet log on that screen and send it to Claude. Body composition is not read.
+26. Typed weight saves and can be deleted. Weekly reminder: turn it on, set a day and hour, allow notifications; it appears on that day.
+27. Health Connect (Settings): Grant access; today's steps, sleep, resting HR and calories show; "Sync now" imports Feelfit weights and, with the switch on, sends weights and workouts without duplicating on a second sync.
+28. HQ provider: needs HQ changed to read it. Until then nothing can be checked on the phone.
+
 11. If the app is force-closed while the recovery key is on screen, the next launch makes a new key (the unconfirmed one held no data).
 
 ## 9. Open items
 
-1. Programme details: received 11 Nov 2026 and seeded. Still to confirm on the phone: starting weights, and that the Sunday check-in tasks (mood, metrics, photo) are wanted as reminders in HQ Fit (not built).
-2. Cronometer full export (Servings, Daily Nutrition, Biometrics) and any Everfit history before milestone 9.
+1. Programme details: received 11 Nov 2026 and seeded. Still to confirm on the phone: starting weights, and that the Sunday check-in tasks (mood, metrics, photo) are wanted as reminders in HQ Fit (not built; still unanswered).
+2. A food database: send a CoFID xlsx or your Cronometer export so a bundled database and the importer can be built. Cronometer full export (Servings, Daily Nutrition, Biometrics) and any Everfit history before milestone 9.
 3. Frosted glass style, pull to refresh, drag-to-reorder cards: planned (see "Carried over from HQ" in Stage 4).
 4. `allowBackup` is off until the backup design lands in milestone 9.
+6. Leftovers: workout and programme editors, custom exercises with photos, swipe actions, set types and RPE, recipes and meals, targets editor, steps on Today, Vico charts.
+7. HQ needs a small change to read the summary provider and drop its own nutrition reads once you switch over.
 5. Exercise media: no licensed animations; text from OpenGym's catalogue, stills from free-exercise-db, own clips later.
