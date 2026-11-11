@@ -130,3 +130,6 @@ About (Settings): Created by Woozypictures, App version, Instagram / YouTube / X
 Provider: sends default targets when none were edited, and a new `steps_target` column (version stays 1; HQ reads columns by name).
 
 Debug-only demo mode: `app/src/debug/.../Demo.kt` (release has a no-op). `am start -n uk.woozy.fit/.MainActivity --ez demo true` skips the key step and fills two weeks of sample food, water and weights. Used by HQ's `screens` workflow, which builds both apps' debug APKs with the same debug key, installs them on an API 34 emulator and screenshots phone, Tab S9 Ultra landscape, dark and portrait. Run 1 confirmed HQ reads this app's provider (HQ showed the same kcal, water, workout and step goal). Not a phone test.
+
+## 14. History feed for HQ (11 Nov 2026)
+`SummaryProvider` also serves `content://uk.woozy.fit.summary/history` and `/weights` (last 30 days; see HQ HANDOVER section 13). Built by `HqHistoryBuilder` in `HqSummary.kt`. `/today` is unchanged, version stays 1.

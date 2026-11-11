@@ -8,24 +8,39 @@ import android.database.MatrixCursor
 import android.net.Uri
 import kotlinx.coroutines.runBlocking
 import uk.woozy.fit.data.share.HqSummary
+import uk.woozy.fit.data.share.HqHistoryBuilder
 import uk.woozy.fit.data.share.HqSummaryBuilder
 
 /**
- * A read-only summary for the HQ app: content://uk.woozy.fit.summary/today. Protected by a signature permission, so
+ * A read-only summary for the HQ app: content://uk.woozy.fit.summary/today (plus /history and /weights for the last 30 days). Protected by a signature permission, so
  * only an app signed with the same key (HQ) can read it. Insert, update and delete are refused. If the database
  * cannot be opened (first run, or a phone that needs the recovery key) the query returns an empty cursor.
  */
 class SummaryProvider : ContentProvider() {
-    private val matcher = UriMatcher(UriMatcher.NO_MATCH).apply { addURI(AUTHORITY, "today", TODAY) }
+    private val matcher = UriMatcher(UriMatcher.NO_MATCH).apply { addURI(AUTHORITY, "today", TODAY)
+        addURI(AUTHORITY, "history", HISTORY)
+        addURI(AUTHORITY, "weights", WEIGHTS)
+    }
 
     override fun onCreate(): Boolean = true
 
     override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor? {
-        if (matcher.match(uri) != TODAY) return null
+        val kind = matcher.match(uri)
+        if (kind == UriMatcher.NO_MATCH) return null
         val ctx = context ?: return null
         val container = (ctx.applicationContext as HqFitApplication).container
         synchronized(LOCK) { if (container.database.db == null) runBlocking { container.database.start() } }
         val db = container.database.db
+        if (kind == HISTORY) {
+            val c = MatrixCursor(arrayOf("date", "kcal", "protein_g", "version"))
+            if (db != null) runBlocking { HqHistoryBuilder.days(db, System.currentTimeMillis()) }.forEach { c.addRow(arrayOf<Any?>(it.date, it.kcal, it.proteinG, 1)) }
+            return c
+        }
+        if (kind == WEIGHTS) {
+            val c = MatrixCursor(arrayOf("weight_at_ms", "weight_kg", "version"))
+            if (db != null) runBlocking { HqHistoryBuilder.weights(db, System.currentTimeMillis()) }.forEach { c.addRow(arrayOf<Any?>(it.epochMs, it.kg, 1)) }
+            return c
+        }
         val summary: HqSummary? = if (db == null) null else runBlocking { HqSummaryBuilder.build(db, System.currentTimeMillis()) }
         val cursor = MatrixCursor(COLUMNS)
         if (summary != null) cursor.addRow(row(summary))
@@ -41,7 +56,7 @@ class SummaryProvider : ContentProvider() {
         s.stepsTarget,
     )
 
-    override fun getType(uri: Uri): String? = if (matcher.match(uri) == TODAY) "vnd.android.cursor.item/vnd.uk.woozy.fit.summary" else null
+    override fun getType(uri: Uri): String? = if (matcher.match(uri) != UriMatcher.NO_MATCH) "vnd.android.cursor.item/vnd.uk.woozy.fit.summary" else null
     override fun insert(uri: Uri, values: ContentValues?): Uri? = throw UnsupportedOperationException("read-only")
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = throw UnsupportedOperationException("read-only")
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = throw UnsupportedOperationException("read-only")
@@ -49,6 +64,8 @@ class SummaryProvider : ContentProvider() {
     companion object {
         const val AUTHORITY = "uk.woozy.fit.summary"
         private const val TODAY = 1
+        private const val HISTORY = 2
+        private const val WEIGHTS = 3
         internal val LOCK = Any()
 
         /** Column names HQ should read. [version] lets HQ ignore a layout it does not know. */

@@ -77,3 +77,27 @@ object HqSummaryBuilder {
         )
     }
 }
+
+/** One past day with at least one diary entry. Days with no entries are left out so HQ keeps its older data for them. */
+data class HqDay(val date: String, val kcal: Double, val proteinG: Double)
+data class HqWeight(val epochMs: Long, val kg: Double)
+
+/** The last 30 days, for HQ's weekly and 30-day charts. Added after version 1 shipped as separate paths; the today row is unchanged. */
+object HqHistoryBuilder {
+    suspend fun days(db: HqFitDatabase, nowMs: Long, n: Int = 30, zone: ZoneId = ZoneId.systemDefault()): List<HqDay> {
+        val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
+        return (n downTo 0).mapNotNull { back ->
+            val d = today.minusDays(back.toLong()).toString()
+            val rows = db.diary().day(d)
+            if (rows.isEmpty()) null else {
+                val t = Diary.totals(rows)
+                HqDay(d, t[Nutrients.ENERGY] ?: 0.0, t[Nutrients.PROTEIN] ?: 0.0)
+            }
+        }
+    }
+
+    suspend fun weights(db: HqFitDatabase, nowMs: Long, n: Int = 30): List<HqWeight> {
+        val from = nowMs - n * 86_400_000L
+        return db.weights().observeAllOnce().filter { it.epochMs >= from }.sortedBy { it.epochMs }.map { HqWeight(it.epochMs, it.kg) }
+    }
+}
