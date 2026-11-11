@@ -54,11 +54,16 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 |---|---|
 | 1 Foundation | Built and released. Colour schemes added after |
 | 2 Database and encryption | Built; CI green (run 5, JVM tests passed). Phone checks 8 to 11 below still open. Foundation tables only; each later milestone adds its tables by migration |
-| 3 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
+| 3 Library, programmes, calendar | First slice built, awaiting CI: library, your Full body A/B/C seeded and scheduled, Train calendar, move a day, Today hero. Editors for workouts and programmes not yet built |
+| 4 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
 
 Done in milestone 2: Room on SQLCipher (`core/data/db`), random 32-byte database key wrapped by an Android Keystore key and by a recovery key (PBKDF2 200k + AES-GCM, `core/data/crypto`), first-run recovery key screen (typed back to confirm), recovery screen for a phone that cannot open the data, seed of 37 nutrients with Health Connect field names and the starting targets. Tables so far: nutrient, target, exercise, weight_entry, water_entry, meta. Not yet seeded: the exercise library (arrives with milestone 3, where it is first used). Tests: recovery crypto on the JVM, DAOs and seed on an in-memory Room database through Robolectric. Encryption on disk is not covered by tests because SQLCipher needs the phone's native library.
+
+Done in milestone 3 (first slice, database version 2): bundled exercise library (about 5,600 entries, text from the openGym catalogue, no pictures yet), search with muscle and equipment filters, and your Full body A / B / C programme from the Everfit handover seeded exactly (warm up, prehab, five movements, arm superset, cool down, rest times, notes), scheduled Mon / Wed / Fri for 10 weeks from the first run. Train shows the week strip and coming-up list; tap a day to see the workout by section; Move to another day keeps the original date; Today shows today's workout. Starting weights for Romanian deadlift (10 kg per dumbbell) and hip thrust (40 kg) are guesses, as in the handover.
+
+Not in this slice (still milestone 3): workout editor, programme editor (copy day or week, duplicate), custom exercises with photo or clip, drag to reschedule, exercise stills, percent-of-1RM and RIR targets. The Start workout button opens the placeholder until milestone 4.
 
 Not done and not faked: every screen shows empty values with an "arrives in milestone N" caption. Nothing logs data yet.
 
@@ -74,6 +79,11 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 8. First launch shows "Protect your data"; the recovery key appears, a wrong retype is refused, the right one opens Today. Write the key down.
 9. Close and reopen: no prompt, straight to Today. Clear nothing; this proves the Keystore path.
 10. Optional proof of encryption: with a file manager on a rooted device or `adb run-as uk.woozy.fit`, `databases/hqfit.db` is not readable as SQLite.
+12. Train: the week strip shows dots on Mon, Wed, Fri; tap a day opens the workout with sections, supersets and notes matching Everfit.
+13. Workout screen: Move to another day changes the date; the Train list shows "moved from".
+14. Today shows today's workout (or the next one on a rest day).
+15. Exercise library: search "squat", filter by muscle and equipment; scrolling 100 rows is smooth.
+16. First launch after updating from the previous version keeps your data (database upgrade 1 to 2) and adds the library and programme.
 11. If the app is force-closed while the recovery key is on screen, the next launch makes a new key (the unconfirmed one held no data).
 
 ## 9. Open items

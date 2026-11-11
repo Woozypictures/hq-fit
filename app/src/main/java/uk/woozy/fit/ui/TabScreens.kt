@@ -59,53 +59,6 @@ private fun TabPage(content: @Composable () -> Unit) {
     }
 }
 
-/** Train: the week strip is live; programmes, library and records arrive in milestones 3 and 4. */
-@Composable
-fun TrainScreen() {
-    val c = HqTheme.colors
-    val today = remember { LocalDate.now() }
-    val monday = remember { today.with(DayOfWeek.MONDAY) }
-    TabPage {
-        ScreenTitle("Train")
-        HqCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    (0..6).forEach { i ->
-                        val day = monday.plusDays(i.toLong())
-                        val isToday = day == today
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            HqText(
-                                day.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.UK),
-                                12.sp, FontWeight.Medium, c.muted,
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .then(if (isToday) Modifier.border(2.dp, c.primary, CircleShape) else Modifier),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                HqText(
-                                    day.dayOfMonth.toString(), 14.sp,
-                                    if (isToday) FontWeight.Bold else FontWeight.Normal,
-                                    if (isToday) c.primary else c.ink,
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                    }
-                }
-                HqText("No workouts scheduled yet", 14.sp, color = c.muted)
-            }
-        }
-        HqCard(Modifier.fillMaxWidth()) {
-            ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Arrives in milestone 3", enabled = false)
-            ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Arrives in milestone 3", enabled = false)
-            ListRow(Icons.Rounded.Star, "Personal records", "Arrives in milestone 4", enabled = false)
-        }
-    }
-}
-
 /** Diary: meal groups as laid out in the spec, empty until milestone 5. */
 @Composable
 fun DiaryScreen(targets: Targets = Targets()) {

@@ -9,9 +9,13 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import java.io.StringReader
+import java.time.LocalDate
+import kotlinx.coroutines.flow.first
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import uk.woozy.fit.data.db.ExerciseCatalogue
 import uk.woozy.fit.data.db.ExerciseEntity
 import uk.woozy.fit.data.db.HqFitDatabase
 import uk.woozy.fit.data.db.Seed
@@ -82,5 +86,84 @@ class DatabaseTest {
         db.water().insert(WaterEntryEntity(epochMs = 900, ml = 250))
         assertEquals(750, db.water().totalBetween(0, 500))
         assertNotNull(db.meta())
+    }
+
+    private val wednesday = LocalDate.of(2026, 11, 11)
+
+    @Test
+    fun programmeIsSeededOnceWithThreeWorkouts() = runBlocking {
+        Seed.run(db, today = wednesday)
+        Seed.run(db, today = wednesday)
+        assertEquals(listOf("Fullbody A", "Fullbody B", "Fullbody C"), db.templates().all().map { it.name })
+        assertEquals(1, db.programmes().all().size)
+        // 10 weeks, Mon/Wed/Fri, from Wednesday 11 Nov: 3 x 10 minus the Monday already past
+        assertEquals(29, db.schedule().count())
+    }
+
+    @Test
+    fun fullbodyAHasTheHandoverLines() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val a = db.templates().all().first { it.name == "Fullbody A" }
+        val rows = db.templates().observeItems(a.id).first()
+        assertEquals(14, rows.size)
+        assertEquals("Treadmill Walk", rows.first().exerciseName)
+        assertEquals(600, rows.first().durationSec)
+        val leg = rows.first { it.exerciseName == "Leg Press" }
+        assertEquals(100.0, leg.weightKg!!, 0.0)
+        assertEquals(10, leg.repsMin)
+        assertEquals(15, leg.repsMax)
+        val superset = rows.filter { it.supersetGroup != null }
+        assertEquals(listOf("Preacher Curl", "Cable Triceps Pushdown"), superset.map { it.exerciseName })
+        assertEquals(listOf(0, 90), superset.map { it.restSec })
+        assertEquals("Treadmill Walk", rows.last().exerciseName)
+    }
+
+    @Test
+    fun movingADayKeepsItsOriginalDate() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val first = db.schedule().observeBetween("2026-11-11", "2026-11-11").first().single()
+        db.schedule().move(first.id, "2026-11-12")
+        val moved = db.schedule().get(first.id)!!
+        assertEquals("2026-11-12", moved.date)
+        assertEquals("2026-11-11", moved.originalDate)
+    }
+
+    @Test
+    fun deletingTheProgrammeAndWorkoutsLeavesTheCalendarAlone() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val before = db.schedule().count()
+        db.programmes().all().forEach { db.programmes().delete(it.id) }
+        db.templates().all().forEach { db.templates().delete(it.id) }
+        assertEquals(before, db.schedule().count())
+        assertEquals("Fullbody B", db.schedule().observeBetween("2026-11-11", "2026-11-11").first().single().templateName)
+    }
+
+    @Test
+    fun catalogueParsingSkipsBlankNamesAndTitleCases() {
+        val tsv = "0001\t3/4 sit-up\twaist\tbody weight\tabs\thip flexors\tcalisthenics\tA short sit-up.\n" +
+            "0002\t\twaist\tbody weight\tabs\t\tx\ty\n" +
+            "0003\tdecline chest press (machine)\tchest\tleverage machine\tpectorals\t\tstrength\tPress.\n"
+        val parsed = ExerciseCatalogue.parse(java.io.BufferedReader(StringReader(tsv)))
+        assertEquals(listOf("3/4 Sit-Up", "Decline Chest Press (machine)"), parsed.map { it.name })
+        assertEquals("abs", parsed[0].muscle)
+    }
+
+    @Test
+    fun programmeExercisesReuseCatalogueRows() = runBlocking {
+        val tsv = "0001\tleg press\tupper legs\tleverage machine\tquads\t\tstrength\tPush the platform.\n"
+        Seed.run(db, catalogue = { java.io.BufferedReader(StringReader(tsv)) }, today = wednesday)
+        val matches = db.exercises().search("leg press")
+        assertEquals(1, matches.size)
+        assertEquals("Push the platform.", matches.first().instructions)
+    }
+
+    @Test
+    fun libraryFiltersByMuscleAndEquipment() = runBlocking {
+        db.exercises().insert(ExerciseEntity(name = "Barbell Curl", muscle = "biceps", equipment = "barbell"))
+        db.exercises().insert(ExerciseEntity(name = "Cable Curl", muscle = "biceps", equipment = "cable"))
+        db.exercises().insert(ExerciseEntity(name = "Cable Row", muscle = "lats", equipment = "cable"))
+        assertEquals(2, db.exercises().searchFiltered("curl", "biceps", "").size)
+        assertEquals(listOf("Cable Curl"), db.exercises().searchFiltered("", "biceps", "cable").map { it.name })
+        assertEquals(listOf("biceps", "lats"), db.exercises().muscles())
     }
 }

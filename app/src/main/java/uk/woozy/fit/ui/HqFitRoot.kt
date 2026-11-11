@@ -19,6 +19,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import uk.woozy.fit.data.db.HqFitDatabase
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import uk.woozy.fit.designsystem.BarItem
 import uk.woozy.fit.designsystem.HqBottomBar
 import uk.woozy.fit.designsystem.HqTheme
@@ -45,6 +53,8 @@ private object Routes {
     const val SETTINGS = "settings"
     const val DESIGN = "design"
     const val WORKOUT = "workout"
+    const val PREVIEW = "preview"
+    const val LIBRARY = "library"
 }
 
 /** Today, Train, (+), Diary, Progress. The + sits between the second and third tab. */
@@ -67,6 +77,7 @@ private fun NavHostController.navigateTab(route: String) {
 
 @Composable
 fun HqFitRoot(
+    db: HqFitDatabase,
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
     scheme: String,
@@ -76,6 +87,13 @@ fun HqFitRoot(
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     var quickAdd by remember { mutableStateOf(false) }
+    val today = remember { LocalDate.now() }
+    val calendarFlow = remember(db) {
+        db.schedule().observeBetween(today.with(DayOfWeek.MONDAY).toString(), today.plusDays(70).toString())
+    }
+    val calendar by calendarFlow.collectAsState(initial = emptyList())
+    val todays = calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
+    val next = calendar.firstOrNull { it.date > today.toString() && it.status == "planned" }
 
     Scaffold(
         containerColor = HqTheme.colors.page,
@@ -95,10 +113,23 @@ fun HqFitRoot(
             composable(Routes.TODAY) {
                 TodayScreen(
                     onSettings = { nav.navigate(Routes.SETTINGS) },
-                    onStartWorkout = { nav.navigate(Routes.WORKOUT) },
+                    onStartWorkout = { todays?.let { nav.navigate("${Routes.PREVIEW}/${it.id}") } },
+                    workoutTitle = todays?.templateName,
+                    workoutCaption = when {
+                        todays != null -> "Scheduled for today"
+                        next != null -> "Next: ${next.templateName}, " +
+                            LocalDate.parse(next.date).format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.UK))
+                        else -> "Nothing scheduled"
+                    },
                 )
             }
-            composable(Routes.TRAIN) { TrainScreen() }
+            composable(Routes.TRAIN) {
+                TrainScreen(
+                    calendar = calendar,
+                    onOpen = { nav.navigate("${Routes.PREVIEW}/$it") },
+                    onLibrary = { nav.navigate(Routes.LIBRARY) },
+                )
+            }
             composable(Routes.DIARY) { DiaryScreen() }
             composable(Routes.PROGRESS) { ProgressScreen() }
             composable(Routes.SETTINGS) {
@@ -112,6 +143,18 @@ fun HqFitRoot(
                 )
             }
             composable(Routes.DESIGN) { DesignScreen(onBack = { nav.popBackStack() }) }
+            composable(
+                "${Routes.PREVIEW}/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            ) { backStack ->
+                WorkoutPreviewScreen(
+                    db = db,
+                    scheduledId = backStack.arguments?.getLong("id") ?: 0L,
+                    onBack = { nav.popBackStack() },
+                    onStart = { nav.navigate(Routes.WORKOUT) },
+                )
+            }
+            composable(Routes.LIBRARY) { LibraryScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.WORKOUT) { WorkoutPlaceholderScreen(onClose = { nav.popBackStack() }) }
         }
     }

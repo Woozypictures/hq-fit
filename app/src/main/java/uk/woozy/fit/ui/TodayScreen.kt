@@ -48,13 +48,15 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Today. Milestone 1 shows the layout with honest empty values: the workout card fills in at milestone 3,
- * energy and water at 5, steps at 7.
+ * Today. The workout card reads the calendar; energy, water and steps stay honest empty values until
+ * milestones 5 and 7.
  */
 @Composable
 fun TodayScreen(
     onSettings: () -> Unit,
     onStartWorkout: () -> Unit,
+    workoutTitle: String?,
+    workoutCaption: String,
     name: String = "Mahesh",
     targets: Targets = Targets(),
 ) {
@@ -91,11 +93,13 @@ fun TodayScreen(
             Column(Modifier.padding(20.dp)) {
                 HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.1.em)
                 Spacer(Modifier.height(6.dp))
-                SpacedTitle("No programme yet", color = c.onGradient, size = 20.sp)
+                SpacedTitle(workoutTitle ?: "Rest day", color = c.onGradient, size = 20.sp)
                 Spacer(Modifier.height(4.dp))
-                HqText("Programmes arrive in milestone 3", 13.sp, color = c.onGradient.copy(alpha = 0.8f))
-                Spacer(Modifier.height(16.dp))
-                HqPillButton("Start workout", onClick = onStartWorkout, style = PillStyle.OnGradient)
+                HqText(workoutCaption, 13.sp, color = c.onGradient.copy(alpha = 0.8f))
+                if (workoutTitle != null) {
+                    Spacer(Modifier.height(16.dp))
+                    HqPillButton("View workout", onClick = onStartWorkout, style = PillStyle.OnGradient)
+                }
             }
         }
 
@@ -131,7 +135,7 @@ fun TodayScreen(
         }
 
         HqText(
-            "This is the layout only. Workouts fill in at milestones 3 and 4, food and water at 5, steps at 7.",
+            "Energy and water fill in at milestone 5, steps at 7. Logging a workout arrives in milestone 4.",
             13.sp, color = c.muted,
         )
         Spacer(Modifier.height(8.dp))

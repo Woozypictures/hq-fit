@@ -1,6 +1,10 @@
 package uk.woozy.fit.data.db
 
+import uk.woozy.fit.model.FullBodyProgramme
+import uk.woozy.fit.model.Scheduler
 import uk.woozy.fit.model.Targets
+import java.io.BufferedReader
+import java.time.LocalDate
 
 /** First-run data. Safe to run again: rows are replaced by key, and the version row stops repeat work. */
 object Seed {
@@ -65,12 +69,60 @@ object Seed {
         TargetEntity("weight_rate_kg_week", t.weeklyRateKg, "goal"),
     )
 
-    suspend fun run(db: HqFitDatabase) {
-        if (db.meta().get("seed") == VERSION) return
-        db.nutrients().upsertAll(nutrients)
-        // Targets are only filled when missing, so a seed re-run never overwrites something edited later.
-        val have = db.targets().all().map { it.key }.toSet()
-        db.targets().upsertAll(targets().filter { it.key !in have })
-        db.meta().put(MetaEntity("seed", VERSION))
+    /**
+     * Fills what is missing. [catalogue] opens the bundled exercise list (null in tests that do not need it).
+     * Each part has its own version row, so an update that adds seed data runs only the new part.
+     */
+    suspend fun run(db: HqFitDatabase, catalogue: (() -> BufferedReader)? = null, today: LocalDate = LocalDate.now()) {
+        if (db.meta().get("seed") != VERSION) {
+            db.nutrients().upsertAll(nutrients)
+            // Targets are only filled when missing, so a seed re-run never overwrites something edited later.
+            val have = db.targets().all().map { it.key }.toSet()
+            db.targets().upsertAll(targets().filter { it.key !in have })
+            db.meta().put(MetaEntity("seed", VERSION))
+        }
+        if (catalogue != null && db.meta().get("exercises") == null) {
+            db.exercises().insertAll(ExerciseCatalogue.parse(catalogue()))
+            db.meta().put(MetaEntity("exercises", "1"))
+        }
+        if (db.meta().get("programme") == null) {
+            seedProgramme(db, today)
+            db.meta().put(MetaEntity("programme", "1"))
+        }
+    }
+
+    /** The Full body A / B / C programme from the Everfit handover, scheduled Mon, Wed, Fri from the Monday of [today]'s week. */
+    suspend fun seedProgramme(db: HqFitDatabase, today: LocalDate) {
+        val idByName = HashMap<String, Long>()
+        for (w in FullBodyProgramme.workouts) {
+            val templateId = db.templates().insert(WorkoutTemplateEntity(name = w.name, focus = w.focus))
+            val items = w.items.mapIndexed { i, item ->
+                val exerciseId = idByName.getOrPut(item.exercise.lowercase()) {
+                    db.exercises().findByName(item.exercise)?.id
+                        ?: db.exercises().insert(ExerciseEntity(name = item.exercise, muscle = item.muscle, equipment = item.equipment))
+                }
+                TemplateItemEntity(
+                    templateId = templateId, section = item.section.key, position = i, exerciseId = exerciseId,
+                    sets = item.sets, repsMin = item.repsMin, repsMax = item.repsMax, durationSec = item.durationSec,
+                    weightKg = item.weightKg, restSec = item.restSec, supersetGroup = item.superset, note = item.note,
+                )
+            }
+            db.templates().insertItems(items)
+        }
+        val templates = db.templates().all().associateBy { it.name }
+        val programmeId = db.programmes().insert(
+            ProgrammeEntity(name = FullBodyProgramme.NAME, startDate = today.with(java.time.DayOfWeek.MONDAY).toString(), weeks = FullBodyProgramme.WEEKS, active = true),
+        )
+        db.programmes().insertDays(
+            FullBodyProgramme.rules.map { ProgrammeDayEntity(programmeId = programmeId, weekday = it.weekday.value, templateId = templates.getValue(it.workout).id) },
+        )
+        // From today on: weeks already trained in Everfit are not recreated as missed days.
+        val days = Scheduler.generate(today, FullBodyProgramme.WEEKS, FullBodyProgramme.rules)
+        db.schedule().insertAll(
+            days.map {
+                val t = templates.getValue(it.workout)
+                ScheduledWorkoutEntity(programmeId, t.id, t.name, it.date.toString(), it.date.toString())
+            },
+        )
     }
 }
