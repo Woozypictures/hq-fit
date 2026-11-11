@@ -55,7 +55,8 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 | 1 Foundation | Built and released. Colour schemes added after |
 | 2 Database and encryption | Built; CI green (run 5, JVM tests passed). Phone checks 8 to 11 below still open. Foundation tables only; each later milestone adds its tables by migration |
 | 3 Library, programmes, calendar | First slice built, CI green (run 10, tests passed): library, your Full body A/B/C seeded and scheduled, Train calendar, move a day, Today hero. Editors for workouts and programmes not yet built |
-| 4 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
+| 4 Active workout | First slice built, awaiting CI: log sets with the keypad, previous column, rest timer, records, summary. Not yet: swipe actions, replace or add exercise, rest-timer service and notification, edit after saving, history and PR screens |
+| 5 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
 
@@ -64,6 +65,10 @@ Done in milestone 2: Room on SQLCipher (`core/data/db`), random 32-byte database
 Done in milestone 3 (first slice, database version 2): bundled exercise library (about 5,600 entries, text from the openGym catalogue, no pictures yet), search with muscle and equipment filters, and your Full body A / B / C programme from the Everfit handover seeded exactly (warm up, prehab, five movements, arm superset, cool down, rest times, notes), scheduled Mon / Wed / Fri for 10 weeks from the first run. Train shows the week strip and coming-up list; tap a day to see the workout by section; Move to another day keeps the original date; Today shows today's workout. Starting weights for Romanian deadlift (10 kg per dumbbell) and hip thrust (40 kg) are guesses, as in the handover.
 
 Not in this slice (still milestone 3): workout editor, programme editor (copy day or week, duplicate), custom exercises with photo or clip, drag to reschedule, exercise stills, percent-of-1RM and RIR targets. The Start workout button opens the placeholder until milestone 4.
+
+Done in milestone 4 (first slice, database version 3): start a workout from Train or Today (Resume workout if one is running); sections, supersets and notes as in your programme; set table with a PREVIOUS column (same set number last time) and weight starting from last time's weight; our keypad with plus/minus 2.5 kg or 1 rep; ticking a set fills the target reps if you did not type any and starts the rest timer (vibrates at zero); Add set and Delete last set; screen stays on; every change is saved straight away, so closing the app leaves the session as it was; Finish (warns about unticked sets) or Discard; summary with time, sets, volume, new records (heaviest, estimated 1RM, best set volume, judged against earlier sessions only, so the first time is a baseline) and a 1 to 5 feeling. Finishing marks the calendar day done. Estimated 1RM uses Epley.
+
+Not in this slice (rest of milestone 4): swipe to delete with Undo, Replace, Add exercise before or after, Add superset, Mark all, section-complete celebration, set types in the UI (drop, failure, warm-up) and RPE or RIR entry, the rest timer as a foreground service with a notification (for now it only runs while the app is open), editing a finished workout, exercise history and personal records screens.
 
 Not done and not faked: every screen shows empty values with an "arrives in milestone N" caption. Nothing logs data yet.
 
@@ -83,6 +88,10 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 13. Workout screen: Move to another day changes the date; the Train list shows "moved from".
 14. Today shows today's workout (or the next one on a rest day).
 15. Exercise library: search "squat", filter by muscle and equipment; scrolling 100 rows is smooth.
+17. Workout: start Fullbody B (Train or Today). Tick a set: the reps fill from the target and the rest timer shows in the header; leaving the app and coming back keeps everything; "Resume workout" appears on Today.
+18. Keypad: tap weight or reps, type, plus and minus step by 2.5 kg or 1 rep, Done moves from weight to reps. The set table is not covered by the keypad.
+19. Finish: summary shows time, sets and volume; a second session with heavier weights shows records; the day on Train turns green.
+20. Discard: removes the session and the day stays planned.
 16. First launch after updating from the previous version keeps your data (database upgrade 1 to 2) and adds the library and programme.
 11. If the app is force-closed while the recovery key is on screen, the next launch makes a new key (the unconfirmed one held no data).
 

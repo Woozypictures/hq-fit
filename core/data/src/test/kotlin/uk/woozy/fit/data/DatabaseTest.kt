@@ -18,6 +18,8 @@ import org.robolectric.annotation.Config
 import uk.woozy.fit.data.db.ExerciseCatalogue
 import uk.woozy.fit.data.db.ExerciseEntity
 import uk.woozy.fit.data.db.HqFitDatabase
+import uk.woozy.fit.data.db.Sessions
+import uk.woozy.fit.model.RecordType
 import uk.woozy.fit.data.db.Seed
 import uk.woozy.fit.data.db.TargetEntity
 import uk.woozy.fit.data.db.WaterEntryEntity
@@ -165,5 +167,104 @@ class DatabaseTest {
         assertEquals(2, db.exercises().searchFiltered("curl", "biceps", "").size)
         assertEquals(listOf("Cable Curl"), db.exercises().searchFiltered("", "biceps", "cable").map { it.name })
         assertEquals(listOf("biceps", "lats"), db.exercises().muscles())
+    }
+
+    private suspend fun scheduledB() = db.schedule().observeBetween("2026-11-11", "2026-11-11").first().single()
+
+    private suspend fun trainAll(sessionId: Long, weightFor: (String) -> Double, reps: Int) {
+        db.sessions().sets(sessionId).forEach {
+            db.sessions().updateValues(it.id, weightFor(it.exerciseName), reps)
+            db.sessions().updateDone(it.id, true, 1_000L + it.id)
+        }
+    }
+
+    @Test
+    fun startingLaysOutEverySetFromTheTemplate() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val id = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        val sets = db.sessions().sets(id)
+        // warm up 5 + prehab 2 + five movements x 2 + superset 2 x 2 + cool down 1
+        assertEquals(22, sets.size)
+        assertEquals(sets.first().exerciseName, "Treadmill Walk")
+        assertEquals(600, sets.first().durationSec)
+        assertEquals(45.0, sets.first { it.exerciseName == "Wide-Grip Lat Pulldown" }.weightKg!!, 0.0)
+    }
+
+    @Test
+    fun startingTwiceResumesTheSameSession() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val first = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        val again = Sessions.start(db, scheduledB(), nowMs = 9_000)
+        assertEquals(first, again)
+        assertEquals(22, db.sessions().sets(first).size)
+    }
+
+    @Test
+    fun ticksAreSavedImmediatelyAndSurviveReopening() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val id = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        val set = db.sessions().sets(id).first { it.exerciseName == "Leg Extensions" }
+        db.sessions().updateValues(set.id, 52.5, 12)
+        db.sessions().updateDone(set.id, true, 5_000)
+        val back = db.sessions().sets(id).first { it.id == set.id }
+        assertEquals(52.5, back.weightKg!!, 0.0)
+        assertEquals(12, back.reps)
+        assertEquals(true, back.done)
+        assertEquals(id, db.sessions().active()!!.id)
+    }
+
+    @Test
+    fun finishingMarksTheCalendarDayDone() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val scheduled = scheduledB()
+        val id = Sessions.start(db, scheduled, nowMs = 1_000)
+        Sessions.finish(db, id, nowMs = 61_000, feeling = 4)
+        assertNull(db.sessions().active())
+        assertEquals("done", db.schedule().get(scheduled.id)!!.status)
+        assertEquals(60_000L, Sessions.summary(db, id, 99_999)!!.durationMs)
+    }
+
+    @Test
+    fun nextSessionStartsFromLastTimesWeightAndShowsPrevious() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val first = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        trainAll(first, weightFor = { 60.0 }, reps = 10)
+        Sessions.finish(db, first, nowMs = 2_000)
+        val nextDay = db.schedule().observeBetween("2026-11-13", "2026-11-30").first().first { it.templateName == "Fullbody B" }
+        val second = Sessions.start(db, nextDay, nowMs = 3_000)
+        val set = db.sessions().sets(second).first { it.exerciseName == "Leg Extensions" && it.setIndex == 1 }
+        assertEquals(60.0, set.weightKg!!, 0.0)
+        assertNull(set.reps)
+        val prev = db.sessions().previous(set.exerciseId, 1, second)!!
+        assertEquals(10, prev.reps)
+    }
+
+    @Test
+    fun recordsAreFoundAgainstEarlierSessionsOnly() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val first = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        trainAll(first, weightFor = { 50.0 }, reps = 10)
+        Sessions.finish(db, first, nowMs = 2_000)
+        // The very first time is a baseline, not a record.
+        assertEquals(0, Sessions.summary(db, first, 2_000)!!.records.size)
+        val nextDay = db.schedule().observeBetween("2026-11-13", "2026-11-30").first().first { it.templateName == "Fullbody B" }
+        val second = Sessions.start(db, nextDay, nowMs = 3_000)
+        trainAll(second, weightFor = { 55.0 }, reps = 10)
+        Sessions.finish(db, second, nowMs = 4_000)
+        val summary = Sessions.summary(db, second, 4_000)!!
+        assertEquals(true, summary.records.isNotEmpty())
+        assertEquals(true, summary.records.all { RecordType.HEAVIEST in it.records })
+        assertEquals(summary.records.size, summary.records.map { it.exerciseName }.toSet().size)
+    }
+
+    @Test
+    fun discardingRemovesTheSessionButNotTheCalendar() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val scheduled = scheduledB()
+        val id = Sessions.start(db, scheduled, nowMs = 1_000)
+        Sessions.discard(db, id)
+        assertNull(db.sessions().active())
+        assertEquals(0, db.sessions().sets(id).size)
+        assertEquals("planned", db.schedule().get(scheduled.id)!!.status)
     }
 }

@@ -134,6 +134,13 @@ interface TemplateDao {
     )
     fun observeItems(templateId: Long): Flow<List<TemplateItemRow>>
 
+    @Query(
+        "SELECT i.id, i.section, i.position, i.exerciseId, e.name AS exerciseName, i.sets, i.repsMin, i.repsMax, " +
+            "i.durationSec, i.weightKg, i.restSec, i.supersetGroup, i.note " +
+            "FROM template_item i JOIN exercise e ON e.id = i.exerciseId WHERE i.templateId = :templateId ORDER BY i.position",
+    )
+    suspend fun items(templateId: Long): List<TemplateItemRow>
+
     @Query("DELETE FROM workout_template WHERE id = :id")
     suspend fun delete(id: Long)
 }
@@ -173,4 +180,65 @@ interface ScheduleDao {
 
     @Query("SELECT COUNT(*) FROM scheduled_workout")
     suspend fun count(): Int
+}
+
+@Dao
+interface SessionDao {
+    @Insert
+    suspend fun insertSession(row: WorkoutSessionEntity): Long
+
+    @Insert
+    suspend fun insertSets(rows: List<SetLogEntity>)
+
+    @Insert
+    suspend fun insertSet(row: SetLogEntity): Long
+
+    @Query("SELECT * FROM workout_session WHERE status = 'active' ORDER BY startedMs DESC LIMIT 1")
+    fun observeActive(): Flow<WorkoutSessionEntity?>
+
+    @Query("SELECT * FROM workout_session WHERE status = 'active' ORDER BY startedMs DESC LIMIT 1")
+    suspend fun active(): WorkoutSessionEntity?
+
+    @Query("SELECT * FROM workout_session WHERE id = :id")
+    suspend fun get(id: Long): WorkoutSessionEntity?
+
+    @Query("SELECT * FROM set_log WHERE sessionId = :sessionId ORDER BY position, setIndex")
+    fun observeSets(sessionId: Long): Flow<List<SetLogEntity>>
+
+    @Query("SELECT * FROM set_log WHERE sessionId = :sessionId ORDER BY position, setIndex")
+    suspend fun sets(sessionId: Long): List<SetLogEntity>
+
+    @Query("UPDATE set_log SET weightKg = :weightKg, reps = :reps WHERE id = :id")
+    suspend fun updateValues(id: Long, weightKg: Double?, reps: Int?)
+
+    @Query("UPDATE set_log SET done = :done, doneAtMs = :doneAtMs WHERE id = :id")
+    suspend fun updateDone(id: Long, done: Boolean, doneAtMs: Long?)
+
+    @Query("DELETE FROM set_log WHERE id = :id")
+    suspend fun deleteSet(id: Long)
+
+    @Query("UPDATE workout_session SET status = 'done', endedMs = :endedMs, feeling = :feeling WHERE id = :id")
+    suspend fun finish(id: Long, endedMs: Long, feeling: Int?)
+
+    @Query("UPDATE workout_session SET feeling = :feeling WHERE id = :id")
+    suspend fun setFeeling(id: Long, feeling: Int?)
+
+    @Query("DELETE FROM workout_session WHERE id = :id")
+    suspend fun deleteSession(id: Long)
+
+    /** The same set number from the last time this exercise was done (finished sessions only). */
+    @Query(
+        "SELECT l.* FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
+            "WHERE l.exerciseId = :exerciseId AND l.setIndex = :setIndex AND l.done = 1 AND s.status = 'done' " +
+            "AND l.sessionId != :excludeSession ORDER BY l.doneAtMs DESC LIMIT 1",
+    )
+    suspend fun previous(exerciseId: Long, setIndex: Int, excludeSession: Long): SetLogEntity?
+
+    /** Every finished set of this exercise from other sessions, for records. */
+    @Query(
+        "SELECT l.* FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
+            "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND l.sessionId != :excludeSession " +
+            "AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL",
+    )
+    suspend fun history(exerciseId: Long, excludeSession: Long): List<SetLogEntity>
 }

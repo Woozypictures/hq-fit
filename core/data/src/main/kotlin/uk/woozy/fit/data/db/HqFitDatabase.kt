@@ -21,9 +21,11 @@ import androidx.room.RoomDatabase
         ProgrammeEntity::class,
         ProgrammeDayEntity::class,
         ScheduledWorkoutEntity::class,
+        WorkoutSessionEntity::class,
+        SetLogEntity::class,
     ],
-    version = 2,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    version = 3,
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
     exportSchema = true,
 )
 abstract class HqFitDatabase : RoomDatabase() {
@@ -36,4 +38,5 @@ abstract class HqFitDatabase : RoomDatabase() {
     abstract fun templates(): TemplateDao
     abstract fun programmes(): ProgrammeDao
     abstract fun schedule(): ScheduleDao
+    abstract fun sessions(): SessionDao
 }

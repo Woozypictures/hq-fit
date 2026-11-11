@@ -128,3 +128,51 @@ data class ScheduledWorkoutEntity(
     /** planned, done or skipped. */
     val status: String = "planned",
 )
+
+/** One time you trained. Sets are written the moment they change, so a killed app resumes where it was. */
+@Entity(tableName = "workout_session", indices = [Index("status")])
+data class WorkoutSessionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val scheduledId: Long?,
+    val templateId: Long?,
+    val name: String,
+    val startedMs: Long,
+    val endedMs: Long? = null,
+    /** active or done. */
+    val status: String = "active",
+    /** 1 to 5, how it felt. */
+    val feeling: Int? = null,
+)
+
+/**
+ * One set of one exercise inside a session. Rows are created when the session starts from the template,
+ * with the name copied in so later edits to the library never change a past workout.
+ */
+@Entity(
+    tableName = "set_log",
+    foreignKeys = [ForeignKey(WorkoutSessionEntity::class, parentColumns = ["id"], childColumns = ["sessionId"], onDelete = ForeignKey.CASCADE)],
+    indices = [Index("sessionId"), Index("exerciseId")],
+)
+data class SetLogEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val sessionId: Long,
+    /** Order of the exercise within the session. */
+    val position: Int,
+    val setIndex: Int,
+    val section: String,
+    val exerciseId: Long,
+    val exerciseName: String,
+    val supersetGroup: Int?,
+    /** Timed items (treadmill, stretches) use this instead of reps. */
+    val durationSec: Int?,
+    val targetRepsMin: Int?,
+    val targetRepsMax: Int?,
+    val restSec: Int,
+    val note: String,
+    /** normal, warmup, drop or failure. */
+    val setType: String = "normal",
+    val weightKg: Double?,
+    val reps: Int?,
+    val done: Boolean = false,
+    val doneAtMs: Long? = null,
+)

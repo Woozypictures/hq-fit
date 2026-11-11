@@ -35,6 +35,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import uk.woozy.fit.data.db.HqFitDatabase
+import uk.woozy.fit.data.db.ScheduledWorkoutEntity
+import uk.woozy.fit.data.db.Sessions
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -53,6 +57,7 @@ private object Routes {
     const val SETTINGS = "settings"
     const val DESIGN = "design"
     const val WORKOUT = "workout"
+    const val SUMMARY = "summary"
     const val PREVIEW = "preview"
     const val LIBRARY = "library"
 }
@@ -92,6 +97,15 @@ fun HqFitRoot(
         db.schedule().observeBetween(today.with(DayOfWeek.MONDAY).toString(), today.plusDays(70).toString())
     }
     val calendar by calendarFlow.collectAsState(initial = emptyList())
+    val scope = rememberCoroutineScope()
+    val activeFlow = remember(db) { db.sessions().observeActive() }
+    val active by activeFlow.collectAsState(initial = null)
+    fun startOrResume(s: ScheduledWorkoutEntity) {
+        scope.launch {
+            val id = Sessions.start(db, s, System.currentTimeMillis())
+            nav.navigate("${Routes.WORKOUT}/$id")
+        }
+    }
     val todays = calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
     val next = calendar.firstOrNull { it.date > today.toString() && it.status == "planned" }
 
@@ -113,9 +127,15 @@ fun HqFitRoot(
             composable(Routes.TODAY) {
                 TodayScreen(
                     onSettings = { nav.navigate(Routes.SETTINGS) },
-                    onStartWorkout = { todays?.let { nav.navigate("${Routes.PREVIEW}/${it.id}") } },
-                    workoutTitle = todays?.templateName,
+                    onStartWorkout = {
+                        val a = active
+                        if (a != null) nav.navigate("${Routes.WORKOUT}/${a.id}")
+                        else todays?.let { nav.navigate("${Routes.PREVIEW}/${it.id}") }
+                    },
+                    workoutTitle = active?.name ?: todays?.templateName,
+                    buttonLabel = if (active != null) "Resume workout" else "View workout",
                     workoutCaption = when {
+                        active != null -> "In progress"
                         todays != null -> "Scheduled for today"
                         next != null -> "Next: ${next.templateName}, " +
                             LocalDate.parse(next.date).format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.UK))
@@ -151,11 +171,35 @@ fun HqFitRoot(
                     db = db,
                     scheduledId = backStack.arguments?.getLong("id") ?: 0L,
                     onBack = { nav.popBackStack() },
-                    onStart = { nav.navigate(Routes.WORKOUT) },
+                    onStart = { startOrResume(it) },
                 )
             }
             composable(Routes.LIBRARY) { LibraryScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable(Routes.WORKOUT) { WorkoutPlaceholderScreen(onClose = { nav.popBackStack() }) }
+            composable(
+                "${Routes.WORKOUT}/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            ) { backStack ->
+                val id = backStack.arguments?.getLong("id") ?: 0L
+                ActiveWorkoutScreen(
+                    db = db,
+                    sessionId = id,
+                    onLeave = { nav.popBackStack() },
+                    onFinished = {
+                        nav.navigate("${Routes.SUMMARY}/$id") { popUpTo(Routes.TODAY) }
+                    },
+                    onDiscarded = { nav.popBackStack(Routes.TODAY, inclusive = false) },
+                )
+            }
+            composable(
+                "${Routes.SUMMARY}/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            ) { backStack ->
+                WorkoutSummaryScreen(
+                    db = db,
+                    sessionId = backStack.arguments?.getLong("id") ?: 0L,
+                    onDone = { nav.popBackStack(Routes.TODAY, inclusive = false) },
+                )
+            }
         }
     }
 
@@ -164,7 +208,10 @@ fun HqFitRoot(
             onDismiss = { quickAdd = false },
             onStartWorkout = {
                 quickAdd = false
-                nav.navigate(Routes.WORKOUT)
+                val a = active
+                if (a != null) nav.navigate("${Routes.WORKOUT}/${a.id}")
+                else if (todays != null) startOrResume(todays)
+                else nav.navigateTab(Routes.TRAIN)
             },
         )
     }
@@ -185,7 +232,7 @@ private fun QuickAddSheet(onDismiss: () -> Unit, onStartWorkout: () -> Unit) {
             ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Arrives in milestone 6", enabled = false)
             ListRow(Icons.Rounded.WaterDrop, "Add water", "Arrives in milestone 5", enabled = false)
             ListRow(Icons.Rounded.EditNote, "Quick add or note", "Arrives in milestone 5", enabled = false)
-            ListRow(Icons.Rounded.PlayArrow, "Start workout", "Opens the workout screen (logging arrives in milestone 4)", onClick = onStartWorkout)
+            ListRow(Icons.Rounded.PlayArrow, "Start workout", "Today's workout, or resume the one running", onClick = onStartWorkout)
         }
     }
 }

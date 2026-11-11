@@ -291,6 +291,22 @@ fun SetTableHeader(weightUnit: String = "KG", modifier: Modifier = Modifier) {
     }
 }
 
+@Composable
+private fun EditableCell(text: String, color: Color, active: Boolean, onClick: (() -> Unit)?) {
+    val c = HqTheme.colors
+    Box(
+        modifier = Modifier
+            .width(72.dp)
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (active) c.track else Color.Transparent)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        HqText(text.ifEmpty { "-" }, 17.sp, FontWeight.SemiBold, color, textAlign = TextAlign.Center)
+    }
+}
+
 /** One set: number, last session's result, weight, reps and the tick. A ticked set turns blue and the tick fills dark, as in Everfit. */
 @Composable
 fun SetRow(
@@ -301,6 +317,10 @@ fun SetRow(
     done: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    onWeightClick: (() -> Unit)? = null,
+    onRepsClick: (() -> Unit)? = null,
+    weightActive: Boolean = false,
+    repsActive: Boolean = false,
 ) {
     val c = HqTheme.colors
     val value = if (done) c.primary else c.ink
@@ -313,8 +333,8 @@ fun SetRow(
     ) {
         HqText(number, 15.sp, FontWeight.SemiBold, c.muted, Modifier.width(36.dp))
         HqText(previous, 13.sp, FontWeight.Normal, c.muted, Modifier.weight(1f))
-        HqText(weight, 17.sp, FontWeight.SemiBold, value, Modifier.width(72.dp), TextAlign.Center)
-        HqText(reps, 17.sp, FontWeight.SemiBold, value, Modifier.width(72.dp), TextAlign.Center)
+        EditableCell(weight, value, weightActive, onWeightClick)
+        EditableCell(reps, value, repsActive, onRepsClick)
         Spacer(Modifier.width(8.dp))
         Box(
             modifier = Modifier

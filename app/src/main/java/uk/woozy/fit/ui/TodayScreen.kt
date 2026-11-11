@@ -57,6 +57,7 @@ fun TodayScreen(
     onStartWorkout: () -> Unit,
     workoutTitle: String?,
     workoutCaption: String,
+    buttonLabel: String,
     name: String = "Mahesh",
     targets: Targets = Targets(),
 ) {
@@ -98,7 +99,7 @@ fun TodayScreen(
                 HqText(workoutCaption, 13.sp, color = c.onGradient.copy(alpha = 0.8f))
                 if (workoutTitle != null) {
                     Spacer(Modifier.height(16.dp))
-                    HqPillButton("View workout", onClick = onStartWorkout, style = PillStyle.OnGradient)
+                    HqPillButton(buttonLabel, onClick = onStartWorkout, style = PillStyle.OnGradient)
                 }
             }
         }

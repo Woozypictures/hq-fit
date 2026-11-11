@@ -174,7 +174,7 @@ fun WorkoutPreviewScreen(
     db: HqFitDatabase,
     scheduledId: Long,
     onBack: () -> Unit,
-    onStart: () -> Unit,
+    onStart: (ScheduledWorkoutEntity) -> Unit,
 ) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
@@ -212,7 +212,11 @@ fun WorkoutPreviewScreen(
             Spacer(Modifier.height(8.dp))
         }
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            HqPillButton("Start workout", onClick = onStart, modifier = Modifier.fillMaxWidth())
+            HqPillButton(
+                if (s?.status == "done") "Train again" else "Start workout",
+                onClick = { s?.let(onStart) },
+                modifier = Modifier.fillMaxWidth(),
+            )
             HqPillButton("Move to another day", onClick = { moving = true }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
         }
     }
