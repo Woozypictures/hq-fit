@@ -265,8 +265,9 @@ private fun ItemRow(row: TemplateItemRow) {
 
 private fun detail(r: TemplateItemRow): String {
     val parts = ArrayList<String>()
-    if (r.durationSec != null) {
-        parts += formatDuration(r.durationSec)
+    val duration = r.durationSec
+    if (duration != null) {
+        parts += formatDuration(duration)
     } else {
         val reps = when {
             r.repsMin != null && r.repsMax != null && r.repsMin != r.repsMax -> "${r.repsMin}-${r.repsMax}"
