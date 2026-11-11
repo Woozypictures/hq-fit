@@ -120,7 +120,7 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 ## 9. Open items
 
 1. Programme details: received 11 Nov 2026 and seeded. Still to confirm on the phone: starting weights, and that the Sunday check-in tasks (mood, metrics, photo) are wanted as reminders in HQ Fit (not built; still unanswered).
-2. A food database: send a CoFID xlsx or your Cronometer export so a bundled database and the importer can be built. Cronometer full export (Servings, Daily Nutrition, Biometrics) and any Everfit history before milestone 9.
+2. Food database: done (CoFID bundled, item 43). Everfit history: to be read from the browser from his personal PC.
 3. Frosted glass style, pull to refresh, drag-to-reorder cards: planned (see "Carried over from HQ" in Stage 4).
 4. `allowBackup` is off until the backup design lands in milestone 9.
 6. Leftovers: workout and programme editors, custom exercises with photos, swipe actions, set types and RPE, recipes and meals, targets editor, steps on Today, Vico charts.
@@ -149,4 +149,6 @@ Do these in order, only after the phone checks above pass.
 39. Food: Add food > Create a recipe (ingredients in grams, cooked weight, servings). Diary > All nutrients shows the grouped summary against targets. Settings > Targets edits energy, macros, steps, water glasses and other nutrients (Aim for / Stay under).
 40. Today: pull down to refresh (also syncs Health Connect). Reorder cards toggles Up/Down buttons per card; the order is remembered.
 41. Settings > Frosted glass: dark page with translucent cards as in HQ. Progress bars and rings announce their value to TalkBack.
-42. Still not done: undoing water does not remove it from Health Connect; Everfit history import (waiting on his export); bundled CoFID food database (needs the file); JSON export; custom exercise photos.
+42. Water: Undo on Today and in the Diary removes the latest glass here and from Health Connect.
+43. Food search now includes about 2,850 UK CoFID 2021 foods (brand "UK CoFID", per 100 g, built by tools/build_cofid.py into assets/cofid.tsv; "Tr" is 0, "N" is left out; carbs = CoFID carbohydrate + fibre so net carbs match CoFID). Check: search "bread", log 100 g, and the numbers look sane. Alcoholic drinks are per 100 ml in the source.
+44. Still not done: Everfit history import (screenshots only; he will prompt a browser session from MAHESH-PC); JSON export. Custom exercise photos are not wanted for now. HQ app changes are on hold until the chats are merged.
