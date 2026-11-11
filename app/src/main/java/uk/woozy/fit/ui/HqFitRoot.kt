@@ -66,7 +66,12 @@ private fun NavHostController.navigateTab(route: String) {
 }
 
 @Composable
-fun HqFitRoot(themeMode: ThemeMode, onThemeMode: (ThemeMode) -> Unit) {
+fun HqFitRoot(
+    themeMode: ThemeMode,
+    onThemeMode: (ThemeMode) -> Unit,
+    scheme: String,
+    onScheme: (String) -> Unit,
+) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
@@ -100,6 +105,8 @@ fun HqFitRoot(themeMode: ThemeMode, onThemeMode: (ThemeMode) -> Unit) {
                 SettingsScreen(
                     themeMode = themeMode,
                     onThemeMode = onThemeMode,
+                    scheme = scheme,
+                    onScheme = onScheme,
                     onBack = { nav.popBackStack() },
                     onDesign = { nav.navigate(Routes.DESIGN) },
                 )

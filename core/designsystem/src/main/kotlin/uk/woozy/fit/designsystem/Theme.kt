@@ -23,6 +23,8 @@ class HqColors(
     val onPrimary: Color,
     val gradientStart: Color,
     val gradientEnd: Color,
+    /** Text and pill colour that reads on the blue gradient. White on most schemes, near-black on the light-accent dark ones. */
+    val onGradient: Color,
     val ink: Color,
     val muted: Color,
     val hairline: Color,
@@ -42,6 +44,7 @@ val LightHqColors = HqColors(
     onPrimary = Color(0xFFFFFFFF),
     gradientStart = Color(0xFF2355FB),
     gradientEnd = Color(0xFF0048E2),
+    onGradient = Color(0xFFFFFFFF),
     ink = Color(0xFF1C1D22),
     muted = Color(0xFF6B6F80),
     hairline = Color(0x1A1C1D22),
@@ -61,6 +64,7 @@ val DarkHqColors = HqColors(
     onPrimary = Color(0xFF0B1020),
     gradientStart = Color(0xFF2A4FD8),
     gradientEnd = Color(0xFF0B3BB8),
+    onGradient = Color(0xFFFFFFFF),
     ink = Color(0xFFF1F2F6),
     muted = Color(0xFFA0A4B5),
     hairline = Color(0x24FFFFFF),
@@ -79,10 +83,14 @@ object HqTheme {
         @Composable @ReadOnlyComposable get() = LocalHqColors.current
 }
 
+/**
+ * [darkTheme] is what the appearance setting asks for. Schemes that are dark by nature (Digital, Noir,
+ * Athletic, Arcade) stay dark either way, as in HQ; read [HqColors.dark] for what was actually applied.
+ */
 @Composable
-fun HqFitTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
-    val c = if (darkTheme) DarkHqColors else LightHqColors
-    val scheme = if (darkTheme) {
+fun HqFitTheme(darkTheme: Boolean, scheme: String = DEFAULT_SCHEME, content: @Composable () -> Unit) {
+    val c = HqSchemes.colors(scheme, darkTheme)
+    val materialScheme = if (c.dark) {
         darkColorScheme(
             primary = c.primary, onPrimary = c.onPrimary,
             background = c.page, onBackground = c.ink,
@@ -100,6 +108,6 @@ fun HqFitTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
         )
     }
     CompositionLocalProvider(LocalHqColors provides c) {
-        MaterialTheme(colorScheme = scheme, typography = HqTypography, content = content)
+        MaterialTheme(colorScheme = materialScheme, typography = HqTypography, content = content)
     }
 }

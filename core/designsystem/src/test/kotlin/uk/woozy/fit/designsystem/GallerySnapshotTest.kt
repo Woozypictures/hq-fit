@@ -24,6 +24,22 @@ class GallerySnapshotTest {
     @Test
     fun dark() = render(dark = true)
 
+    @Test
+    fun schemesLight() = renderSchemes(dark = false)
+
+    @Test
+    fun schemesDark() = renderSchemes(dark = true)
+
+    /** One compact sample per colour scheme, to check contrast across all 18. */
+    private fun renderSchemes(dark: Boolean) {
+        val mode = if (dark) "dark" else "light"
+        HqSchemes.all.forEach { scheme ->
+            paparazzi.snapshot(name = "scheme_${scheme.key}_$mode") {
+                HqFitTheme(darkTheme = dark, scheme = scheme.key) { SchemeSample() }
+            }
+        }
+    }
+
     private fun render(dark: Boolean) {
         val mode = if (dark) "dark" else "light"
         GalleryBlock.entries.forEach { block ->

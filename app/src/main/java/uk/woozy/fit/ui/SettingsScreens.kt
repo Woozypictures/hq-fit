@@ -32,6 +32,7 @@ import uk.woozy.fit.designsystem.ComponentGallery
 import uk.woozy.fit.designsystem.HqCard
 import uk.woozy.fit.designsystem.HqText
 import uk.woozy.fit.designsystem.HqTheme
+import uk.woozy.fit.designsystem.SchemePicker
 import uk.woozy.fit.designsystem.SectionLabel
 import uk.woozy.fit.designsystem.SegmentedChoice
 import uk.woozy.fit.model.ThemeMode
@@ -41,6 +42,8 @@ import uk.woozy.fit.model.ThemeMode
 fun SettingsScreen(
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
+    scheme: String,
+    onScheme: (String) -> Unit,
     onBack: () -> Unit,
     onDesign: () -> Unit,
 ) {
@@ -59,13 +62,17 @@ fun SettingsScreen(
         SectionLabel("Display")
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                HqText("Theme", 16.sp, FontWeight.Medium)
+                HqText("Appearance", 16.sp, FontWeight.Medium)
                 val modes = ThemeMode.entries
                 SegmentedChoice(
                     options = listOf("Light", "Dark", "System"),
                     selectedIndex = modes.indexOf(themeMode),
                     onSelect = { onThemeMode(modes[it]) },
                 )
+            }
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                HqText("Colour scheme", 16.sp, FontWeight.Medium)
+                SchemePicker(selectedKey = scheme, onSelect = onScheme)
             }
             ListRow(Icons.Rounded.Palette, "Design components", "Every component, in this theme", onClick = onDesign)
         }

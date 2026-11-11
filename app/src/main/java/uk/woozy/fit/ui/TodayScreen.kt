@@ -89,11 +89,11 @@ fun TodayScreen(
 
         GradientCard(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(20.dp)) {
-                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, Color.White, letterSpacing = 0.1.em)
+                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.1.em)
                 Spacer(Modifier.height(6.dp))
-                SpacedTitle("No programme yet", color = Color.White, size = 20.sp)
+                SpacedTitle("No programme yet", color = c.onGradient, size = 20.sp)
                 Spacer(Modifier.height(4.dp))
-                HqText("Programmes arrive in milestone 3", 13.sp, color = Color.White.copy(alpha = 0.8f))
+                HqText("Programmes arrive in milestone 3", 13.sp, color = c.onGradient.copy(alpha = 0.8f))
                 Spacer(Modifier.height(16.dp))
                 HqPillButton("Start workout", onClick = onStartWorkout, style = PillStyle.OnGradient)
             }

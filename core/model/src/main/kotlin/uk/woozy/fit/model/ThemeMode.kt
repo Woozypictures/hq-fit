@@ -10,3 +10,6 @@ enum class ThemeMode(val key: String) {
         fun fromKey(key: String?): ThemeMode = entries.firstOrNull { it.key == key } ?: LIGHT
     }
 }
+
+/** Key of the default colour scheme (Everfit's look). The schemes themselves live in the design system. */
+const val DEFAULT_SCHEME_KEY = "everfit"

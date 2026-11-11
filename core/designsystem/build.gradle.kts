@@ -19,6 +19,7 @@ android {
 }
 
 dependencies {
+    api(project(":core:model"))
     api(platform(libs.compose.bom))
     api(libs.compose.ui)
     api(libs.compose.foundation)

@@ -141,7 +141,7 @@ fun HqPillButton(
     when (style) {
         PillStyle.Filled -> { background = c.primary; foreground = c.onPrimary }
         PillStyle.Outline -> { background = Color.Transparent; foreground = c.primary }
-        PillStyle.OnGradient -> { background = Color.White; foreground = Color(0xFF2355FB) }
+        PillStyle.OnGradient -> { background = c.onGradient; foreground = c.gradientStart }
     }
     val outline = if (style == PillStyle.Outline) Modifier.border(1.5.dp, c.primary, CircleShape) else Modifier
     Box(

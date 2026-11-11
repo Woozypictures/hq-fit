@@ -33,7 +33,7 @@ import androidx.compose.ui.unit.sp
  * and CI renders it in light and dark so each release carries screenshots of the look.
  * It does not scroll itself, so screenshot tests can render it at full height.
  */
-enum class GalleryBlock { Colours, Type, Buttons, Gradient, Rings, SetTable, Keypad, BottomBar }
+enum class GalleryBlock { Colours, Type, Buttons, Gradient, Rings, SetTable, Keypad, BottomBar, Schemes }
 
 @Composable
 fun ComponentGallery(
@@ -86,9 +86,9 @@ fun ComponentGallery(
         if (GalleryBlock.Gradient in blocks) Block("Gradient card") {
             GradientCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp)) {
-                    HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, androidx.compose.ui.graphics.Color.White, letterSpacing = 1.sp)
+                    HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 1.sp)
                     Spacer(Modifier.height(6.dp))
-                    SpacedTitle("Fullbody A", color = androidx.compose.ui.graphics.Color.White)
+                    SpacedTitle("Fullbody A", color = c.onGradient)
                     Spacer(Modifier.height(16.dp))
                     HqPillButton("Start workout", onClick = {}, style = PillStyle.OnGradient)
                 }
@@ -121,6 +121,16 @@ fun ComponentGallery(
         if (GalleryBlock.Keypad in blocks) Block("Number keypad") {
             HqCard(modifier = Modifier.fillMaxWidth()) {
                 NumberKeypad(onKey = {}, stepLabel = "2.5 kg")
+            }
+        }
+
+        if (GalleryBlock.Schemes in blocks) Block("Colour schemes") {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                HqSchemes.all.chunked(3).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        row.forEach { scheme -> SchemeSwatch(scheme, selected = scheme.key == DEFAULT_SCHEME, onClick = {}) }
+                    }
+                }
             }
         }
 
@@ -163,5 +173,44 @@ private fun Swatch(name: String, color: androidx.compose.ui.graphics.Color) {
         )
         Spacer(Modifier.height(4.dp))
         HqText(name, 11.sp, color = c.muted)
+    }
+}
+
+/** A compact screen's worth of components, to check a scheme's contrast at a glance. CI renders one per scheme. */
+@Composable
+fun SchemeSample(modifier: Modifier = Modifier) {
+    val c = HqTheme.colors
+    Column(
+        modifier = modifier.fillMaxWidth().background(c.page).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        GradientCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(20.dp)) {
+                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 1.sp)
+                Spacer(Modifier.height(6.dp))
+                SpacedTitle("Fullbody A", color = c.onGradient, size = 20.sp)
+                Spacer(Modifier.height(16.dp))
+                HqPillButton("Start workout", onClick = {}, style = PillStyle.OnGradient)
+            }
+        }
+        HqCard(modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    HqRing(0.72f, c.primary) { HqText("1,654", 16.sp, FontWeight.Bold) }
+                    HqRing(0.40f, c.protein) { HqText("60", 16.sp, FontWeight.Bold) }
+                }
+                MacroBar("Protein", 96.0, 150.0, "g", c.protein)
+                MacroBar("Fat", 38.0, 70.0, "g", c.fat)
+            }
+        }
+        HqCard(modifier = Modifier.fillMaxWidth()) {
+            SetTableHeader()
+            SetRow("1", "50 \u00d7 12", "50", "12", true, {})
+            SetRow("2", "50 \u00d7 11", "50", "10", false, {})
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HqPillButton("Save", onClick = {})
+            HqPillButton("Cancel", onClick = {}, style = PillStyle.Outline)
+        }
     }
 }

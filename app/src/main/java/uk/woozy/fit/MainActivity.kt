@@ -30,18 +30,28 @@ class MainActivity : ComponentActivity() {
         val settings = (application as HqFitApplication).container.themeSettings
         setContent {
             var mode by remember { mutableStateOf(settings.mode) }
+            var scheme by remember { mutableStateOf(settings.scheme) }
             val dark = when (mode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            HqFitTheme(darkTheme = dark) {
-                SystemBarIcons(dark)
+            HqFitTheme(darkTheme = dark, scheme = scheme) {
+                // Some schemes are dark whatever the appearance says, so read what was actually applied.
+                SystemBarIcons(HqTheme.colors.dark)
                 Box(Modifier.fillMaxSize().background(HqTheme.colors.page)) {
-                    HqFitRoot(themeMode = mode, onThemeMode = {
-                        mode = it
-                        settings.mode = it
-                    })
+                    HqFitRoot(
+                        themeMode = mode,
+                        onThemeMode = {
+                            mode = it
+                            settings.mode = it
+                        },
+                        scheme = scheme,
+                        onScheme = {
+                            scheme = it
+                            settings.scheme = it
+                        },
+                    )
                 }
             }
         }

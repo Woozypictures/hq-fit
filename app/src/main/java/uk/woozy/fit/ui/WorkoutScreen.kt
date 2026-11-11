@@ -32,9 +32,9 @@ fun WorkoutPlaceholderScreen(onClose: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         GradientHeader {
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 24.dp)) {
-                HqText("WORKOUT", 12.sp, FontWeight.SemiBold, Color.White, letterSpacing = 1.sp)
+                HqText("WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 1.sp)
                 Spacer(Modifier.height(6.dp))
-                SpacedTitle("Active workout", color = Color.White)
+                SpacedTitle("Active workout", color = c.onGradient)
             }
         }
         Column(
