@@ -86,8 +86,8 @@ fun TrainScreen(
     onPast: () -> Unit = {},
 ) {
     val c = HqTheme.colors
-    val today = remember { LocalDate.now() }
-    val monday = remember { today.with(DayOfWeek.MONDAY) }
+    val today = rememberToday()
+    val monday = remember(today) { today.with(DayOfWeek.MONDAY) }
     val byDate = calendar.groupBy { it.date }
     val upcoming = calendar.filter { it.localDate() >= today && it.status == "planned" }.take(8)
 

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -465,10 +466,11 @@ fun HqBottomBar(
     require(items.size == 4) { "HqBottomBar takes four tabs" }
     val c = HqTheme.colors
     Box(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(top = 14.dp).background(c.card)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(top = 14.dp).background(c.card), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(c.hairline))
+            // On a tablet the tabs stay grouped in the middle rather than spreading across the whole width.
             Row(
-                modifier = Modifier.fillMaxWidth().navigationBarsPadding().height(64.dp),
+                modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth().navigationBarsPadding().height(64.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 items.forEachIndexed { i, item ->

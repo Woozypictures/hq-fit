@@ -80,8 +80,8 @@ import java.util.Locale
 
 /** Targets as saved in the database, falling back to the starting values. */
 @Composable
-fun rememberTargets(db: HqFitDatabase): Targets {
-    val t by produceState(Targets(), db) {
+fun rememberTargets(db: HqFitDatabase, key: Any? = null): Targets {
+    val t by produceState(Targets(), db, key) {
         val m = db.targets().all().associate { it.key to it.value }
         val d = Targets()
         value = d.copy(

@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.EditNote
@@ -127,13 +129,27 @@ fun HqFitRoot(
             )
         }.getOrNull()
     }
-    val sundayDate = remember { LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY)).toString() }
-    val ticks by db.checkIns().observe(sundayDate).collectAsState(initial = emptyList())
+    // One line on Today when Health Connect needs attention; nothing at all when it is fine (as in HQ).
+    val problem by androidx.compose.runtime.produceState<String?>(null, db, refreshTick) {
+        value = runCatching {
+            val g = uk.woozy.fit.health.HealthGateway(syncContext)
+            val status = uk.woozy.fit.health.HealthSync.lastStatus(syncContext)
+            when {
+                !g.available -> null
+                g.granted().intersect(uk.woozy.fit.health.HealthGateway.allPermissions).isEmpty() -> "Health Connect is not set up, so steps, calories burned and syncing are off"
+                status.startsWith("Sync failed") || status.startsWith("Grant") -> "Health Connect: $status"
+                else -> null
+            }
+        }.getOrNull()
+    }
+    val today = rememberToday()
+    val sundayDate = remember(today) { today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY)).toString() }
+    val ticksFlow = remember(db, sundayDate) { db.checkIns().observe(sundayDate) }
+    val ticks by ticksFlow.collectAsState(initial = emptyList())
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     var quickAdd by remember { mutableStateOf(false) }
-    val today = remember { LocalDate.now() }
-    val calendarFlow = remember(db) {
+    val calendarFlow = remember(db, today) {
         db.schedule().observeBetween(today.with(DayOfWeek.MONDAY).toString(), today.plusDays(70).toString())
     }
     val calendar by calendarFlow.collectAsState(initial = emptyList())
@@ -146,13 +162,15 @@ fun HqFitRoot(
             nav.navigate("${Routes.WORKOUT}/$id")
         }
     }
-    val targets = rememberTargets(db)
+    // Reload targets whenever the screen changes, so an edit in Targets shows straight away.
+    val targets = rememberTargets(db, route)
     val todayText = today.toString()
-    val dayFlow = remember(db) { db.diary().observeDay(todayText) }
+    val dayFlow = remember(db, todayText) { db.diary().observeDay(todayText) }
     val dayEntries by dayFlow.collectAsState(initial = emptyList())
-    val eatenToday = Diary.totals(dayEntries)[Nutrients.ENERGY] ?: 0.0
+    val dayTotals = Diary.totals(dayEntries)
+    val eatenToday = dayTotals[Nutrients.ENERGY] ?: 0.0
     val (dayFrom, dayTo) = dayBounds(today)
-    val waterFlow = remember(db) { db.water().observeTotal(dayFrom, dayTo) }
+    val waterFlow = remember(db, dayFrom) { db.water().observeTotal(dayFrom, dayTo) }
     val waterToday by waterFlow.collectAsState(initial = 0)
     val todays = calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
     val next = calendar.firstOrNull { it.date > today.toString() && it.status == "planned" }
@@ -171,7 +189,9 @@ fun HqFitRoot(
             }
         },
     ) { padding ->
-        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.padding(padding)) {
+        // Tab pages may go wide (two columns of cards); every other page is capped so it reads well on a tablet.
+        androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize()) {
             composable(Routes.TODAY) {
                 TodayScreen(
                     name = remember { ProfilePrefs.name(syncContext) },
@@ -197,7 +217,15 @@ fun HqFitRoot(
                     },
                     steps = health?.steps,
                     burnedKcal = health?.activeKcal,
-                    checkIn = if (LocalDate.now().dayOfWeek == DayOfWeek.SUNDAY) listOf(
+                    proteinG = dayTotals[Nutrients.PROTEIN] ?: 0.0,
+                    netCarbsG = Nutrients.netCarbs(dayTotals),
+                    fatG = dayTotals[Nutrients.FAT] ?: 0.0,
+                    problem = problem,
+                    onProblem = { nav.navigate(Routes.HEALTH) },
+                    onSteps = { if (!openSamsungHealth(syncContext)) nav.navigate(Routes.HEALTH) },
+                    onDiary = { nav.navigateTab(Routes.DIARY) },
+                    today = today,
+                    checkIn = if (today.dayOfWeek == DayOfWeek.SUNDAY) listOf(
                         "mood" to "Log your mood", "metrics" to "Take body metrics", "photo" to "Progress photo",
                     ).map { (k, l) -> CheckInRow(k, l, ticks.any { it.item == k && it.done }) } else null,
                     onToggleCheckIn = { k, v -> scope.launch { db.checkIns().put(uk.woozy.fit.data.db.CheckInEntity(sundayDate, k, v)) } },
@@ -357,6 +385,7 @@ fun HqFitRoot(
                 )
             }
         }
+        }
     }
 
     if (quickAdd) {
@@ -414,4 +443,10 @@ private fun QuickAddSheet(
             ListRow(Icons.Rounded.PlayArrow, "Start workout", "Today's workout, or resume the one running", onClick = onStartWorkout)
         }
     }
+}
+
+/** Samsung Health owns steps; open it there. False when it is not installed. */
+private fun openSamsungHealth(c: android.content.Context): Boolean {
+    val i = c.packageManager.getLaunchIntentForPackage("com.sec.android.app.shealth") ?: return false
+    return runCatching { c.startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); true }.getOrDefault(false)
 }

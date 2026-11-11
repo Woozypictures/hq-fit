@@ -25,13 +25,25 @@ object CheckInReminder {
         return t.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     }
 
+    private fun prefs(c: Context) = c.getSharedPreferences("checkin", Context.MODE_PRIVATE)
+
+    /** On unless switched off in Settings > Notifications (you asked for this reminder). */
+    fun enabled(c: Context) = prefs(c).getBoolean("on", true)
+    fun setEnabled(c: Context, on: Boolean) { prefs(c).edit().putBoolean("on", on).apply(); schedule(c) }
+
     fun schedule(c: Context) {
         val am = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        if (!enabled(c)) { am.cancel(intent(c)); return }
         am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, nextMs(), intent(c))
     }
 
     internal fun fire(c: Context) {
         schedule(c)
+        if (!enabled(c)) return
+        // At most one a day, even if the alarm fires twice (a restart near 18:00, a clock change).
+        val day = java.time.LocalDate.now().toString()
+        if (prefs(c).getString("last", null) == day) return
+        prefs(c).edit().putString("last", day).apply()
         val nm = c.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Sunday check-in", NotificationManager.IMPORTANCE_DEFAULT))
         val open = PendingIntent.getActivity(

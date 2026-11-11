@@ -38,8 +38,8 @@ class MainActivity : ComponentActivity() {
             var mode by remember { mutableStateOf(settings.mode) }
             var scheme by remember { mutableStateOf(settings.scheme) }
             var frosted by remember { mutableStateOf(settings.frosted) }
-            var gate by remember { mutableStateOf<DbGate>(DbGate.Loading) }
-            LaunchedEffect(Unit) { gate = container.database.start() }
+            var gate by remember { mutableStateOf<DbGate>(if (container.database.db != null) DbGate.Ready else DbGate.Loading) }
+            LaunchedEffect(Unit) { gate = if (Demo.wanted(intent)) Demo.start(container) else container.database.start() }
             val dark = when (mode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true

@@ -38,6 +38,7 @@ class SummaryProvider : ContentProvider() {
         s.weightKg, s.weightAtMs, s.workoutToday, if (s.workoutTodayDone) 1 else 0,
         s.workoutsDoneThisWeek, s.workoutsPlannedThisWeek,
         s.checkInDate, if (s.checkInMood) 1 else 0, if (s.checkInMetrics) 1 else 0, if (s.checkInPhoto) 1 else 0, 1,
+        s.stepsTarget,
     )
 
     override fun getType(uri: Uri): String? = if (matcher.match(uri) == TODAY) "vnd.android.cursor.item/vnd.uk.woozy.fit.summary" else null
@@ -57,6 +58,7 @@ class SummaryProvider : ContentProvider() {
             "weight_kg", "weight_at_ms", "workout_today", "workout_today_done",
             "workouts_done_week", "workouts_planned_week",
             "checkin_date", "checkin_mood", "checkin_metrics", "checkin_photo", "version",
+            "steps_target",
         )
     }
 }

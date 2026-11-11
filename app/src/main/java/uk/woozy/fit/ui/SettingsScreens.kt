@@ -1,6 +1,13 @@
 package uk.woozy.fit.ui
 
-import android.annotation.SuppressLint
+import androidx.compose.runtime.mutableStateOf
+
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import androidx.compose.foundation.clickable
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -113,26 +120,37 @@ fun SettingsScreen(
             ListRow(Icons.Rounded.SwapVert, "Import and export", "Cronometer import, CSV, backups", onClick = onBackup)
         }
 
+        SectionLabel("Notifications")
+        HqCard(Modifier.fillMaxWidth()) {
+            val context = LocalContext.current
+            var checkIn by remember { mutableStateOf(uk.woozy.fit.CheckInReminder.enabled(context)) }
+            val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+            androidx.compose.foundation.layout.Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    HqText("Sunday check-in reminder", 16.sp, FontWeight.Medium)
+                    HqText("Sunday 18:00, at most once a day", 12.sp, color = c.muted)
+                }
+                androidx.compose.material3.Switch(checked = checkIn, onCheckedChange = {
+                    checkIn = it
+                    uk.woozy.fit.CheckInReminder.setEnabled(context, it)
+                    if (it && android.os.Build.VERSION.SDK_INT >= 33) ask.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                })
+            }
+            ListRow(Icons.Rounded.MonitorWeight, "Weigh-in reminder", "Set the day and time in Scale and weight", onClick = onScale)
+        }
+
         SectionLabel("About")
         HqCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                HqText("HQ Fit ${versionName()}", 16.sp, FontWeight.Medium)
+            AboutBlock("HQ Fit")
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 HqText("Licence AGPL-3.0 · source at github.com/Woozypictures/hq-fit", 13.sp, color = c.muted)
                 HqText("Your data stays on this phone.", 13.sp, color = c.muted)
             }
         }
         Spacer(Modifier.height(8.dp))
-    }
-}
-
-@SuppressLint("QueryPermissionsNeeded")
-@Suppress("DEPRECATION")
-@Composable
-private fun versionName(): String {
-    val context = LocalContext.current
-    return remember {
-        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
-            .getOrNull() ?: ""
     }
 }
 
@@ -147,5 +165,32 @@ fun DesignScreen(onBack: () -> Unit) {
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Design components", onBack) }
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) { ComponentGallery() }
+    }
+}
+
+/** Your social links, shared by every Woozypictures app. Each opens in its own app when installed. */
+val SOCIALS = listOf(
+    "https://www.instagram.com/woozypictures/",
+    "https://www.youtube.com/@WoozyPictures",
+    "https://x.com/WoozyPictures",
+)
+
+@Composable
+fun AboutBlock(appName: String) {
+    val c = HqTheme.colors
+    val context = LocalContext.current
+    val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        HqText(appName, 16.sp, FontWeight.SemiBold)
+        HqText("Created by Woozypictures", 14.sp)
+        HqText("App version: $version", 14.sp, color = c.muted)
+        SOCIALS.forEach { url ->
+            HqText(
+                url, 14.sp, FontWeight.Medium, c.primary,
+                modifier = Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                    runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                }.padding(vertical = 6.dp),
+            )
+        }
     }
 }

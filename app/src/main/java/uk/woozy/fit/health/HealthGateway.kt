@@ -13,6 +13,7 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.records.MealType
 import androidx.health.connect.client.units.Energy
@@ -35,9 +36,8 @@ data class ImportedWeight(val epochMs: Long, val kg: Double)
 
 /**
  * Health Connect reads and writes. Every write carries a clientRecordId built from the HQ Fit row, so sending the
- * same row twice updates it instead of duplicating it (meals and workouts carry a rising clientRecordVersion, otherwise an edit would be ignored). Reads skip anything HQ Fit wrote itself. Nutrition and
- * water permissions are requested but nothing is written for them yet; that stays off until you switch over from
- * Cronometer. Not yet tried on a phone.
+ * same row twice updates it instead of duplicating it (meals and workouts carry a rising clientRecordVersion, otherwise an edit would be ignored). Reads skip anything HQ Fit wrote itself.
+ * Food, water, weights and workouts are written. Not yet tried on a phone.
  */
 class HealthGateway(private val context: Context) {
     private val own = context.packageName
@@ -69,11 +69,10 @@ class HealthGateway(private val context: Context) {
         val g = granted()
         fun ok(p: String) = p in g
         val range = TimeRangeFilter.between(dayStart, now)
+        // Aggregate, not a sum of records: Health Connect removes the overlap when the phone and the watch both count
+        // the same steps (HQ reads it the same way, so both apps show the same number).
         val steps = if (ok(HealthPermission.getReadPermission(StepsRecord::class)))
-            runCatching {
-                client.readRecords(ReadRecordsRequest(StepsRecord::class, range)).records
-                    .filter { it.metadata.dataOrigin.packageName != own }.sumOf { it.count }
-            }.getOrNull() else null
+            runCatching { client.aggregate(AggregateRequest(setOf(StepsRecord.COUNT_TOTAL), range))[StepsRecord.COUNT_TOTAL] }.getOrNull() else null
         val sleep = if (ok(HealthPermission.getReadPermission(SleepSessionRecord::class)))
             runCatching {
                 val from = dayStart.minus(Duration.ofHours(12))
@@ -90,8 +89,7 @@ class HealthGateway(private val context: Context) {
             }.getOrNull() else null
         val kcal = if (ok(HealthPermission.getReadPermission(ActiveCaloriesBurnedRecord::class)))
             runCatching {
-                client.readRecords(ReadRecordsRequest(ActiveCaloriesBurnedRecord::class, range)).records
-                    .filter { it.metadata.dataOrigin.packageName != own }.sumOf { it.energy.inKilocalories }
+                client.aggregate(AggregateRequest(setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL), range))[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
             }.getOrNull() else null
         return HealthSnapshot(steps, sleep, hr, kcal)
     }

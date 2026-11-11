@@ -32,6 +32,8 @@ data class HqSummary(
     val checkInMood: Boolean,
     val checkInMetrics: Boolean,
     val checkInPhoto: Boolean,
+    /** Daily step target, so HQ shows the same goal as HQ Fit. Added after version 1 shipped; old readers ignore it. */
+    val stepsTarget: Double? = null,
 )
 
 object HqSummaryBuilder {
@@ -42,6 +44,7 @@ object HqSummaryBuilder {
         val end = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
         val water = db.water().totalBetween(start, end)
         val targets = db.targets().all().associate { it.key to it.value }
+        val d = uk.woozy.fit.model.Targets()
         val weight = db.weights().latest()
         val monday: LocalDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val week = db.schedule().between(monday.toString(), monday.plusDays(6).toString())
@@ -55,10 +58,11 @@ object HqSummaryBuilder {
             netCarbsG = Nutrients.netCarbs(totals),
             fatG = totals[Nutrients.FAT] ?: 0.0,
             waterMl = water,
-            kcalTarget = targets[Nutrients.ENERGY],
-            proteinTarget = targets[Nutrients.PROTEIN],
-            netCarbsTarget = targets[Nutrients.CARBS],
-            fatTarget = targets[Nutrients.FAT],
+            // Targets never edited are not stored; send the app's defaults so HQ shows exactly what HQ Fit shows.
+            kcalTarget = targets[Nutrients.ENERGY] ?: d.energyKcal.toDouble(),
+            proteinTarget = targets[Nutrients.PROTEIN] ?: d.proteinG.toDouble(),
+            netCarbsTarget = targets[Nutrients.CARBS] ?: d.netCarbsG.toDouble(),
+            fatTarget = targets[Nutrients.FAT] ?: d.fatG.toDouble(),
             weightKg = weight?.kg,
             weightAtMs = weight?.epochMs,
             workoutToday = todays?.templateName,
@@ -69,6 +73,7 @@ object HqSummaryBuilder {
             checkInMood = "mood" in ticks,
             checkInMetrics = "metrics" in ticks,
             checkInPhoto = "photo" in ticks,
+            stepsTarget = targets["steps"] ?: d.steps.toDouble(),
         )
     }
 }

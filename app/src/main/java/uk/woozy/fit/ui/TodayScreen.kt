@@ -58,8 +58,8 @@ import java.util.Locale
 data class CheckInRow(val key: String, val label: String, val done: Boolean)
 
 /**
- * Today. The workout card reads the calendar; energy, water and steps stay honest empty values until
- * milestones 5 and 7.
+ * Today: workout, energy and macros, water, steps and the Sunday check-in. Long-press a card to rearrange or hide
+ * cards (as in HQ). A banner shows only when something needs fixing.
  */
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
@@ -81,27 +81,24 @@ fun TodayScreen(
     onRefresh: () -> Unit = {},
     name: String = "Mahesh",
     targets: Targets = Targets(),
+    proteinG: Double = 0.0,
+    netCarbsG: Double = 0.0,
+    fatG: Double = 0.0,
+    problem: String? = null,
+    onProblem: () -> Unit = {},
+    onSteps: () -> Unit = {},
+    onDiary: () -> Unit = {},
+    today: LocalDate = LocalDate.now(),
 ) {
     val c = HqTheme.colors
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val dateLine = remember {
-        "TODAY, " + LocalDate.now().format(DateTimeFormatter.ofPattern("MMM d", Locale.UK)).uppercase(Locale.UK)
+    val dateLine = remember(today) {
+        "TODAY, " + today.format(DateTimeFormatter.ofPattern("MMM d", Locale.UK)).uppercase(Locale.UK)
     }
-    val prefs = remember { context.getSharedPreferences("today", android.content.Context.MODE_PRIVATE) }
     val defaultOrder = listOf("workout", "energy", "water", "steps", "checkin")
-    var order by remember {
-        mutableStateOf(
-            (prefs.getString("order", null)?.split(',')?.filter { it in defaultOrder }.orEmpty().let { saved -> saved + defaultOrder.filter { it !in saved } }),
-        )
-    }
-    var reordering by remember { mutableStateOf(false) }
-    fun move(key: String, delta: Int) {
-        val i = order.indexOf(key)
-        val j = i + delta
-        if (i < 0 || j !in order.indices) return
-        order = order.toMutableList().also { it[i] = it[j].also { _ -> it[j] = key } }
-        prefs.edit().putString("order", order.joinToString(",")).apply()
-    }
+    val names = mapOf("workout" to "Today's workout", "energy" to "Energy and macros", "water" to "Water", "steps" to "Steps", "checkin" to "Sunday check-in")
+    val cards = rememberCardPrefs("today", defaultOrder)
+    var editing by remember { mutableStateOf(false) }
+    androidx.activity.compose.BackHandler(editing) { editing = false }
 
     PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
     Column(
@@ -129,16 +126,18 @@ fun TodayScreen(
             }
         }
 
-        order.forEach { key ->
-            val visible = key != "checkin" || checkIn != null
-            if (visible) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (reordering) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            androidx.compose.material3.TextButton(onClick = { move(key, -1) }) { HqText("Up", 13.sp, color = c.primary) }
-                            androidx.compose.material3.TextButton(onClick = { move(key, 1) }) { HqText("Down", 13.sp, color = c.primary) }
-                        }
-                    }
+        if (problem != null) {
+            Column(
+                Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(c.primary.copy(alpha = 0.10f)).clickable(role = Role.Button, onClick = onProblem)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                HqText(problem, 13.sp, FontWeight.SemiBold)
+                HqText("TAP TO FIX", 11.sp, color = c.muted, letterSpacing = 0.08.em)
+            }
+        }
+
+        CardColumn(cards, names, available = { it != "checkin" || checkIn != null }, editing = editing, onEditing = { editing = it }) { key ->
                     when (key) {
                         "workout" -> GradientCard(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(20.dp)) {
@@ -153,15 +152,20 @@ fun TodayScreen(
                                 }
                             }
                         }
-                        "energy" -> HqCard(Modifier.fillMaxWidth()) {
+                        "energy" -> HqCard(Modifier.fillMaxWidth(), onClick = onDiary) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Energy")
+                                val target = targets.energyKcal.toDouble().coerceAtLeast(1.0)
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    EnergyRing("Consumed", formatWhole(eaten), (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.primary)
-                                    EnergyRing("Burned", burnedKcal?.let { formatWhole(it) } ?: "0", 0f, c.protein)
-                                    val left = targets.energyKcal - eaten
-                                    EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(kotlin.math.abs(left)), (left / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.fat)
+                                    EnergyRing("Consumed", formatWhole(eaten), (eaten / target).toFloat().coerceIn(0f, 1f), c.primary)
+                                    // Like HQ: the burned ring is full once there is a reading, and empty without one.
+                                    EnergyRing("Burned", burnedKcal?.takeIf { it > 0 }?.let { formatWhole(it) } ?: "-", if ((burnedKcal ?: 0.0) > 0) 1f else 0f, c.protein)
+                                    val left = target - eaten
+                                    EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(kotlin.math.abs(left)), (left / target).toFloat().coerceIn(0f, 1f), c.fat)
                                 }
+                                uk.woozy.fit.designsystem.MacroBar("Protein", proteinG, targets.proteinG.toDouble(), "g", c.protein)
+                                uk.woozy.fit.designsystem.MacroBar("Net carbs", netCarbsG, targets.netCarbsG.toDouble(), "g", c.carbs)
+                                uk.woozy.fit.designsystem.MacroBar("Fat", fatG, targets.fatG.toDouble(), "g", c.fat)
                             }
                         }
                         "water" -> HqCard(Modifier.fillMaxWidth()) {
@@ -187,12 +191,11 @@ fun TodayScreen(
                                 }
                             }
                         }
-                        "steps" -> HqCard(Modifier.fillMaxWidth()) {
+                        "steps" -> HqCard(Modifier.fillMaxWidth(), onClick = onSteps) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 SectionLabel("Steps")
-                                HqText("${formatWhole((steps ?: 0L).toDouble())} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
-                                HqProgressBar(fraction = ((steps ?: 0L).toFloat() / targets.steps).coerceIn(0f, 1f), color = c.primary)
-                                if (steps == null) HqText("Allow Health Connect in Settings to see steps.", 12.sp, color = c.muted)
+                                HqText("${steps?.let { formatWhole(it.toDouble()) } ?: "-"} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
+                                Segments(((steps ?: 0L).toFloat() / targets.steps.coerceAtLeast(1)).coerceIn(0f, 1f), c.primary)
                             }
                         }
                         "checkin" -> if (checkIn != null) HqCard(Modifier.fillMaxWidth()) {
@@ -211,11 +214,6 @@ fun TodayScreen(
                             }
                         }
                     }
-                }
-            }
-        }
-        androidx.compose.material3.TextButton(onClick = { reordering = !reordering }) {
-            HqText(if (reordering) "Done reordering" else "Reorder cards", 13.sp, color = c.muted)
         }
         Spacer(Modifier.height(8.dp))
     }
