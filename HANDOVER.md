@@ -61,7 +61,8 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 | 6 Barcode and food data | Built, CI green (run 18): CameraX and ML Kit scanner, Open Food Facts lookup and search, cached foods, custom foods. No bundled CoFID or USDA database yet (needs your export or a file) |
 | 7 Scale and Health Connect | Built, CI green (runs 20 and 22): Qingniu packet decoder (tested on hand-built frames, not real ones), Bluetooth session, Scale screen with manual entry, packet log and weekly reminder; Health Connect permissions, today's steps, sleep, resting HR and calories, weight import, optional send of weights and workouts. Not yet: nutrition and water writing, mirroring deletes, steps on Today |
 | 8 Provider for HQ | Provider built, CI green (run 23): `content://uk.woozy.fit.summary/today`, signature permission `uk.woozy.fit.permission.READ_SUMMARY`, read-only. HQ side not changed yet |
-| 9 Backups and export | Built, CI green (run 25): encrypted backup zip (database plus recovery-wrapped key), nightly alarm around 03:30, optional folder copy, restore with the recovery key, CSV export of weights, diary and sets. Not yet: Cronometer and Everfit importers (need your files), JSON export |
+| Added after milestone 10 | CI green (runs 28, 29): Cronometer daily-summary importer (one entry per logged day, totals only, about 400 days; the servings file has no nutrient figures so food-level history cannot be rebuilt), food and water sync to Health Connect on from launch (imported Cronometer days are not re-sent), automatic sync each time the app opens, deleted weights and food entries mirrored, steps and active calories on Today, Sunday check-in tick boxes with a Sunday 18:00 reminder and fields in the HQ provider (`checkin_*`). Database is version 5 |
+| 9 Backups and export | Built, CI green (run 25): encrypted backup zip (database plus recovery-wrapped key), nightly alarm around 03:30, optional folder copy, restore with the recovery key, CSV export of weights, diary and sets. Not yet: Everfit importer (the Everfit page could not be read in this session; needs an export or a browser), JSON export |
 | 10 Progress | Charts built, CI green (run 26): weight against 80 kg with trend and forecast date, 14-day calories, 8-week sessions and volume, link to records. Drawn with Canvas, no chart library. Not yet: frosted style, pull to refresh, card reordering, accessibility pass |
 | 11 Switch-over | Checklist below, nothing to build until the phone checks pass |
 
@@ -136,3 +137,10 @@ Do these in order, only after the phone checks above pass.
 4. Turn on the HQ Fit nightly backup folder.
 5. Change HQ to read `content://uk.woozy.fit.summary/today` and stop reading nutrition from Health Connect.
 6. Only then stop using Cronometer and Everfit. Nutrition and water writing to Health Connect is not built; HQ gets food totals from the provider instead.
+
+## 11. Added late (check on the phone)
+
+33. Settings > Backup and restore > Import from Cronometer: choose the daily summary CSV; about 400 days appear in the Diary and the Progress charts. Running it again adds nothing.
+34. Health Connect: after granting access, opening the app sends food, water, weights and workouts. Check they show in Health Connect and that HQ does not double count Cronometer-era days (imported days are not re-sent).
+35. Today shows steps and active calories from Health Connect. On a Sunday the check-in tick boxes appear; the reminder fires at 18:00.
+36. Deleting a weight or a diary entry removes it from Health Connect too. Undoing water does not yet.
