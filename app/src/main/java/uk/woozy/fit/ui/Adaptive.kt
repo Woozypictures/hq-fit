@@ -144,8 +144,8 @@ class CardPrefs(private val context: android.content.Context, private val page: 
         (p.getString(key, null) ?: if (key == "order_today") context.getSharedPreferences("today", 0).getString("order", null) else null)
             ?.split(',')?.filter { it.isNotBlank() && keep(it) }?.distinct().orEmpty()
 
-    fun setOrder(o: List<String>) { order = o; p.edit().putString("order_$page", o.joinToString(",")).apply() }
-    fun setHidden(h: Set<String>) { hidden = h; p.edit().putString("hidden_$page", h.joinToString(",")).apply() }
+    fun saveOrder(o: List<String>) { order = o; p.edit().putString("order_$page", o.joinToString(",")).apply() }
+    fun saveHidden(h: Set<String>) { hidden = h; p.edit().putString("hidden_$page", h.joinToString(",")).apply() }
 }
 
 @Composable
@@ -197,7 +197,7 @@ fun CardColumn(
             if (editing) Row(Modifier.align(Alignment.TopEnd).padding(8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Box(
                     Modifier.size(44.dp).clip(CircleShape).background(c.card.copy(alpha = 0.92f))
-                        .pointerInput(Unit) { detectTapGestures(onTap = { prefs.setHidden(prefs.hidden + key) }) },
+                        .pointerInput(Unit) { detectTapGestures(onTap = { prefs.saveHidden(prefs.hidden + key) }) },
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.Rounded.VisibilityOff, contentDescription = "Hide ${names[key] ?: key}", tint = c.ink, modifier = Modifier.size(20.dp)) }
                 Box(
@@ -222,7 +222,7 @@ fun CardColumn(
                                     val o = prefs.order.toMutableList()
                                     val a = o.indexOf(key); val b = o.indexOf(other)
                                     o.removeAt(a); o.add(b, key)
-                                    prefs.setOrder(o)
+                                    prefs.saveOrder(o)
                                     offset += if (offset > 0) -oh else oh
                                 }
                             }
@@ -259,7 +259,7 @@ fun CardColumn(
             hiddenNow.forEach { k ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     HqText(names[k] ?: k, 15.sp, modifier = Modifier.weight(1f))
-                    HqPillButton("Show", style = PillStyle.Outline, onClick = { prefs.setHidden(prefs.hidden - k) })
+                    HqPillButton("Show", style = PillStyle.Outline, onClick = { prefs.saveHidden(prefs.hidden - k) })
                 }
             }
         }
