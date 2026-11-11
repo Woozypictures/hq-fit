@@ -3,10 +3,12 @@ package uk.woozy.fit
 import android.app.Application
 import android.content.Context
 import uk.woozy.fit.data.ThemeSettings
+import uk.woozy.fit.data.db.DatabaseProvider
 
-/** Manual dependency container. Later milestones add the database, Health Connect and food sources here. */
+/** Manual dependency container. Later milestones add Health Connect and food sources here. */
 class AppContainer(context: Context) {
     val themeSettings = ThemeSettings(context)
+    val database = DatabaseProvider(context)
 }
 
 class HqFitApplication : Application() {

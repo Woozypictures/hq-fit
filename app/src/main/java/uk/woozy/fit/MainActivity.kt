@@ -10,6 +10,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,16 +22,23 @@ import androidx.core.view.WindowCompat
 import uk.woozy.fit.designsystem.HqFitTheme
 import uk.woozy.fit.designsystem.HqTheme
 import uk.woozy.fit.model.ThemeMode
+import uk.woozy.fit.data.db.DbGate
+import uk.woozy.fit.ui.FirstRunScreen
 import uk.woozy.fit.ui.HqFitRoot
+import uk.woozy.fit.ui.LoadingScreen
+import uk.woozy.fit.ui.RecoveryScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val settings = (application as HqFitApplication).container.themeSettings
+        val container = (application as HqFitApplication).container
+        val settings = container.themeSettings
         setContent {
             var mode by remember { mutableStateOf(settings.mode) }
             var scheme by remember { mutableStateOf(settings.scheme) }
+            var gate by remember { mutableStateOf<DbGate>(DbGate.Loading) }
+            LaunchedEffect(Unit) { gate = container.database.start() }
             val dark = when (mode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
@@ -40,18 +48,23 @@ class MainActivity : ComponentActivity() {
                 // Some schemes are dark whatever the appearance says, so read what was actually applied.
                 SystemBarIcons(HqTheme.colors.dark)
                 Box(Modifier.fillMaxSize().background(HqTheme.colors.page)) {
-                    HqFitRoot(
-                        themeMode = mode,
-                        onThemeMode = {
-                            mode = it
-                            settings.mode = it
-                        },
-                        scheme = scheme,
-                        onScheme = {
-                            scheme = it
-                            settings.scheme = it
-                        },
-                    )
+                    when (gate) {
+                        DbGate.Loading -> LoadingScreen()
+                        DbGate.FirstRun -> FirstRunScreen(container.database) { gate = DbGate.Ready }
+                        DbGate.NeedsRecovery -> RecoveryScreen(container.database) { gate = DbGate.Ready }
+                        DbGate.Ready -> HqFitRoot(
+                            themeMode = mode,
+                            onThemeMode = {
+                                mode = it
+                                settings.mode = it
+                            },
+                            scheme = scheme,
+                            onScheme = {
+                                scheme = it
+                                settings.scheme = it
+                            },
+                        )
+                    }
                 }
             }
         }

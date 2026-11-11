@@ -29,7 +29,7 @@ jobs:
           export VERSION_NAME=0.${{ github.run_number }}
           # logic tests, screenshot renders (light and dark), lint, then the signed release APK
           gradle --continue --no-daemon --stacktrace \
-            :core:model:test \
+            :core:model:test :core:data:testDebugUnitTest \
             :core:designsystem:recordPaparazziDebug \
             :app:lintDebug \
             :app:assembleRelease 2>&1 | tee build.log
@@ -38,6 +38,7 @@ jobs:
         run: |
           mkdir -p shots
           cp -r core/designsystem/src/test/snapshots/images/. shots/ 2>/dev/null || true
+          mkdir -p shots/schemas && cp -r core/data/schemas/. shots/schemas/ 2>/dev/null || true
           if [ -n "$(ls -A shots)" ]; then (cd shots && zip -qr ../screenshots.zip .); fi
       - name: Check the APK is signed with the HQ key
         if: success()

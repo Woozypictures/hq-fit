@@ -53,9 +53,12 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 | Milestone | State |
 |---|---|
 | 1 Foundation | Built and released. Colour schemes added after |
-| 2 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
+| 2 Database and encryption | Built, awaiting CI and phone checks (below). Foundation tables only; each later milestone adds its tables by migration |
+| 3 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
+
+Done in milestone 2: Room on SQLCipher (`core/data/db`), random 32-byte database key wrapped by an Android Keystore key and by a recovery key (PBKDF2 200k + AES-GCM, `core/data/crypto`), first-run recovery key screen (typed back to confirm), recovery screen for a phone that cannot open the data, seed of 37 nutrients with Health Connect field names and the starting targets. Tables so far: nutrient, target, exercise, weight_entry, water_entry, meta. Not yet seeded: the exercise library (arrives with milestone 3, where it is first used). Tests: recovery crypto on the JVM, DAOs and seed on an in-memory Room database through Robolectric. Encryption on disk is not covered by tests because SQLCipher needs the phone's native library.
 
 Not done and not faked: every screen shows empty values with an "arrives in milestone N" caption. Nothing logs data yet.
 
@@ -68,6 +71,10 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 5. Status bar and gesture bar icons stay readable in light and dark schemes.
 6. Obtainium finds the repo and updates in place.
 7. Settings > Design components renders without crashing and scrolls.
+8. First launch shows "Protect your data"; the recovery key appears, a wrong retype is refused, the right one opens Today. Write the key down.
+9. Close and reopen: no prompt, straight to Today. Clear nothing; this proves the Keystore path.
+10. Optional proof of encryption: with a file manager on a rooted device or `adb run-as uk.woozy.fit`, `databases/hqfit.db` is not readable as SQLite.
+11. If the app is force-closed while the recovery key is on screen, the next launch makes a new key (the unconfirmed one held no data).
 
 ## 9. Open items
 
