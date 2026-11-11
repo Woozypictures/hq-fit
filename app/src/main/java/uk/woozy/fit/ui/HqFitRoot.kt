@@ -58,6 +58,8 @@ private object Routes {
     const val DESIGN = "design"
     const val WORKOUT = "workout"
     const val SUMMARY = "summary"
+    const val RECORDS = "records"
+    const val HISTORY = "history"
     const val PREVIEW = "preview"
     const val LIBRARY = "library"
 }
@@ -148,6 +150,7 @@ fun HqFitRoot(
                     calendar = calendar,
                     onOpen = { nav.navigate("${Routes.PREVIEW}/$it") },
                     onLibrary = { nav.navigate(Routes.LIBRARY) },
+                    onRecords = { nav.navigate(Routes.RECORDS) },
                 )
             }
             composable(Routes.DIARY) { DiaryScreen() }
@@ -173,6 +176,15 @@ fun HqFitRoot(
                     onBack = { nav.popBackStack() },
                     onStart = { startOrResume(it) },
                 )
+            }
+            composable(Routes.RECORDS) {
+                RecordsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.HISTORY}/$it") })
+            }
+            composable(
+                "${Routes.HISTORY}/{id}",
+                arguments = listOf(navArgument("id") { type = NavType.LongType }),
+            ) { backStack ->
+                ExerciseHistoryScreen(db = db, exerciseId = backStack.arguments?.getLong("id") ?: 0L, onBack = { nav.popBackStack() })
             }
             composable(Routes.LIBRARY) { LibraryScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(

@@ -76,4 +76,38 @@ object Sessions {
             records = records,
         )
     }
+
+    /** Swaps the exercise in a position for another. Weights stay, ticks and reps are cleared. */
+    suspend fun replace(db: HqFitDatabase, sessionId: Long, position: Int, exercise: ExerciseEntity) =
+        db.sessions().replaceExercise(sessionId, position, exercise.id, exercise.name)
+
+    enum class Where { BEFORE, AFTER, SUPERSET }
+
+    /**
+     * Adds an exercise (two sets) next to the one at [position]. A superset joins the new exercise to the anchor,
+     * giving both a shared group; rest then belongs after the second one.
+     */
+    suspend fun add(db: HqFitDatabase, sessionId: Long, position: Int, exercise: ExerciseEntity, where: Where) {
+        val anchor = db.sessions().sets(sessionId).firstOrNull { it.position == position } ?: return
+        val newPosition = when (where) {
+            Where.BEFORE -> { db.sessions().shiftFrom(sessionId, position); position }
+            Where.AFTER, Where.SUPERSET -> { db.sessions().shiftAfter(sessionId, position); position + 1 }
+        }
+        var group: Int? = null
+        if (where == Where.SUPERSET) {
+            group = anchor.supersetGroup ?: (db.sessions().maxSuperset(sessionId) + 1)
+            db.sessions().setSuperset(sessionId, position, group)
+        }
+        db.sessions().insertSets(
+            (1..2).map { i ->
+                SetLogEntity(
+                    sessionId = sessionId, position = newPosition, setIndex = i, section = anchor.section,
+                    exerciseId = exercise.id, exerciseName = exercise.name, supersetGroup = group,
+                    durationSec = null, targetRepsMin = null, targetRepsMax = null,
+                    restSec = if (where == Where.SUPERSET) (if (i == 2) 90 else 0) else 120, note = "",
+                    weightKg = null, reps = null,
+                )
+            },
+        )
+    }
 }

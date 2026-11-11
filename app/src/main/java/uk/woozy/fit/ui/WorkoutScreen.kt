@@ -22,6 +22,21 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.platform.LocalContext
+import uk.woozy.fit.RestTimer
+import uk.woozy.fit.data.db.ExerciseEntity
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TextButton
@@ -125,7 +140,11 @@ fun ActiveWorkoutScreen(
             delay(1000)
         }
     }
-    var restEnd by remember { mutableLongStateOf(0L) }
+    val context = LocalContext.current
+    var restEnd by remember { mutableLongStateOf(RestTimer.endMs(context).takeIf { it > System.currentTimeMillis() } ?: 0L) }
+    val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    var asked by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf<Pair<Int, PickMode>?>(null) }
     val restLeft = (restEnd - now).coerceAtLeast(0)
     LaunchedEffect(restEnd) {
         if (restEnd > 0) {
@@ -147,7 +166,14 @@ fun ActiveWorkoutScreen(
                     db.sessions().updateValues(set.id, set.weightKg, set.targetRepsMax ?: set.targetRepsMin)
                 }
                 db.sessions().updateDone(set.id, true, System.currentTimeMillis())
-                if (set.restSec > 0) restEnd = System.currentTimeMillis() + set.restSec * 1000L
+                if (set.restSec > 0) {
+                    restEnd = System.currentTimeMillis() + set.restSec * 1000L
+                    if (Build.VERSION.SDK_INT >= 33 && !asked) {
+                        asked = true
+                        askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                    RestTimer.start(context, restEnd, set.exerciseName)
+                }
             }
         }
     }
@@ -193,7 +219,7 @@ fun ActiveWorkoutScreen(
                         HqText("Rest ${clock(restLeft + 999)}", 15.sp, FontWeight.SemiBold, c.onGradient, Modifier.weight(1f))
                         HqText(
                             "Skip", 14.sp, FontWeight.SemiBold, c.onGradient,
-                            Modifier.clip(CircleShape).clickable(role = Role.Button) { restEnd = 0 }.padding(horizontal = 12.dp, vertical = 8.dp),
+                            Modifier.clip(CircleShape).clickable(role = Role.Button) { restEnd = 0; RestTimer.cancel(context) }.padding(horizontal = 12.dp, vertical = 8.dp),
                         )
                     }
                 }
@@ -228,6 +254,7 @@ fun ActiveWorkoutScreen(
                         onDeleteLast = {
                             if (group.size > 1) scope.launch { db.sessions().deleteSet(group.last().id) }
                         },
+                        onPick = { mode -> picking = first.position to mode },
                     )
                 }
             }
@@ -238,13 +265,31 @@ fun ActiveWorkoutScreen(
             NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "2.5 kg" else "1 rep")
         } else {
             Column(Modifier.navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                HqPillButton("Finish workout", onClick = { if (notTicked > 0) confirmFinish = true else scope.launch { Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() } }, modifier = Modifier.fillMaxWidth())
+                HqPillButton("Finish workout", onClick = { if (notTicked > 0) confirmFinish = true else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() } }, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     TextButton(onClick = onLeave) { HqText("Close, keep running", 14.sp, color = c.muted) }
                     TextButton(onClick = { confirmDiscard = true }) { HqText("Discard", 14.sp, color = c.muted) }
                 }
             }
         }
+    }
+
+    picking?.let { (position, mode) ->
+        ExercisePickerSheet(
+            db = db,
+            onDismiss = { picking = null },
+            onPick = { exercise ->
+                picking = null
+                scope.launch {
+                    when (mode) {
+                        PickMode.REPLACE -> Sessions.replace(db, sessionId, position, exercise)
+                        PickMode.BEFORE -> Sessions.add(db, sessionId, position, exercise, Sessions.Where.BEFORE)
+                        PickMode.AFTER -> Sessions.add(db, sessionId, position, exercise, Sessions.Where.AFTER)
+                        PickMode.SUPERSET -> Sessions.add(db, sessionId, position, exercise, Sessions.Where.SUPERSET)
+                    }
+                }
+            },
+        )
     }
 
     if (confirmFinish) {
@@ -255,7 +300,7 @@ fun ActiveWorkoutScreen(
             confirmButton = {
                 TextButton(onClick = {
                     confirmFinish = false
-                    scope.launch { Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
+                    scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
                 }) { HqText("Finish", 15.sp, FontWeight.SemiBold, c.primary) }
             },
             dismissButton = { TextButton(onClick = { confirmFinish = false }) { HqText("Keep going", 15.sp, color = c.muted) } },
@@ -269,7 +314,7 @@ fun ActiveWorkoutScreen(
             confirmButton = {
                 TextButton(onClick = {
                     confirmDiscard = false
-                    scope.launch { Sessions.discard(db, sessionId); onDiscarded() }
+                    scope.launch { RestTimer.cancel(context); Sessions.discard(db, sessionId); onDiscarded() }
                 }) { HqText("Discard", 15.sp, FontWeight.SemiBold, c.primary) }
             },
             dismissButton = { TextButton(onClick = { confirmDiscard = false }) { HqText("Cancel", 15.sp, color = c.muted) } },
@@ -286,9 +331,11 @@ private fun ExerciseCard(
     onEdit: (SetLogEntity, Boolean) -> Unit,
     onAddSet: () -> Unit,
     onDeleteLast: () -> Unit,
+    onPick: (PickMode) -> Unit,
 ) {
     val c = HqTheme.colors
     val first = group.first()
+    var menu by remember { mutableStateOf(false) }
     HqCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -305,6 +352,22 @@ private fun ExerciseCard(
                     if (target.isNotEmpty()) HqText(target, 13.sp, color = c.muted)
                 }
                 if (first.supersetGroup != null) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
+                Box {
+                    Icon(
+                        Icons.Rounded.MoreVert, contentDescription = "Exercise options", tint = c.muted,
+                        modifier = Modifier.size(40.dp).clip(CircleShape).clickable(role = Role.Button) { menu = true }.padding(8.dp),
+                    )
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        listOf(
+                            "Replace exercise" to PickMode.REPLACE,
+                            "Add exercise before" to PickMode.BEFORE,
+                            "Add exercise after" to PickMode.AFTER,
+                            "Add superset" to PickMode.SUPERSET,
+                        ).forEach { (label, mode) ->
+                            DropdownMenuItem(text = { HqText(label, 15.sp) }, onClick = { menu = false; onPick(mode) })
+                        }
+                    }
+                }
             }
             if (first.note.isNotBlank()) {
                 HqText(first.note, 13.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
@@ -433,5 +496,43 @@ private fun Stat(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         HqText(value, 20.sp, FontWeight.Bold)
         HqText(label, 12.sp, color = HqTheme.colors.muted, textAlign = TextAlign.Center)
+    }
+}
+
+private enum class PickMode { REPLACE, BEFORE, AFTER, SUPERSET }
+
+/** Search the library and pick one exercise. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, onPick: (ExerciseEntity) -> Unit) {
+    val c = HqTheme.colors
+    var text by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf(emptyList<ExerciseEntity>()) }
+    LaunchedEffect(text) { results = db.exercises().searchFiltered(text.trim(), "", "") }
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = c.card,
+    ) {
+        Column(Modifier.navigationBarsPadding().padding(bottom = 8.dp)) {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { HqText("Search exercises", 13.sp, color = c.muted) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            )
+            LazyColumn(Modifier.heightIn(max = 480.dp)) {
+                items(results, key = { it.id }) { e ->
+                    Column(
+                        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onPick(e) }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        HqText(e.name, 16.sp, FontWeight.Medium)
+                        HqText(listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · "), 13.sp, color = c.muted)
+                    }
+                }
+            }
+        }
     }
 }

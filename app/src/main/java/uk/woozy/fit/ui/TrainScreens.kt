@@ -80,6 +80,7 @@ fun TrainScreen(
     calendar: List<ScheduledWorkoutEntity>,
     onOpen: (Long) -> Unit,
     onLibrary: () -> Unit,
+    onRecords: () -> Unit,
 ) {
     val c = HqTheme.colors
     val today = remember { LocalDate.now() }
@@ -161,7 +162,7 @@ fun TrainScreen(
         HqCard(Modifier.fillMaxWidth()) {
             ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Editing arrives next; Full body A / B / C is in place", enabled = false)
             ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
-            ListRow(Icons.Rounded.Star, "Personal records", "Arrives in milestone 4", enabled = false)
+            ListRow(Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
         }
         Spacer(Modifier.height(8.dp))
     }

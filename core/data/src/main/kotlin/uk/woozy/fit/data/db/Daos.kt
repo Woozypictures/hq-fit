@@ -62,6 +62,9 @@ interface ExerciseDao {
     @Query("SELECT COUNT(*) FROM exercise")
     suspend fun count(): Int
 
+    @Query("SELECT * FROM exercise WHERE id = :id")
+    suspend fun findById(id: Long): ExerciseEntity?
+
     @Query("SELECT * FROM exercise WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun findByName(name: String): ExerciseEntity?
 }
@@ -182,6 +185,18 @@ interface ScheduleDao {
     suspend fun count(): Int
 }
 
+/** The best a lift has done, from finished sessions. */
+data class RecordRow(
+    val exerciseId: Long,
+    val exerciseName: String,
+    val bestKg: Double,
+    val bestE1rm: Double,
+    val sessions: Int,
+    val lastMs: Long,
+)
+
+data class HistoryRow(val sessionId: Long, val startedMs: Long, val setIndex: Int, val weightKg: Double, val reps: Int)
+
 @Dao
 interface SessionDao {
     @Insert
@@ -217,6 +232,27 @@ interface SessionDao {
     @Query("DELETE FROM set_log WHERE id = :id")
     suspend fun deleteSet(id: Long)
 
+    @Query("UPDATE set_log SET exerciseId = :exerciseId, exerciseName = :name, done = 0, doneAtMs = NULL, reps = NULL WHERE sessionId = :sessionId AND position = :position")
+    suspend fun replaceExercise(sessionId: Long, position: Int, exerciseId: Long, name: String)
+
+    @Query("UPDATE set_log SET position = position + 1 WHERE sessionId = :sessionId AND position > :position")
+    suspend fun shiftAfter(sessionId: Long, position: Int)
+
+    @Query("UPDATE set_log SET position = position + 1 WHERE sessionId = :sessionId AND position >= :position")
+    suspend fun shiftFrom(sessionId: Long, position: Int)
+
+    @Query("UPDATE set_log SET supersetGroup = :group WHERE sessionId = :sessionId AND position = :position")
+    suspend fun setSuperset(sessionId: Long, position: Int, group: Int?)
+
+    @Query("SELECT COALESCE(MAX(supersetGroup), 0) FROM set_log WHERE sessionId = :sessionId")
+    suspend fun maxSuperset(sessionId: Long): Int
+
+    @Query("SELECT COALESCE(MAX(position), -1) FROM set_log WHERE sessionId = :sessionId")
+    suspend fun maxPosition(sessionId: Long): Int
+
+    @Query("SELECT * FROM exercise WHERE id = :id")
+    suspend fun exercise(id: Long): ExerciseEntity?
+
     @Query("UPDATE workout_session SET status = 'done', endedMs = :endedMs, feeling = :feeling WHERE id = :id")
     suspend fun finish(id: Long, endedMs: Long, feeling: Int?)
 
@@ -241,4 +277,22 @@ interface SessionDao {
             "AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL",
     )
     suspend fun history(exerciseId: Long, excludeSession: Long): List<SetLogEntity>
+
+    @Query(
+        "SELECT l.exerciseId AS exerciseId, l.exerciseName AS exerciseName, MAX(l.weightKg) AS bestKg, " +
+            "MAX(CASE WHEN l.reps <= 1 THEN l.weightKg ELSE l.weightKg * (1 + l.reps / 30.0) END) AS bestE1rm, " +
+            "COUNT(DISTINCT l.sessionId) AS sessions, MAX(l.doneAtMs) AS lastMs " +
+            "FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
+            "WHERE l.done = 1 AND s.status = 'done' AND l.durationSec IS NULL AND l.weightKg > 0 AND l.reps > 0 " +
+            "GROUP BY l.exerciseId ORDER BY lastMs DESC",
+    )
+    fun observeRecords(): Flow<List<RecordRow>>
+
+    @Query(
+        "SELECT l.sessionId AS sessionId, s.startedMs AS startedMs, l.setIndex AS setIndex, l.weightKg AS weightKg, l.reps AS reps " +
+            "FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
+            "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL " +
+            "ORDER BY s.startedMs DESC, l.setIndex",
+    )
+    suspend fun exerciseHistory(exerciseId: Long): List<HistoryRow>
 }

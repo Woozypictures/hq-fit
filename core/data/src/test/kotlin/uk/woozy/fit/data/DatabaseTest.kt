@@ -267,4 +267,59 @@ class DatabaseTest {
         assertEquals(0, db.sessions().sets(id).size)
         assertEquals("planned", db.schedule().get(scheduled.id)!!.status)
     }
+
+    @Test
+    fun replacingAnExerciseKeepsWeightsAndClearsTicks() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val id = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        val before = db.sessions().sets(id).first { it.exerciseName == "Leg Extensions" }
+        db.sessions().updateDone(before.id, true, 5_000)
+        val other = ExerciseEntity(id = db.exercises().insert(ExerciseEntity(name = "Sissy Squat", muscle = "quads", equipment = "body weight")), name = "Sissy Squat", muscle = "quads", equipment = "body weight")
+        Sessions.replace(db, id, before.position, other)
+        val after = db.sessions().sets(id).filter { it.position == before.position }
+        assertEquals(listOf("Sissy Squat", "Sissy Squat"), after.map { it.exerciseName })
+        assertEquals(50.0, after.first().weightKg!!, 0.0)
+        assertEquals(false, after.first().done)
+    }
+
+    @Test
+    fun addingAfterBeforeAndSupersetKeepsOrderAndGroups() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val id = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        val anchor = db.sessions().sets(id).first { it.exerciseName == "Leg Extensions" }
+        fun ex(name: String) = ExerciseEntity(id = 0, name = name, muscle = "x", equipment = "x")
+        suspend fun saved(name: String) = ex(name).let { it.copy(id = db.exercises().insert(it)) }
+        Sessions.add(db, id, anchor.position, saved("After One"), Sessions.Where.AFTER)
+        Sessions.add(db, id, anchor.position, saved("Before One"), Sessions.Where.BEFORE)
+        val order = db.sessions().sets(id).map { it.exerciseName }.distinct()
+        val i = order.indexOf("Leg Extensions")
+        assertEquals("Before One", order[i - 1])
+        assertEquals("After One", order[i + 1])
+        val positions = db.sessions().sets(id).map { it.position }.distinct()
+        assertEquals(positions.sorted(), positions)
+        // superset: new exercise follows the anchor and both share a group
+        val anchor2 = db.sessions().sets(id).first { it.exerciseName == "Lying Leg Curls" }
+        Sessions.add(db, id, anchor2.position, saved("Paired"), Sessions.Where.SUPERSET)
+        val grouped = db.sessions().sets(id).filter { it.exerciseName in listOf("Lying Leg Curls", "Paired") }
+        assertEquals(1, grouped.map { it.supersetGroup }.toSet().size)
+        assertEquals(true, grouped.first().supersetGroup != null)
+    }
+
+    @Test
+    fun recordsTableAndHistoryComeFromFinishedSessions() = runBlocking {
+        Seed.run(db, today = wednesday)
+        val first = Sessions.start(db, scheduledB(), nowMs = 1_000)
+        trainAll(first, weightFor = { 50.0 }, reps = 10)
+        // an unfinished session does not count yet
+        assertEquals(0, db.sessions().observeRecords().first().size)
+        Sessions.finish(db, first, nowMs = 2_000)
+        val rows = db.sessions().observeRecords().first()
+        val ext = rows.first { it.exerciseName == "Leg Extensions" }
+        assertEquals(50.0, ext.bestKg, 0.0)
+        assertEquals(66.667, ext.bestE1rm, 0.001)
+        assertEquals(1, ext.sessions)
+        val history = db.sessions().exerciseHistory(ext.exerciseId)
+        assertEquals(2, history.size)
+        assertEquals(10, history.first().reps)
+    }
 }
