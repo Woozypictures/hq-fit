@@ -61,6 +61,12 @@ class DatabaseProvider(private val context: Context) {
         recovery
     }
 
+    /** A fresh recovery key to show. Nothing changes until [replaceRecoveryKey] is called with it. */
+    fun proposeRecoveryKey(): String = uk.woozy.fit.data.crypto.RecoveryCrypto.newRecoveryKey()
+
+    /** Makes [recovery] the recovery key from now on. False when the phone could not open the key file. */
+    suspend fun replaceRecoveryKey(recovery: String): Boolean = withContext(Dispatchers.IO) { vault.replaceRecovery(recovery) }
+
     /** The user typed the recovery key back correctly. */
     suspend fun confirm() = withContext(Dispatchers.IO) { vault.confirm() }
 

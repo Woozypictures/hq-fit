@@ -97,6 +97,8 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         BackBar("Backup and restore", onBack)
 
+        RecoveryKeyCard(container)
+
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 HqText("Encrypted backups", 16.sp, FontWeight.Medium)
@@ -199,5 +201,49 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
             },
             dismissButton = { TextButton(onClick = { restoreUri = null }) { HqText("Cancel", 15.sp) } },
         )
+    }
+}
+
+/**
+ * The recovery key is shown once, at first start. If it was never written down, this makes a new one: shown once,
+ * typed back to confirm, and only then does it replace the old one. Backups made before the change still need the
+ * old key, so take a new backup straight after.
+ */
+@Composable
+private fun RecoveryKeyCard(container: AppContainer) {
+    val c = HqTheme.colors
+    val scope = rememberCoroutineScope()
+    var proposed by remember { mutableStateOf<String?>(null) }
+    var typed by remember { mutableStateOf("") }
+    var result by remember { mutableStateOf<String?>(null) }
+    HqCard(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            HqText("Recovery key", 16.sp, FontWeight.Medium)
+            val p = proposed
+            if (p == null) {
+                HqText("The recovery key is the only way back in on a new phone, and it is shown just once. If you did not write yours down, make a new one now. It replaces the old one, so take a new backup afterwards: backups made before still need the old key.", 13.sp, color = c.muted)
+                result?.let { HqText(it, 13.sp) }
+                HqPillButton("Make a new recovery key", style = PillStyle.Outline, onClick = { proposed = container.database.proposeRecoveryKey(); typed = ""; result = null })
+            } else {
+                HqText(p, 20.sp, FontWeight.Bold)
+                HqText("Write it down or save it in a password manager. It is not saved until you type it back below.", 13.sp, color = c.muted)
+                androidx.compose.material3.OutlinedTextField(
+                    value = typed, onValueChange = { typed = it },
+                    label = { HqText("Type it back to confirm", 13.sp, color = c.muted) }, singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                HqPillButton("Save new recovery key", onClick = {
+                    if (uk.woozy.fit.data.crypto.RecoveryCrypto.normalise(typed) != uk.woozy.fit.data.crypto.RecoveryCrypto.normalise(p)) {
+                        result = "That does not match the key above."
+                    } else scope.launch {
+                        result = if (container.database.replaceRecoveryKey(p)) "New recovery key saved. Take a backup now." else "This phone could not open its key file, so nothing was changed."
+                        proposed = null
+                    }
+                })
+                result?.let { HqText(it, 13.sp) }
+                HqPillButton("Cancel", style = PillStyle.Outline, onClick = { proposed = null; result = null })
+            }
+        }
     }
 }

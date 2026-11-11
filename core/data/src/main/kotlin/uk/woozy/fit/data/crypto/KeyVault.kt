@@ -56,6 +56,18 @@ class KeyVault(context: Context) {
         return dbKey
     }
 
+    /**
+     * Replaces the recovery key with [newRecovery], using the database key this phone can already open. The old
+     * recovery key stops working for the live data. False when this phone cannot open the data (nothing changed).
+     */
+    fun replaceRecovery(newRecovery: String): Boolean {
+        val f = read() ?: return false
+        val dbKey = unlock() ?: return false
+        val salt = RecoveryCrypto.newSalt()
+        write(f + ("salt" to b64(salt)) + ("recovery" to b64(RecoveryCrypto.wrap(dbKey, newRecovery, salt))) + ("confirmed" to "1"))
+        return true
+    }
+
     /** The key file without this phone's Keystore part, for a backup. Null when there is none or it was never confirmed. */
     fun exportForBackup(): String? {
         val f = read() ?: return null
