@@ -106,3 +106,27 @@ HQ link: needs the HQ change first (section 9).
 4. Turn on the nightly backup folder.
 5. Change HQ (section 9), confirm no double counting.
 6. Only then stop using Cronometer and Everfit (after running Import Everfit history and checking Records).
+
+## 13. 11 Nov 2026 (evening): audit, HQ features, tablet, About (runs 54-57, Opus)
+
+Fixed in the audit:
+- Steps and active calories were summed from raw records, so phone + watch counted twice. Now Health Connect aggregates (same as HQ).
+- Food logged for another day was sent to Health Connect at the time it was typed. Now it goes on that day at a usual meal time (`HealthSync.mealTime`).
+- Sync stopped completely if any one write permission was off. Now each kind is sent when its own permission is on.
+- Today's date, the calendar window, the Sunday check-in date and the diary/water flows were fixed at first composition, so staying open past midnight showed yesterday. `rememberToday()` (ui/Adaptive.kt) moves on.
+- Targets edited in Targets did not show on Today until restart (`rememberTargets(db, route)` now reloads).
+- Rotation or resizing restarted the activity and lost workout section state; `configChanges` added. The gate no longer flashes Loading when the database is already open.
+- Lifting the finger after a long press also tapped the button underneath; the press is swallowed now.
+- Scrolled pages slid under the status bar; status-bar padding now sits outside the scroll.
+- Sunday reminder could never post on Android 13+ (permission never asked) and had no off switch: Settings > Notifications, asks for the permission, at most once a day.
+- Manifest: COARSE location with FINE (lint), queries for Samsung Health and HQ.
+
+Ported from HQ: long-press wiggle rearrange with a corner drag handle on Today and Progress, plus hide/show per card (`CardColumn`, prefs file `cards`); Cronometer-style energy card (3 rings + protein, net carbs, fat bars; burned ring full when there is a reading); 30-square steps bar (`Segments`); problems banner on Today only when Health Connect needs attention (tap opens Health Connect screen); tap steps to open Samsung Health; tap energy to open Diary; Progress "last 7 days vs the 7 before".
+
+Tablet (Tab S9 Ultra landscape, about 1393 x 870 dp): tab pages use two columns of cards at 840 dp and wider (one column while rearranging); other pages are capped at 760 dp and centred; bottom bar tabs grouped in the middle 640 dp.
+
+About (Settings): Created by Woozypictures, App version, Instagram / YouTube / X links (`AboutBlock`, `SOCIALS`).
+
+Provider: sends default targets when none were edited, and a new `steps_target` column (version stays 1; HQ reads columns by name).
+
+Debug-only demo mode: `app/src/debug/.../Demo.kt` (release has a no-op). `am start -n uk.woozy.fit/.MainActivity --ez demo true` skips the key step and fills two weeks of sample food, water and weights. Used by HQ's `screens` workflow, which builds both apps' debug APKs with the same debug key, installs them on an API 34 emulator and screenshots phone, Tab S9 Ultra landscape, dark and portrait. Run 1 confirmed HQ reads this app's provider (HQ showed the same kcal, water, workout and step goal). Not a phone test.
