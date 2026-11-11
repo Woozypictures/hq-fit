@@ -63,6 +63,8 @@ private object Routes {
     const val SCALE = "scale"
     const val HEALTH = "health"
     const val BACKUP = "backup"
+    const val EDIT = "edit"
+    const val NEW_EXERCISE = "newexercise"
     const val WORKOUT = "workout"
     const val SUMMARY = "summary"
     const val RECORDS = "records"
@@ -197,6 +199,8 @@ fun HqFitRoot(
                     onOpen = { nav.navigate("${Routes.PREVIEW}/$it") },
                     onLibrary = { nav.navigate(Routes.LIBRARY) },
                     onRecords = { nav.navigate(Routes.RECORDS) },
+                    onNewWorkout = { scope.launch { nav.navigate("${Routes.EDIT}/${createWorkout(db, "New workout")}") } },
+                    onNewExercise = { nav.navigate(Routes.NEW_EXERCISE) },
                 )
             }
             composable(Routes.DIARY) {
@@ -272,8 +276,13 @@ fun HqFitRoot(
                     scheduledId = backStack.arguments?.getLong("id") ?: 0L,
                     onBack = { nav.popBackStack() },
                     onStart = { startOrResume(it) },
+                    onEdit = { nav.navigate("${Routes.EDIT}/$it") },
                 )
             }
+            composable("${Routes.EDIT}/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { backStack ->
+                TemplateEditorScreen(db = db, templateId = backStack.arguments?.getLong("id") ?: 0L, onBack = { nav.popBackStack() })
+            }
+            composable(Routes.NEW_EXERCISE) { NewExerciseScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.RECORDS) {
                 RecordsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.HISTORY}/$it") })
             }

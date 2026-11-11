@@ -169,6 +169,33 @@ interface TemplateDao {
 
     @Query("DELETE FROM workout_template WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Insert
+    suspend fun insertItem(row: TemplateItemEntity): Long
+
+    @Query("SELECT * FROM template_item WHERE id = :id")
+    suspend fun item(id: Long): TemplateItemEntity?
+
+    @Query("SELECT * FROM template_item WHERE templateId = :templateId ORDER BY position")
+    suspend fun itemEntities(templateId: Long): List<TemplateItemEntity>
+
+    @Query(
+        "UPDATE template_item SET section = :section, sets = :sets, repsMin = :repsMin, repsMax = :repsMax, durationSec = :durationSec, " +
+            "weightKg = :weightKg, restSec = :restSec, note = :note, supersetGroup = :supersetGroup WHERE id = :id",
+    )
+    suspend fun updateItem(
+        id: Long, section: String, sets: Int, repsMin: Int?, repsMax: Int?, durationSec: Int?, weightKg: Double?,
+        restSec: Int, note: String, supersetGroup: Int?,
+    )
+
+    @Query("UPDATE template_item SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: Long, position: Int)
+
+    @Query("DELETE FROM template_item WHERE id = :id")
+    suspend fun deleteItem(id: Long)
+
+    @Query("UPDATE workout_template SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
 }
 
 @Dao

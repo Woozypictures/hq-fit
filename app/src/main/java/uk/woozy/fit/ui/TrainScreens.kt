@@ -81,6 +81,8 @@ fun TrainScreen(
     onOpen: (Long) -> Unit,
     onLibrary: () -> Unit,
     onRecords: () -> Unit,
+    onNewWorkout: () -> Unit = {},
+    onNewExercise: () -> Unit = {},
 ) {
     val c = HqTheme.colors
     val today = remember { LocalDate.now() }
@@ -163,6 +165,8 @@ fun TrainScreen(
             ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Editing arrives next; Full body A / B / C is in place", enabled = false)
             ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
             ListRow(Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
+            ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own and put it on the calendar", onClick = onNewWorkout)
+            ListRow(Icons.Rounded.FitnessCenter, "New exercise", "Add your own to the library", onClick = onNewExercise)
         }
         Spacer(Modifier.height(8.dp))
     }
@@ -176,6 +180,7 @@ fun WorkoutPreviewScreen(
     scheduledId: Long,
     onBack: () -> Unit,
     onStart: (ScheduledWorkoutEntity) -> Unit,
+    onEdit: (Long) -> Unit = {},
 ) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
@@ -219,6 +224,7 @@ fun WorkoutPreviewScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
             HqPillButton("Move to another day", onClick = { moving = true }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
+            HqPillButton("Edit workout", onClick = { s?.let { onEdit(it.templateId) } }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
         }
     }
 

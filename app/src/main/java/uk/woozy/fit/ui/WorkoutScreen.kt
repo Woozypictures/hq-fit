@@ -504,7 +504,7 @@ private enum class PickMode { REPLACE, BEFORE, AFTER, SUPERSET }
 /** Search the library and pick one exercise. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, onPick: (ExerciseEntity) -> Unit) {
+internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, onPick: (ExerciseEntity) -> Unit) {
     val c = HqTheme.colors
     var text by remember { mutableStateOf("") }
     var results by remember { mutableStateOf(emptyList<ExerciseEntity>()) }
