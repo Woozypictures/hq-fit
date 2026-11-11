@@ -3,6 +3,7 @@ package uk.woozy.fit.data.db
 import android.content.Context
 import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 import uk.woozy.fit.data.crypto.KeyVault
@@ -22,7 +23,7 @@ sealed interface DbGate {
 class DatabaseProvider(private val context: Context) {
     private val vault = KeyVault(context)
     private val dbName = "hqfit.db"
-    private val SCHEMA_VERSION = 6
+    private val SCHEMA_VERSION = DB_VERSION
 
     @Volatile
     var db: HqFitDatabase? = null
@@ -30,7 +31,15 @@ class DatabaseProvider(private val context: Context) {
 
     /** Decide what to show at start. Opens the database straight away when the Keystore can. */
     suspend fun start(): DbGate = withContext(Dispatchers.IO) {
-        when (vault.found()) {
+        // One open at a time, and never a second Room instance: the provider and the screen can both ask.
+        gate.withLock { startLocked() }
+    }
+
+    private val gate = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun startLocked(): DbGate {
+        if (db != null) return DbGate.Ready
+        return when (vault.found()) {
             KeyVault.Found.NOTHING, KeyVault.Found.UNCONFIRMED -> DbGate.FirstRun
             KeyVault.Found.READY -> {
                 val key = vault.unlock()

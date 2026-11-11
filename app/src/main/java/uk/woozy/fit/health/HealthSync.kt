@@ -23,15 +23,20 @@ object HealthSync {
             }
             var wrote = 0
             run {
-                val from = nowMs - 90L * 86_400_000L
+                // A full 90-day pass at most weekly; otherwise only the last 3 days, so opening the app stays light
+                // and Health Connect's write limits are not hit.
+                val full = nowMs - prefs(c).getLong("full", 0L) > 7L * 86_400_000L
+                val days = if (full) 90L else 3L
+                val from = nowMs - days * 86_400_000L
                 val today = java.time.LocalDate.now()
-                db.diary().between(today.minusDays(90).toString(), today.toString())
+                db.diary().between(today.minusDays(days).toString(), today.toString())
                     .filter { it.name != CronometerImport.ENTRY_NAME }
                     .forEach { hc.writeMeal(it.id, it.name, it.meal, it.createdMs, Nutrients.decode(it.nutrients)); wrote++ }
                 db.water().since(from).forEach { hc.writeWater(it.id, it.epochMs, it.ml); wrote++ }
                 db.weights().ownSince(from).forEach { hc.writeWeight(it.id, it.epochMs, it.kg); wrote++ }
                 db.sessions().doneSince(from).forEach { hc.writeWorkout(it.id, it.name, it.startedMs, it.endedMs ?: it.startedMs); wrote++ }
             }
+            if (full) prefs(c).edit().putLong("full", nowMs).apply()
             var imported = 0
             hc.importedWeights(Instant.ofEpochMilli(nowMs - 3L * 365 * 86_400_000L), Instant.ofEpochMilli(nowMs)).forEach {
                 if (db.weights().countBetween(it.epochMs - 60_000, it.epochMs + 60_000) == 0) {

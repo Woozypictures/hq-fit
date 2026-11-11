@@ -35,7 +35,7 @@ data class ImportedWeight(val epochMs: Long, val kg: Double)
 
 /**
  * Health Connect reads and writes. Every write carries a clientRecordId built from the HQ Fit row, so sending the
- * same row twice updates it instead of duplicating it. Reads skip anything HQ Fit wrote itself. Nutrition and
+ * same row twice updates it instead of duplicating it (meals and workouts carry a rising clientRecordVersion, otherwise an edit would be ignored). Reads skip anything HQ Fit wrote itself. Nutrition and
  * water permissions are requested but nothing is written for them yet; that stays off until you switch over from
  * Cronometer. Not yet tried on a phone.
  */
@@ -131,7 +131,7 @@ class HealthGateway(private val context: Context) {
                 ExerciseSessionRecord(
                     startTime = s, startZoneOffset = zone.getOffset(s), endTime = e, endZoneOffset = zone.getOffset(e),
                     exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING, title = name,
-                    metadata = Metadata(clientRecordId = "hqfit-session-$sessionId"),
+                    metadata = Metadata(clientRecordId = "hqfit-session-$sessionId", clientRecordVersion = System.currentTimeMillis()),
                 ),
             ),
         )
@@ -146,7 +146,7 @@ class HealthGateway(private val context: Context) {
             listOf(
                 NutritionRecord(
                     startTime = s, startZoneOffset = zone.getOffset(s), endTime = e, endZoneOffset = zone.getOffset(e),
-                    metadata = Metadata(clientRecordId = "hqfit-meal-$entryId"),
+                    metadata = Metadata(clientRecordId = "hqfit-meal-$entryId", clientRecordVersion = System.currentTimeMillis()),
                     name = name,
                     mealType = when (meal) {
                         "breakfast" -> MealType.MEAL_TYPE_BREAKFAST

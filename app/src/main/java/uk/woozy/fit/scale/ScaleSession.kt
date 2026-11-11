@@ -194,7 +194,7 @@ class ScaleSession(
         @Deprecated("Deprecated in Java")
         override fun onCharacteristicChanged(g: BluetoothGatt, c: BluetoothGattCharacteristic) {
             @Suppress("DEPRECATION")
-            val data = c.value ?: return
+            val data = c.value?.copyOf() ?: return
             main.post { handle(data) }
         }
     }

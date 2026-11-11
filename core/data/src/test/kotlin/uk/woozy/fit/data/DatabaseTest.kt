@@ -437,4 +437,11 @@ class DatabaseTest {
         assertEquals(2, db.foods().count())
         assertEquals("cofid", db.foods().search("bread").single().source)
     }
+
+    @Test
+    fun schemaFileExistsForCurrentVersion() {
+        // Forgetting to commit the new schema JSON breaks the next AutoMigration, so fail early.
+        val f = java.io.File("schemas/uk.woozy.fit.data.db.HqFitDatabase/$DB_VERSION.json")
+        org.junit.Assert.assertTrue("missing ${f.absolutePath}", f.exists())
+    }
 }

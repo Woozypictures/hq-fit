@@ -8,6 +8,9 @@ import androidx.room.RoomDatabase
  * The encrypted database. Version 1 holds the foundations; each later milestone adds its tables with a
  * migration, and the exported schema JSON under core/data/schemas shows every step.
  */
+/** The Room schema version. Backups record it, so there is one place to bump. */
+const val DB_VERSION = 6
+
 @Database(
     entities = [
         NutrientEntity::class,
@@ -28,7 +31,7 @@ import androidx.room.RoomDatabase
         RecurringFoodEntity::class,
         CheckInEntity::class,
     ],
-    version = 6,
+    version = DB_VERSION,
     autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6)],
     exportSchema = true,
 )
