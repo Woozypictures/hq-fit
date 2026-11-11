@@ -144,3 +144,9 @@ Do these in order, only after the phone checks above pass.
 34. Health Connect: after granting access, opening the app sends food, water, weights and workouts. Check they show in Health Connect and that HQ does not double count Cronometer-era days (imported days are not re-sent).
 35. Today shows steps and active calories from Health Connect. On a Sunday the check-in tick boxes appear; the reminder fires at 18:00.
 36. Deleting a weight or a diary entry removes it from Health Connect too. Undoing water does not yet.
+37. Workout editor: Train > New workout, or Edit workout in a preview. Rename, change sets/reps/weight/rest, move up/down, superset toggle, add via picker, schedule on the calendar. Train also has Past workouts and New exercise (custom).
+38. Active workout: swipe a set to delete (Undo bar appears). Long-press a set for type (warm-up, drop, failure) and RPE 6 to 10. A finished session can be edited with Edit sets; duration stays fixed. Database is now version 6.
+39. Food: Add food > Create a recipe (ingredients in grams, cooked weight, servings). Diary > All nutrients shows the grouped summary against targets. Settings > Targets edits energy, macros, steps, water glasses and other nutrients (Aim for / Stay under).
+40. Today: pull down to refresh (also syncs Health Connect). Reorder cards toggles Up/Down buttons per card; the order is remembered.
+41. Settings > Frosted glass: dark page with translucent cards as in HQ. Progress bars and rings announce their value to TalkBack.
+42. Still not done: undoing water does not remove it from Health Connect; Everfit history import (waiting on his export); bundled CoFID food database (needs the file); JSON export; custom exercise photos.
