@@ -329,6 +329,17 @@ fun ActiveWorkoutScreen(
                             onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
                             onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
                             onInfo = { infoFor = first.exerciseName },
+                            onMarkAll = {
+                                scope.launch {
+                                    val now = System.currentTimeMillis()
+                                    group.filter { !it.done }.forEach { set ->
+                                        if (set.durationSec == null && set.reps == null) {
+                                            db.sessions().updateValues(set.id, set.weightKg, set.targetRepsMax ?: set.targetRepsMin)
+                                        }
+                                        db.sessions().updateDone(set.id, true, now)
+                                    }
+                                }
+                            },
                         )
                     }
                 }
@@ -427,6 +438,7 @@ private fun ExerciseCard(
     onSetType: (SetLogEntity, String) -> Unit,
     onSetRpe: (SetLogEntity, Double?) -> Unit,
     onInfo: () -> Unit,
+    onMarkAll: () -> Unit,
 ) {
     val c = HqTheme.colors
     val first = group.first()
@@ -520,6 +532,9 @@ private fun ExerciseCard(
                     TextButton(onClick = onAddSet) { HqText("Add set", 14.sp, FontWeight.SemiBold, c.primary) }
                     if (group.size > 1) TextButton(onClick = onDeleteLast) { HqText("Delete last set", 14.sp, color = c.muted) }
                 }
+            }
+            if (group.any { !it.done }) {
+                TextButton(onClick = onMarkAll, modifier = Modifier.padding(horizontal = 8.dp)) { HqText("Mark all complete", 14.sp, FontWeight.SemiBold, c.primary) }
             }
             if (first.durationSec != null) Spacer(Modifier.height(8.dp))
         }
