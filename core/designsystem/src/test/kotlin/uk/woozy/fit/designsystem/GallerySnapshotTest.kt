@@ -6,7 +6,10 @@ import com.android.ide.common.rendering.api.SessionParams
 import org.junit.Rule
 import org.junit.Test
 
-/** Renders the full component gallery in light and dark. CI records the images and attaches them to the release. */
+/**
+ * Renders each group of components in light and dark, one image per group so each stays full size.
+ * CI records the images and attaches them to the release.
+ */
 class GallerySnapshotTest {
     @get:Rule
     val paparazzi = Paparazzi(
@@ -16,12 +19,17 @@ class GallerySnapshotTest {
     )
 
     @Test
-    fun galleryLight() {
-        paparazzi.snapshot { HqFitTheme(darkTheme = false) { ComponentGallery() } }
-    }
+    fun light() = render(dark = false)
 
     @Test
-    fun galleryDark() {
-        paparazzi.snapshot { HqFitTheme(darkTheme = true) { ComponentGallery() } }
+    fun dark() = render(dark = true)
+
+    private fun render(dark: Boolean) {
+        val mode = if (dark) "dark" else "light"
+        GalleryBlock.entries.forEach { block ->
+            paparazzi.snapshot(name = "${block.name}_$mode") {
+                HqFitTheme(darkTheme = dark) { ComponentGallery(blocks = listOf(block)) }
+            }
+        }
     }
 }

@@ -71,7 +71,7 @@ jobs:
           cp /tmp/l/status.txt status.txt
           cp /tmp/l/sign.txt sign.txt 2>/dev/null || true
           cp /tmp/l/lint-report.txt lint-report.txt 2>/dev/null || true
-          cp -r /tmp/l/shots shots
+          rm -rf shots && cp -r /tmp/l/shots shots
           git add build.log status.txt sign.txt lint-report.txt shots 2>/dev/null || git add -A
           git commit -q -m "log ${{ github.run_number }}"
           git push -f origin build-log

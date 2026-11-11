@@ -33,8 +33,13 @@ import androidx.compose.ui.unit.sp
  * and CI renders it in light and dark so each release carries screenshots of the look.
  * It does not scroll itself, so screenshot tests can render it at full height.
  */
+enum class GalleryBlock { Colours, Type, Buttons, Gradient, Rings, SetTable, Keypad, BottomBar }
+
 @Composable
-fun ComponentGallery(modifier: Modifier = Modifier) {
+fun ComponentGallery(
+    modifier: Modifier = Modifier,
+    blocks: List<GalleryBlock> = GalleryBlock.entries,
+) {
     val c = HqTheme.colors
     var setDone by remember { mutableStateOf(true) }
     var secondDone by remember { mutableStateOf(false) }
@@ -44,7 +49,7 @@ fun ComponentGallery(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth().background(c.page).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Block("Colours") {
+        if (GalleryBlock.Colours in blocks) Block("Colours") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Swatch("Page", c.page)
                 Swatch("Card", c.card)
@@ -60,7 +65,7 @@ fun ComponentGallery(modifier: Modifier = Modifier) {
             }
         }
 
-        Block("Type") {
+        if (GalleryBlock.Type in blocks) Block("Type") {
             SpacedTitle("Fullbody A")
             Spacer(Modifier.height(8.dp))
             HqText("Hello, Mahesh!", 28.sp, FontWeight.Bold)
@@ -68,7 +73,7 @@ fun ComponentGallery(modifier: Modifier = Modifier) {
             HqText("Muted caption · 2,297 kcal", 13.sp, color = c.muted)
         }
 
-        Block("Buttons") {
+        if (GalleryBlock.Buttons in blocks) Block("Buttons") {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 HqPillButton("Save", onClick = {})
                 HqPillButton("Cancel", onClick = {}, style = PillStyle.Outline)
@@ -78,7 +83,7 @@ fun ComponentGallery(modifier: Modifier = Modifier) {
             SegmentedChoice(listOf("Light", "Dark", "System"), theme, { theme = it })
         }
 
-        Block("Gradient card") {
+        if (GalleryBlock.Gradient in blocks) Block("Gradient card") {
             GradientCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(20.dp)) {
                     HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, androidx.compose.ui.graphics.Color.White, letterSpacing = 1.sp)
@@ -90,7 +95,7 @@ fun ComponentGallery(modifier: Modifier = Modifier) {
             }
         }
 
-        Block("Rings and bars") {
+        if (GalleryBlock.Rings in blocks) Block("Rings and bars") {
             HqCard(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -105,7 +110,7 @@ fun ComponentGallery(modifier: Modifier = Modifier) {
             }
         }
 
-        Block("Set table") {
+        if (GalleryBlock.SetTable in blocks) Block("Set table") {
             HqCard(modifier = Modifier.fillMaxWidth()) {
                 SetTableHeader()
                 SetRow("1", "50 × 12", "50", "12", setDone, { setDone = !setDone })
@@ -113,13 +118,13 @@ fun ComponentGallery(modifier: Modifier = Modifier) {
             }
         }
 
-        Block("Number keypad") {
+        if (GalleryBlock.Keypad in blocks) Block("Number keypad") {
             HqCard(modifier = Modifier.fillMaxWidth()) {
                 NumberKeypad(onKey = {}, stepLabel = "2.5 kg")
             }
         }
 
-        Block("Bottom bar") {
+        if (GalleryBlock.BottomBar in blocks) Block("Bottom bar") {
             HqCard(modifier = Modifier.fillMaxWidth()) {
                 HqBottomBar(
                     items = listOf(
