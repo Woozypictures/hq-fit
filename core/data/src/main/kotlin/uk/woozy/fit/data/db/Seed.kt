@@ -121,7 +121,10 @@ object Seed {
         db.schedule().insertAll(
             days.map {
                 val t = templates.getValue(it.workout)
-                ScheduledWorkoutEntity(programmeId, t.id, t.name, it.date.toString(), it.date.toString())
+                ScheduledWorkoutEntity(
+                    programmeId = programmeId, templateId = t.id, templateName = t.name,
+                    date = it.date.toString(), originalDate = it.date.toString(),
+                )
             },
         )
     }
