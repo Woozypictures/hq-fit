@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             var mode by remember { mutableStateOf(settings.mode) }
             var scheme by remember { mutableStateOf(settings.scheme) }
+            var frosted by remember { mutableStateOf(settings.frosted) }
             var gate by remember { mutableStateOf<DbGate>(DbGate.Loading) }
             LaunchedEffect(Unit) { gate = container.database.start() }
             val dark = when (mode) {
@@ -44,7 +45,7 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
-            HqFitTheme(darkTheme = dark, scheme = scheme) {
+            HqFitTheme(darkTheme = dark, scheme = scheme, frosted = frosted) {
                 // Some schemes are dark whatever the appearance says, so read what was actually applied.
                 SystemBarIcons(HqTheme.colors.dark)
                 Box(Modifier.fillMaxSize().background(HqTheme.colors.page)) {
@@ -60,6 +61,11 @@ class MainActivity : ComponentActivity() {
                             onThemeMode = {
                                 mode = it
                                 settings.mode = it
+                            },
+                            frosted = frosted,
+                            onFrosted = {
+                                frosted = it
+                                settings.frosted = it
                             },
                             scheme = scheme,
                             onScheme = {

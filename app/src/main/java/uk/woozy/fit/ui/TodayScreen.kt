@@ -19,6 +19,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.Icon
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -54,6 +60,7 @@ data class CheckInRow(val key: String, val label: String, val done: Boolean)
  * Today. The workout card reads the calendar; energy, water and steps stay honest empty values until
  * milestones 5 and 7.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TodayScreen(
     onSettings: () -> Unit,
@@ -68,13 +75,33 @@ fun TodayScreen(
     burnedKcal: Double? = null,
     checkIn: List<CheckInRow>? = null,
     onToggleCheckIn: (String, Boolean) -> Unit = { _, _ -> },
+    refreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
     name: String = "Mahesh",
     targets: Targets = Targets(),
 ) {
     val c = HqTheme.colors
+    val context = androidx.compose.ui.platform.LocalContext.current
     val dateLine = remember {
         "TODAY, " + LocalDate.now().format(DateTimeFormatter.ofPattern("MMM d", Locale.UK)).uppercase(Locale.UK)
     }
+    val prefs = remember { context.getSharedPreferences("today", android.content.Context.MODE_PRIVATE) }
+    val defaultOrder = listOf("workout", "energy", "water", "steps", "checkin")
+    var order by remember {
+        mutableStateOf(
+            (prefs.getString("order", null)?.split(',')?.filter { it in defaultOrder }.orEmpty().let { saved -> saved + defaultOrder.filter { it !in saved } }),
+        )
+    }
+    var reordering by remember { mutableStateOf(false) }
+    fun move(key: String, delta: Int) {
+        val i = order.indexOf(key)
+        val j = i + delta
+        if (i < 0 || j !in order.indices) return
+        order = order.toMutableList().also { it[i] = it[j].also { _ -> it[j] = key } }
+        prefs.edit().putString("order", order.joinToString(",")).apply()
+    }
+
+    PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -100,78 +127,94 @@ fun TodayScreen(
             }
         }
 
-        GradientCard(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(20.dp)) {
-                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.1.em)
-                Spacer(Modifier.height(6.dp))
-                SpacedTitle(workoutTitle ?: "Rest day", color = c.onGradient, size = 20.sp)
-                Spacer(Modifier.height(4.dp))
-                HqText(workoutCaption, 13.sp, color = c.onGradient.copy(alpha = 0.8f))
-                if (workoutTitle != null) {
-                    Spacer(Modifier.height(16.dp))
-                    HqPillButton(buttonLabel, onClick = onStartWorkout, style = PillStyle.OnGradient)
-                }
-            }
-        }
-
-        HqCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SectionLabel("Energy")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    EnergyRing("Consumed", formatWhole(eaten), (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.primary)
-                    EnergyRing("Burned", burnedKcal?.let { formatWhole(it) } ?: "0", 0f, c.protein)
-                    val left = targets.energyKcal - eaten
-                    EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(kotlin.math.abs(left)), (left / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.fat)
-                }
-            }
-        }
-
-        HqCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                SectionLabel("Water")
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    repeat(targets.waterGlasses) { i ->
-                        val filled = waterMl >= (i + 1) * targets.waterGlassMl
-                        Icon(
-                            Icons.Rounded.WaterDrop, contentDescription = null, tint = if (filled) c.carbs else c.track,
-                            modifier = Modifier.size(28.dp),
-                        )
+        order.forEach { key ->
+            val visible = key != "checkin" || checkIn != null
+            if (visible) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (reordering) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            androidx.compose.material3.TextButton(onClick = { move(key, -1) }) { HqText("Up", 13.sp, color = c.primary) }
+                            androidx.compose.material3.TextButton(onClick = { move(key, 1) }) { HqText("Down", 13.sp, color = c.primary) }
+                        }
                     }
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    HqText("${formatWhole(waterMl.toDouble())} / ${formatWhole(targets.waterMl.toDouble())} ml", 14.sp, color = c.muted, modifier = Modifier.weight(1f))
-                    HqPillButton("+ ${targets.waterGlassMl} ml", onClick = onAddWater)
-                }
-            }
-        }
-
-        HqCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                SectionLabel("Steps")
-                HqText("${formatWhole((steps ?: 0L).toDouble())} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
-                HqProgressBar(fraction = ((steps ?: 0L).toFloat() / targets.steps).coerceIn(0f, 1f), color = c.primary)
-                if (steps == null) HqText("Allow Health Connect in Settings to see steps.", 12.sp, color = c.muted)
-            }
-        }
-
-        if (checkIn != null) {
-            HqCard(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    SectionLabel("Sunday check-in")
-                    checkIn.forEach { row ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable(role = Role.Checkbox) { onToggleCheckIn(row.key, !row.done) }.padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            androidx.compose.material3.Checkbox(checked = row.done, onCheckedChange = null)
-                            HqText(row.label, 16.sp)
+                    when (key) {
+                        "workout" -> GradientCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(20.dp)) {
+                                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.1.em)
+                                Spacer(Modifier.height(6.dp))
+                                SpacedTitle(workoutTitle ?: "Rest day", color = c.onGradient, size = 20.sp)
+                                Spacer(Modifier.height(4.dp))
+                                HqText(workoutCaption, 13.sp, color = c.onGradient.copy(alpha = 0.8f))
+                                if (workoutTitle != null) {
+                                    Spacer(Modifier.height(16.dp))
+                                    HqPillButton(buttonLabel, onClick = onStartWorkout, style = PillStyle.OnGradient)
+                                }
+                            }
+                        }
+                        "energy" -> HqCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                SectionLabel("Energy")
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                                    EnergyRing("Consumed", formatWhole(eaten), (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.primary)
+                                    EnergyRing("Burned", burnedKcal?.let { formatWhole(it) } ?: "0", 0f, c.protein)
+                                    val left = targets.energyKcal - eaten
+                                    EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(kotlin.math.abs(left)), (left / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.fat)
+                                }
+                            }
+                        }
+                        "water" -> HqCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                SectionLabel("Water")
+                                Row(
+                                    Modifier.fillMaxWidth().semantics { contentDescription = "Water: $waterMl of ${targets.waterMl} millilitres" },
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    repeat(targets.waterGlasses) { i ->
+                                        val filled = waterMl >= (i + 1) * targets.waterGlassMl
+                                        Icon(
+                                            Icons.Rounded.WaterDrop, contentDescription = null, tint = if (filled) c.carbs else c.track,
+                                            modifier = Modifier.size(28.dp),
+                                        )
+                                    }
+                                }
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    HqText("${formatWhole(waterMl.toDouble())} / ${formatWhole(targets.waterMl.toDouble())} ml", 14.sp, color = c.muted, modifier = Modifier.weight(1f))
+                                    HqPillButton("+ ${targets.waterGlassMl} ml", onClick = onAddWater)
+                                }
+                            }
+                        }
+                        "steps" -> HqCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                SectionLabel("Steps")
+                                HqText("${formatWhole((steps ?: 0L).toDouble())} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
+                                HqProgressBar(fraction = ((steps ?: 0L).toFloat() / targets.steps).coerceIn(0f, 1f), color = c.primary)
+                                if (steps == null) HqText("Allow Health Connect in Settings to see steps.", 12.sp, color = c.muted)
+                            }
+                        }
+                        "checkin" -> if (checkIn != null) HqCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                SectionLabel("Sunday check-in")
+                                checkIn.forEach { row ->
+                                    Row(
+                                        Modifier.fillMaxWidth().clickable(role = Role.Checkbox) { onToggleCheckIn(row.key, !row.done) }.padding(vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        androidx.compose.material3.Checkbox(checked = row.done, onCheckedChange = null)
+                                        HqText(row.label, 16.sp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+        androidx.compose.material3.TextButton(onClick = { reordering = !reordering }) {
+            HqText(if (reordering) "Done reordering" else "Reorder cards", 13.sp, color = c.muted)
+        }
         Spacer(Modifier.height(8.dp))
+    }
     }
 }
 

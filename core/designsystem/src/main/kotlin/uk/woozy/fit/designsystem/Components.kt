@@ -40,6 +40,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -69,7 +72,15 @@ fun HqCard(
 ) {
     val c = HqTheme.colors
     val shape = RoundedCornerShape(16.dp)
-    val base = modifier.clip(shape).background(c.card).border(1.dp, c.hairline, shape)
+    val frosted = LocalFrosted.current
+    val base = if (frosted) {
+        // Frosted glass as in HQ: fill 5% to 22% white, rim 23% to 38% white.
+        modifier.clip(shape)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.22f))))
+            .border(1.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.38f), Color.White.copy(alpha = 0.23f))), shape)
+    } else {
+        modifier.clip(shape).background(c.card).border(1.dp, c.hairline, shape)
+    }
     Column(modifier = if (onClick != null) base.clickable(onClick = onClick) else base, content = content)
 }
 
@@ -206,7 +217,10 @@ fun HqRing(
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     val track = HqTheme.colors.track
-    Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
+    Box(
+        modifier = modifier.size(diameter).semantics(mergeDescendants = true) { progressBarRangeInfo = ProgressBarRangeInfo(progress.coerceIn(0f, 1f), 0f..1f) },
+        contentAlignment = Alignment.Center,
+    ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val s = stroke.toPx()
             val inset = s / 2f
@@ -240,6 +254,7 @@ fun HqProgressBar(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
+            .semantics { progressBarRangeInfo = ProgressBarRangeInfo(fraction.coerceIn(0f, 1f), 0f..1f) }
             .clip(CircleShape)
             .background(track),
     ) {

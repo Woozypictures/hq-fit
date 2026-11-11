@@ -105,6 +105,8 @@ fun HqFitRoot(
     container: uk.woozy.fit.AppContainer,
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
+    frosted: Boolean,
+    onFrosted: (Boolean) -> Unit,
     scheme: String,
     onScheme: (String) -> Unit,
 ) {
@@ -115,7 +117,9 @@ fun HqFitRoot(
         runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext)) }
         uk.woozy.fit.CheckInReminder.schedule(syncContext)
     }
-    val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db) {
+    var refreshTick by remember { mutableStateOf(0) }
+    var refreshing by remember { mutableStateOf(false) }
+    val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db, refreshTick) {
         value = runCatching {
             val g = uk.woozy.fit.health.HealthGateway(syncContext)
             if (!g.available) null else g.snapshot(
@@ -180,6 +184,15 @@ fun HqFitRoot(
                     eaten = eatenToday,
                     waterMl = waterToday,
                     onAddWater = { scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) } },
+                    refreshing = refreshing,
+                    onRefresh = {
+                        scope.launch {
+                            refreshing = true
+                            runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext)) }
+                            refreshTick++
+                            refreshing = false
+                        }
+                    },
                     steps = health?.steps,
                     burnedKcal = health?.activeKcal,
                     checkIn = if (LocalDate.now().dayOfWeek == DayOfWeek.SUNDAY) listOf(
@@ -262,6 +275,8 @@ fun HqFitRoot(
                     onThemeMode = onThemeMode,
                     scheme = scheme,
                     onScheme = onScheme,
+                    frosted = frosted,
+                    onFrosted = onFrosted,
                     onBack = { nav.popBackStack() },
                     onDesign = { nav.navigate(Routes.DESIGN) },
                     onScale = { nav.navigate(Routes.SCALE) },

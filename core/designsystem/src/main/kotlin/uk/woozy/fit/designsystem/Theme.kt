@@ -78,6 +78,9 @@ val DarkHqColors = HqColors(
 
 val LocalHqColors = staticCompositionLocalOf { LightHqColors }
 
+/** True for the frosted glass style: dark page, translucent gradient cards. */
+val LocalFrosted = staticCompositionLocalOf { false }
+
 object HqTheme {
     val colors: HqColors
         @Composable @ReadOnlyComposable get() = LocalHqColors.current
@@ -88,8 +91,14 @@ object HqTheme {
  * Athletic, Arcade) stay dark either way, as in HQ; read [HqColors.dark] for what was actually applied.
  */
 @Composable
-fun HqFitTheme(darkTheme: Boolean, scheme: String = DEFAULT_SCHEME, content: @Composable () -> Unit) {
-    val c = HqSchemes.colors(scheme, darkTheme)
+fun HqFitTheme(darkTheme: Boolean, scheme: String = DEFAULT_SCHEME, frosted: Boolean = false, content: @Composable () -> Unit) {
+    val picked = HqSchemes.colors(scheme, darkTheme || frosted)
+    val c = if (!frosted) picked else HqColors(
+        dark = true, page = Color(0xFF2E2E2E), card = Color(0xFF3A3A3A), primary = picked.primary, onPrimary = picked.onPrimary,
+        gradientStart = picked.gradientStart, gradientEnd = picked.gradientEnd, onGradient = picked.onGradient,
+        ink = Color(0xFFF2F2F2), muted = Color(0xFFB4B4B4), hairline = Color(0x3DFFFFFF), track = Color(0x33FFFFFF),
+        protein = picked.protein, carbs = picked.carbs, fat = picked.fat, ok = picked.ok, warn = picked.warn,
+    )
     val materialScheme = if (c.dark) {
         darkColorScheme(
             primary = c.primary, onPrimary = c.onPrimary,
@@ -107,7 +116,7 @@ fun HqFitTheme(darkTheme: Boolean, scheme: String = DEFAULT_SCHEME, content: @Co
             outline = c.hairline, outlineVariant = c.hairline,
         )
     }
-    CompositionLocalProvider(LocalHqColors provides c) {
+    CompositionLocalProvider(LocalHqColors provides c, LocalFrosted provides frosted) {
         MaterialTheme(colorScheme = materialScheme, typography = HqTypography, content = content)
     }
 }

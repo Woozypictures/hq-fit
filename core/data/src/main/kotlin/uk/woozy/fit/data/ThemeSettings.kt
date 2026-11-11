@@ -20,4 +20,11 @@ class ThemeSettings(context: Context) {
         set(value) {
             prefs.edit().putString("scheme", value).apply()
         }
+
+    /** Frosted glass look: dark page, translucent cards. */
+    var frosted: Boolean
+        get() = prefs.getBoolean("frosted", false)
+        set(value) {
+            prefs.edit().putBoolean("frosted", value).apply()
+        }
 }

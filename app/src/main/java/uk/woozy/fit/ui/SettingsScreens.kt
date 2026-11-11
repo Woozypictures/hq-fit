@@ -45,6 +45,8 @@ fun SettingsScreen(
     onThemeMode: (ThemeMode) -> Unit,
     scheme: String,
     onScheme: (String) -> Unit,
+    frosted: Boolean,
+    onFrosted: (Boolean) -> Unit,
     onBack: () -> Unit,
     onDesign: () -> Unit,
     onScale: () -> Unit,
@@ -78,6 +80,16 @@ fun SettingsScreen(
             Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 HqText("Colour scheme", 16.sp, FontWeight.Medium)
                 SchemePicker(selectedKey = scheme, onSelect = onScheme)
+            }
+            androidx.compose.foundation.layout.Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    HqText("Frosted glass", 16.sp, FontWeight.Medium)
+                    HqText("Dark page with translucent cards, as in HQ", 12.sp, color = c.muted)
+                }
+                androidx.compose.material3.Switch(checked = frosted, onCheckedChange = onFrosted)
             }
             ListRow(Icons.Rounded.Palette, "Design components", "Every component, in this theme", onClick = onDesign)
         }
