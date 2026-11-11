@@ -81,6 +81,7 @@ private data class ProgressData(
     val slopePerDay: Double?,
     val goalDate: LocalDate?,
     val kcalDays: List<Double>,
+    val macroDays: List<MacroDay>,
     val kcalLabels: List<String>,
     val kcalTarget: Double?,
     val thisWeekAvg: Double?,
@@ -108,7 +109,12 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
     val days = (13 downTo 0).map { today.minusDays(it.toLong()) }
     // Average of logged days, this week (last 7 days) against the 7 before.
     val diary = db.diary().between(days.first().toString(), days.last().toString()).groupBy { it.date }
-    val kcal = days.map { d -> diary[d.toString()]?.let { Diary.totals(it)[Nutrients.ENERGY] } ?: 0.0 }
+    val dayTotals = days.map { d -> diary[d.toString()]?.let { Diary.totals(it) } }
+    val kcal = dayTotals.map { it?.get(Nutrients.ENERGY) ?: 0.0 }
+    val macroDays = dayTotals.mapIndexed { i, t ->
+        if (t == null) MacroDay(0.0, 0.0, 0.0, 0.0)
+        else MacroDay(kcal[i], (t[Nutrients.PROTEIN] ?: 0.0) * 4, Nutrients.netCarbs(t) * 4, (t[Nutrients.FAT] ?: 0.0) * 9)
+    }
     val target = db.targets().all().firstOrNull { it.key == Nutrients.ENERGY }?.value
 
     val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
@@ -118,7 +124,7 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
     val sets = sessions.flatMap { s -> db.sessions().sets(s.id).filter { it.done && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }.map { s to it } }
     return ProgressData(
         weights = weights, latestKg = latest, slopePerDay = slope, goalDate = goalDate,
-        kcalDays = kcal, kcalLabels = days.map { it.dayOfMonth.toString() }, kcalTarget = target,
+        kcalDays = kcal, macroDays = macroDays, kcalLabels = days.map { it.dayOfMonth.toString() }, kcalTarget = target,
         thisWeekAvg = kcal.takeLast(7).filter { it > 0 }.takeIf { it.isNotEmpty() }?.average(),
         lastWeekAvg = kcal.take(7).filter { it > 0 }.takeIf { it.isNotEmpty() }?.average(),
         weekLabels = weeks.map { it.dayOfMonth.toString() },
@@ -182,7 +188,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                             HqText("Nothing logged yet.", 14.sp, color = c.muted)
                                         } else {
                                             HqText("${formatWhole(logged.average())} kcal average on ${logged.size} logged days", 15.sp, FontWeight.Medium)
-                                            BarChart(d.kcalDays, d.kcalLabels, d.kcalTarget)
+                                            StackedMacroChart(d.macroDays, d.kcalLabels, d.kcalTarget)
                                             val tw = d.thisWeekAvg
                     val lw = d.lastWeekAvg
                     if (tw != null && lw != null) {

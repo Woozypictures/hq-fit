@@ -89,13 +89,17 @@ fun TodayScreen(
     onSteps: () -> Unit = {},
     onDiary: () -> Unit = {},
     today: LocalDate = LocalDate.now(),
+    /** Today's nutrient totals by key, and your set targets (value, kind), for the Nutrients card. */
+    dayTotals: Map<String, Double> = emptyMap(),
+    nutrientTargets: Map<String, Pair<Double, String>> = emptyMap(),
+    onNutrients: () -> Unit = {},
 ) {
     val c = HqTheme.colors
     val dateLine = remember(today) {
         "TODAY, " + today.format(DateTimeFormatter.ofPattern("MMM d", Locale.UK)).uppercase(Locale.UK)
     }
-    val defaultOrder = listOf("workout", "energy", "water", "steps", "checkin")
-    val names = mapOf("workout" to "Today's workout", "energy" to "Energy and macros", "water" to "Water", "steps" to "Steps", "checkin" to "Sunday check-in")
+    val defaultOrder = listOf("workout", "energy", "nutrients", "water", "steps", "checkin")
+    val names = mapOf("workout" to "Today's workout", "energy" to "Energy and macros", "nutrients" to "Highlighted nutrients", "water" to "Water", "steps" to "Steps", "checkin" to "Sunday check-in")
     val cards = rememberCardPrefs("today", defaultOrder)
     var editing by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(editing) { editing = false }
@@ -166,6 +170,27 @@ fun TodayScreen(
                                 uk.woozy.fit.designsystem.MacroBar("Protein", proteinG, targets.proteinG.toDouble(), "g", c.protein)
                                 uk.woozy.fit.designsystem.MacroBar("Net carbs", netCarbsG, targets.netCarbsG.toDouble(), "g", c.carbs)
                                 uk.woozy.fit.designsystem.MacroBar("Fat", fatG, targets.fatG.toDouble(), "g", c.fat)
+                            }
+                        }
+                        "nutrients" -> HqCard(Modifier.fillMaxWidth(), onClick = onNutrients) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                SectionLabel("Highlighted nutrients")
+                                uk.woozy.fit.model.Micros.highlighted.chunked(2).forEach { pair ->
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        pair.forEach { m ->
+                                            val t = nutrientTargets[m.key]
+                                            val (share, over) = uk.woozy.fit.model.Micros.status(m, dayTotals[m.key] ?: 0.0, t?.first, t?.second == "max")
+                                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Row(Modifier.fillMaxWidth()) {
+                                                    HqText(m.label, 13.sp, modifier = Modifier.weight(1f))
+                                                    HqText("${formatWhole(share * 100)}%", 13.sp, FontWeight.Medium, if (over) androidx.compose.ui.graphics.Color(0xFFE5484D) else c.muted)
+                                                }
+                                                uk.woozy.fit.designsystem.HqProgressBar(share.toFloat().coerceIn(0f, 1f), if (over) androidx.compose.ui.graphics.Color(0xFFE5484D) else c.primary)
+                                            }
+                                        }
+                                    }
+                                }
+                                HqText("Red means over the safe upper limit. Tap for every nutrient.", 11.sp, color = c.muted)
                             }
                         }
                         "water" -> HqCard(Modifier.fillMaxWidth()) {

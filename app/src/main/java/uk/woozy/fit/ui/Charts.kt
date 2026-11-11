@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,3 +84,54 @@ fun BarChart(values: List<Double>, labels: List<String>, target: Double? = null,
         }
     }
 }
+
+/**
+ * Calories per day split into protein, carbs and fat, like Cronometer's Calories Consumed chart. Each bar is the
+ * day's logged calories; the three colours share it in proportion to the calories each macro supplied.
+ */
+@Composable
+fun StackedMacroChart(days: List<MacroDay>, labels: List<String>, target: Double? = null, modifier: Modifier = Modifier) {
+    val c = HqTheme.colors
+    if (days.isEmpty()) return
+    val top = maxOf(days.maxOf { it.kcal }, target ?: 0.0, 1.0)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Canvas(Modifier.fillMaxWidth().height(140.dp)) {
+            val slot = size.width / days.size
+            val barW = slot * 0.62f
+            days.forEachIndexed { i, d ->
+                val x = i * slot + (slot - barW) / 2f
+                if (d.kcal <= 0.0) {
+                    drawRoundRect(c.muted.copy(alpha = 0.3f), Offset(x, size.height - 4f), Size(barW, 4f), androidx.compose.ui.geometry.CornerRadius(6f, 6f))
+                    return@forEachIndexed
+                }
+                val h = ((d.kcal / top) * (size.height - 4f)).toFloat()
+                val parts = listOf(d.proteinKcal to c.protein, d.carbsKcal to c.carbs, d.fatKcal to c.fat)
+                val sum = parts.sumOf { it.first }.takeIf { it > 0 }
+                var y = size.height
+                if (sum == null) {
+                    drawRect(c.primary, Offset(x, y - h), Size(barW, h))
+                } else parts.forEach { (v, col) ->
+                    val ph = (h * (v / sum)).toFloat()
+                    if (ph > 0f) { drawRect(col, Offset(x, y - ph), Size(barW, ph)); y -= ph }
+                }
+            }
+            if (target != null) {
+                val ty = size.height - ((target / top) * (size.height - 4f)).toFloat()
+                drawLine(c.muted, Offset(0f, ty), Offset(size.width, ty), strokeWidth = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)))
+            }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            labels.forEach { HqText(it, 10.sp, color = c.muted, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            listOf("Protein" to c.protein, "Carbs" to c.carbs, "Fat" to c.fat).forEach { (n, col) ->
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Canvas(Modifier.height(10.dp).width(10.dp)) { drawCircle(col) }
+                    HqText(n, 12.sp, color = c.muted)
+                }
+            }
+        }
+    }
+}
+
+data class MacroDay(val kcal: Double, val proteinKcal: Double, val carbsKcal: Double, val fatKcal: Double)

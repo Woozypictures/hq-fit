@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -169,6 +170,9 @@ fun HqFitRoot(
     val dayEntries by dayFlow.collectAsState(initial = emptyList())
     val dayTotals = Diary.totals(dayEntries)
     val eatenToday = dayTotals[Nutrients.ENERGY] ?: 0.0
+    val nutrientTargets by produceState(emptyMap<String, Pair<Double, String>>(), route) {
+        value = db.targets().all().associate { it.key to (it.value to it.kind) }
+    }
     val (dayFrom, dayTo) = dayBounds(today)
     val waterFlow = remember(db, dayFrom) { db.water().observeTotal(dayFrom, dayTo) }
     val waterToday by waterFlow.collectAsState(initial = 0)
@@ -225,6 +229,9 @@ fun HqFitRoot(
                     onSteps = { if (!openSamsungHealth(syncContext)) nav.navigate(Routes.HEALTH) },
                     onDiary = { nav.navigateTab(Routes.DIARY) },
                     today = today,
+                    dayTotals = dayTotals,
+                    nutrientTargets = nutrientTargets,
+                    onNutrients = { nav.navigate("${Routes.NUTRIENTS}/$todayText") },
                     checkIn = if (today.dayOfWeek == DayOfWeek.SUNDAY) listOf(
                         "mood" to "Log your mood", "metrics" to "Take body metrics", "photo" to "Progress photo",
                     ).map { (k, l) -> CheckInRow(k, l, ticks.any { it.item == k && it.done }) } else null,
