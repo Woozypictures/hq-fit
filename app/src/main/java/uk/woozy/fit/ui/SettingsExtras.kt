@@ -110,7 +110,7 @@ fun HqConnectionScreen(db: HqFitDatabase, onBack: () -> Unit) {
         val x = s
         if (x == null) HqText("Loading", 14.sp, color = c.muted) else HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                fun line(k: String, v: String) = Row { HqText(k, 14.sp, color = c.muted, modifier = Modifier.weight(1f)); HqText(v, 14.sp, FontWeight.Medium) }
+                @Composable fun line(k: String, v: String) = Row { HqText(k, 14.sp, color = c.muted, modifier = Modifier.weight(1f)); HqText(v, 14.sp, FontWeight.Medium) }
                 line("Date", x.date)
                 line("Energy", "${NumberEntry.format(x.kcal)} / ${x.kcalTarget?.let { NumberEntry.format(it) } ?: "-"} kcal")
                 line("Protein", "${NumberEntry.format(x.proteinG)} / ${x.proteinTarget?.let { NumberEntry.format(it) } ?: "-"} g")
