@@ -114,6 +114,12 @@ interface WaterDao {
     /** Takes back the most recent drink in a window (a mis-tap). */
     @Query("DELETE FROM water_entry WHERE id = (SELECT id FROM water_entry WHERE epochMs >= :from AND epochMs < :to ORDER BY epochMs DESC LIMIT 1)")
     suspend fun deleteLatestBetween(from: Long, to: Long)
+
+    @Query("SELECT * FROM water_entry WHERE epochMs >= :from AND epochMs < :to ORDER BY epochMs DESC LIMIT 1")
+    suspend fun latestBetween(from: Long, to: Long): WaterEntryEntity?
+
+    @Query("DELETE FROM water_entry WHERE id = :id")
+    suspend fun delete(id: Long)
 }
 
 @Dao
@@ -369,6 +375,9 @@ interface SessionDao {
 interface FoodDao {
     @Insert
     suspend fun insert(row: FoodEntity): Long
+
+    @Insert
+    suspend fun insertAll(rows: List<FoodEntity>)
 
     @Update
     suspend fun update(row: FoodEntity)

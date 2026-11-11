@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -71,6 +72,7 @@ fun TodayScreen(
     eaten: Double,
     waterMl: Int,
     onAddWater: () -> Unit,
+    onUndoWater: () -> Unit = {},
     steps: Long? = null,
     burnedKcal: Double? = null,
     checkIn: List<CheckInRow>? = null,
@@ -179,6 +181,8 @@ fun TodayScreen(
                                 }
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     HqText("${formatWhole(waterMl.toDouble())} / ${formatWhole(targets.waterMl.toDouble())} ml", 14.sp, color = c.muted, modifier = Modifier.weight(1f))
+                                    HqPillButton("Undo", onClick = onUndoWater, style = PillStyle.Outline)
+                                    Spacer(Modifier.width(8.dp))
                                     HqPillButton("+ ${targets.waterGlassMl} ml", onClick = onAddWater)
                                 }
                             }

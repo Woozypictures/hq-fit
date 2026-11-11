@@ -188,7 +188,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
                     HqPillButton("+ ${targets.waterGlassMl} ml", onClick = {
                         scope.launch { db.water().insert(WaterEntryEntity(epochMs = waterStamp(date), ml = targets.waterGlassMl)) }
                     }, modifier = Modifier.weight(1f))
-                    HqPillButton("Undo", onClick = { scope.launch { db.water().deleteLatestBetween(from, to) } }, modifier = Modifier.weight(1f), style = PillStyle.Outline)
+                    HqPillButton("Undo", onClick = { scope.launch { undoWater(db, appContext, from, to) } }, modifier = Modifier.weight(1f), style = PillStyle.Outline)
                 }
             }
         }
@@ -542,4 +542,12 @@ fun CustomFoodScreen(db: HqFitDatabase, barcode: String?, onBack: () -> Unit) {
             }, modifier = Modifier.fillMaxWidth())
         }
     }
+}
+
+
+/** Takes back the latest glass in a window, here and in Health Connect. */
+internal suspend fun undoWater(db: uk.woozy.fit.data.db.HqFitDatabase, context: android.content.Context, from: Long, to: Long) {
+    val row = db.water().latestBetween(from, to) ?: return
+    db.water().delete(row.id)
+    runCatching { uk.woozy.fit.health.HealthGateway(context.applicationContext).let { g -> if (g.available) g.deleteWater(row.id) } }
 }

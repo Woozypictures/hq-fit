@@ -184,6 +184,7 @@ fun HqFitRoot(
                     eaten = eatenToday,
                     waterMl = waterToday,
                     onAddWater = { scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) } },
+                    onUndoWater = { scope.launch { undoWater(db, syncContext, dayFrom, dayTo) } },
                     refreshing = refreshing,
                     onRefresh = {
                         scope.launch {

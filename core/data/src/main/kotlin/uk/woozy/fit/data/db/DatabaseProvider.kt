@@ -70,7 +70,7 @@ class DatabaseProvider(private val context: Context) {
         val built = Room.databaseBuilder(context, HqFitDatabase::class.java, dbName)
             .openHelperFactory(SupportOpenHelperFactory(key))
             .build()
-        Seed.run(built, catalogue = { context.assets.open("exercises.tsv").bufferedReader() })
+        Seed.run(built, catalogue = { context.assets.open("exercises.tsv").bufferedReader() }, cofid = { context.assets.open("cofid.tsv").bufferedReader() })
         db = built
     }
 

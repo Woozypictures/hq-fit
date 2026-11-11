@@ -428,4 +428,13 @@ class DatabaseTest {
         val f = Foods.saveDraft(db, FoodDraft("Mystery", "", "1234567", null, "", emptyMap(), true), 1)
         assertEquals(true, db.foods().get(f.id)!!.incomplete)
     }
+
+    @Test
+    fun cofidSeedsOnceAndIsSearchable() = runBlocking {
+        val tsv = "11-1145\tBread, white, average\tcarbs=51.6;energy=236;protein=8.7\n13-145\tAckee, canned, drained\tenergy=151;fat=15.2\n"
+        Seed.run(db, cofid = { java.io.BufferedReader(java.io.StringReader(tsv)) }, today = wednesday)
+        Seed.run(db, cofid = { java.io.BufferedReader(java.io.StringReader(tsv)) }, today = wednesday)
+        assertEquals(2, db.foods().count())
+        assertEquals("cofid", db.foods().search("bread").single().source)
+    }
 }

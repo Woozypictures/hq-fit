@@ -73,7 +73,7 @@ object Seed {
      * Fills what is missing. [catalogue] opens the bundled exercise list (null in tests that do not need it).
      * Each part has its own version row, so an update that adds seed data runs only the new part.
      */
-    suspend fun run(db: HqFitDatabase, catalogue: (() -> BufferedReader)? = null, today: LocalDate = LocalDate.now()) {
+    suspend fun run(db: HqFitDatabase, catalogue: (() -> BufferedReader)? = null, cofid: (() -> BufferedReader)? = null, today: LocalDate = LocalDate.now()) {
         if (db.meta().get("seed") != VERSION) {
             db.nutrients().upsertAll(nutrients)
             // Targets are only filled when missing, so a seed re-run never overwrites something edited later.
@@ -85,11 +85,25 @@ object Seed {
             db.exercises().insertAll(ExerciseCatalogue.parse(catalogue()))
             db.meta().put(MetaEntity("exercises", "1"))
         }
+        if (cofid != null && db.meta().get("cofid") == null) {
+            db.foods().insertAll(parseCofid(cofid()))
+            db.meta().put(MetaEntity("cofid", "1"))
+        }
         if (db.meta().get("programme") == null) {
             seedProgramme(db, today)
             db.meta().put(MetaEntity("programme", "1"))
         }
     }
+
+    /** Reads cofid.tsv (code, name, per-100 g nutrients), see tools/build_cofid.py. */
+    fun parseCofid(reader: BufferedReader, now: Long = System.currentTimeMillis()): List<FoodEntity> =
+        reader.useLines { lines ->
+            lines.mapNotNull { line ->
+                val p = line.split('\t')
+                if (p.size < 3 || p[1].isBlank()) null
+                else FoodEntity(name = p[1], brand = "UK CoFID", source = "cofid", per100 = p[2], createdMs = now)
+            }.toList()
+        }
 
     /** The Full body A / B / C programme from the Everfit handover, scheduled Mon, Wed, Fri from the Monday of [today]'s week. */
     suspend fun seedProgramme(db: HqFitDatabase, today: LocalDate) {

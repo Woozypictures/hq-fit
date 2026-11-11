@@ -182,6 +182,10 @@ class HealthGateway(private val context: Context) {
         client.deleteRecords(NutritionRecord::class, emptyList(), entryIds.map { "hqfit-meal-$it" })
     }
 
+    suspend fun deleteWater(rowId: Long) {
+        client.deleteRecords(HydrationRecord::class, emptyList(), listOf("hqfit-water-$rowId"))
+    }
+
     suspend fun deleteWeights(rowIds: List<Long>) {
         if (rowIds.isEmpty()) return
         client.deleteRecords(WeightRecord::class, emptyList(), rowIds.map { "hqfit-weight-$it" })
