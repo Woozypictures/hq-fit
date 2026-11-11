@@ -107,7 +107,18 @@ fun HqFitRoot(
     androidx.compose.runtime.LaunchedEffect(db) {
         // Send anything new to Health Connect each time the app opens. Failures are shown in Settings, never as crashes.
         runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext)) }
+        uk.woozy.fit.CheckInReminder.schedule(syncContext)
     }
+    val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db) {
+        value = runCatching {
+            val g = uk.woozy.fit.health.HealthGateway(syncContext)
+            if (!g.available) null else g.snapshot(
+                LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant(), java.time.Instant.now(),
+            )
+        }.getOrNull()
+    }
+    val sundayDate = remember { LocalDate.now().with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY)).toString() }
+    val ticks by db.checkIns().observe(sundayDate).collectAsState(initial = emptyList())
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     var quickAdd by remember { mutableStateOf(false) }
@@ -163,6 +174,12 @@ fun HqFitRoot(
                     eaten = eatenToday,
                     waterMl = waterToday,
                     onAddWater = { scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) } },
+                    steps = health?.steps,
+                    burnedKcal = health?.activeKcal,
+                    checkIn = if (LocalDate.now().dayOfWeek == DayOfWeek.SUNDAY) listOf(
+                        "mood" to "Log your mood", "metrics" to "Take body metrics", "photo" to "Progress photo",
+                    ).map { (k, l) -> CheckInRow(k, l, ticks.any { it.item == k && it.done }) } else null,
+                    onToggleCheckIn = { k, v -> scope.launch { db.checkIns().put(uk.woozy.fit.data.db.CheckInEntity(sundayDate, k, v)) } },
                     targets = targets,
                     buttonLabel = if (active != null) "Resume workout" else "View workout",
                     workoutCaption = when {

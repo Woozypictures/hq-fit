@@ -47,6 +47,9 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** One tick box in the Sunday check-in. */
+data class CheckInRow(val key: String, val label: String, val done: Boolean)
+
 /**
  * Today. The workout card reads the calendar; energy, water and steps stay honest empty values until
  * milestones 5 and 7.
@@ -61,6 +64,10 @@ fun TodayScreen(
     eaten: Double,
     waterMl: Int,
     onAddWater: () -> Unit,
+    steps: Long? = null,
+    burnedKcal: Double? = null,
+    checkIn: List<CheckInRow>? = null,
+    onToggleCheckIn: (String, Boolean) -> Unit = { _, _ -> },
     name: String = "Mahesh",
     targets: Targets = Targets(),
 ) {
@@ -112,7 +119,7 @@ fun TodayScreen(
                 SectionLabel("Energy")
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                     EnergyRing("Consumed", formatWhole(eaten), (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.primary)
-                    EnergyRing("Burned", "0", 0f, c.protein)
+                    EnergyRing("Burned", burnedKcal?.let { formatWhole(it) } ?: "0", 0f, c.protein)
                     val left = targets.energyKcal - eaten
                     EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(kotlin.math.abs(left)), (left / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.fat)
                 }
@@ -141,15 +148,29 @@ fun TodayScreen(
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 SectionLabel("Steps")
-                HqText("0 / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
-                HqProgressBar(fraction = 0f, color = c.primary)
+                HqText("${formatWhole((steps ?: 0L).toDouble())} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
+                HqProgressBar(fraction = ((steps ?: 0L).toFloat() / targets.steps).coerceIn(0f, 1f), color = c.primary)
+                if (steps == null) HqText("Allow Health Connect in Settings to see steps.", 12.sp, color = c.muted)
             }
         }
 
-        HqText(
-            "Burned calories and steps fill in at milestone 7.",
-            13.sp, color = c.muted,
-        )
+        if (checkIn != null) {
+            HqCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    SectionLabel("Sunday check-in")
+                    checkIn.forEach { row ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable(role = Role.Checkbox) { onToggleCheckIn(row.key, !row.done) }.padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            androidx.compose.material3.Checkbox(checked = row.done, onCheckedChange = null)
+                            HqText(row.label, 16.sp)
+                        }
+                    }
+                }
+            }
+        }
         Spacer(Modifier.height(8.dp))
     }
 }

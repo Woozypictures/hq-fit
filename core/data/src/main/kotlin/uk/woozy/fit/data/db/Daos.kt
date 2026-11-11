@@ -391,3 +391,15 @@ interface RecurringDao {
     @Query("UPDATE recurring_food SET active = 0 WHERE id = :id")
     suspend fun stop(id: Long)
 }
+
+@Dao
+interface CheckInDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun put(row: CheckInEntity)
+
+    @Query("SELECT * FROM check_in WHERE date = :date")
+    fun observe(date: String): Flow<List<CheckInEntity>>
+
+    @Query("SELECT * FROM check_in WHERE date = :date")
+    suspend fun forDate(date: String): List<CheckInEntity>
+}

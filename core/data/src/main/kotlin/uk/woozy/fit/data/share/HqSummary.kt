@@ -27,6 +27,11 @@ data class HqSummary(
     val workoutTodayDone: Boolean,
     val workoutsDoneThisWeek: Int,
     val workoutsPlannedThisWeek: Int,
+    /** Most recent Sunday on or before today, and which of its check-in items are ticked. */
+    val checkInDate: String,
+    val checkInMood: Boolean,
+    val checkInMetrics: Boolean,
+    val checkInPhoto: Boolean,
 )
 
 object HqSummaryBuilder {
@@ -40,6 +45,8 @@ object HqSummaryBuilder {
         val weight = db.weights().latest()
         val monday: LocalDate = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val week = db.schedule().between(monday.toString(), monday.plusDays(6).toString())
+        val sunday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
+        val ticks = db.checkIns().forDate(sunday.toString()).filter { it.done }.map { it.item }.toSet()
         val todays = week.firstOrNull { it.date == today.toString() }
         return HqSummary(
             date = today.toString(),
@@ -58,6 +65,10 @@ object HqSummaryBuilder {
             workoutTodayDone = todays?.status == "done",
             workoutsDoneThisWeek = week.count { it.status == "done" },
             workoutsPlannedThisWeek = week.count { it.status != "skipped" },
+            checkInDate = sunday.toString(),
+            checkInMood = "mood" in ticks,
+            checkInMetrics = "metrics" in ticks,
+            checkInPhoto = "photo" in ticks,
         )
     }
 }

@@ -225,3 +225,11 @@ data class RecurringFoodEntity(
     /** First date it applies from (ISO). */
     val fromDate: String,
 )
+
+/** Sunday check-in tick boxes. One row per date and item; [item] is mood, metrics or photo. */
+@Entity(tableName = "check_in", primaryKeys = ["date", "item"])
+data class CheckInEntity(
+    val date: String,
+    val item: String,
+    val done: Boolean,
+)
