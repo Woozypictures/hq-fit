@@ -113,7 +113,7 @@ class HealthGateway(private val context: Context) {
             listOf(
                 WeightRecord(
                     time = t, zoneOffset = ZoneId.systemDefault().rules.getOffset(t), weight = Mass.kilograms(kg),
-                    metadata = Metadata.manualEntry(clientRecordId = "hqfit-weight-$rowId"),
+                    metadata = Metadata(clientRecordId = "hqfit-weight-$rowId"),
                 ),
             ),
         )
@@ -128,7 +128,7 @@ class HealthGateway(private val context: Context) {
                 ExerciseSessionRecord(
                     startTime = s, startZoneOffset = zone.getOffset(s), endTime = e, endZoneOffset = zone.getOffset(e),
                     exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING, title = name,
-                    metadata = Metadata.manualEntry(clientRecordId = "hqfit-session-$sessionId"),
+                    metadata = Metadata(clientRecordId = "hqfit-session-$sessionId"),
                 ),
             ),
         )

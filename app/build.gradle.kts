@@ -63,4 +63,5 @@ dependencies {
     implementation(libs.camera.view)
     implementation(libs.mlkit.barcode)
     implementation(libs.health.connect)
+    implementation("com.google.guava:guava:33.3.1-android")
 }
