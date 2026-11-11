@@ -53,7 +53,7 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 | Milestone | State |
 |---|---|
 | 1 Foundation | Built and released. Colour schemes added after |
-| 2 Database and encryption | Built, awaiting CI and phone checks (below). Foundation tables only; each later milestone adds its tables by migration |
+| 2 Database and encryption | Built; CI green (run 5, JVM tests passed). Phone checks 8 to 11 below still open. Foundation tables only; each later milestone adds its tables by migration |
 | 3 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
