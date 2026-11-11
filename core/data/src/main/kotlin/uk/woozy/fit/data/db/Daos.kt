@@ -257,7 +257,7 @@ data class RecordRow(
     val lastMs: Long,
 )
 
-data class HistoryRow(val sessionId: Long, val startedMs: Long, val setIndex: Int, val weightKg: Double, val reps: Int)
+data class HistoryRow(val sessionId: Long, val startedMs: Long, val setIndex: Int, val weightKg: Double, val reps: Int, val sessionName: String = "")
 
 @Dao
 interface SessionDao {
@@ -369,7 +369,7 @@ interface SessionDao {
     fun observeRecords(): Flow<List<RecordRow>>
 
     @Query(
-        "SELECT l.sessionId AS sessionId, s.startedMs AS startedMs, l.setIndex AS setIndex, l.weightKg AS weightKg, l.reps AS reps " +
+        "SELECT l.sessionId AS sessionId, s.startedMs AS startedMs, l.setIndex AS setIndex, l.weightKg AS weightKg, l.reps AS reps, s.name AS sessionName " +
             "FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
             "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL " +
             "ORDER BY s.startedMs DESC, l.setIndex",

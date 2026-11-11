@@ -30,6 +30,11 @@ import uk.woozy.fit.designsystem.HqText
 import uk.woozy.fit.designsystem.HqTheme
 import uk.woozy.fit.designsystem.SectionLabel
 import uk.woozy.fit.model.NumberEntry
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import uk.woozy.fit.model.DayValue
+import uk.woozy.fit.model.SetPoint
+import uk.woozy.fit.model.Strength
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -78,13 +83,43 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
     val c = HqTheme.colors
     val name by produceState("") { value = db.exercises().findById(exerciseId)?.name.orEmpty() }
     val history by produceState(emptyList<HistoryRow>(), exerciseId) { value = db.sessions().exerciseHistory(exerciseId) }
-    val bySession = history.groupBy { it.sessionId }.values
+    // Everfit-style: newest first, each session with its workout name, estimated 1RM and volume.
+    val bySession = history.groupBy { it.sessionId }.values.toList()
+    var range by remember { mutableStateOf(HistoryRange.MONTHS_2) }
+    val cutoff = range.days?.let { System.currentTimeMillis() - it * 86_400_000L } ?: Long.MIN_VALUE
+    val chart = bySession.filter { it.first().startedMs >= cutoff }
+        .map { s -> DayValue(s.first().startedMs / 86_400_000.0, s.maxOf { it.weightKg }) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar(name.ifEmpty { "History" }, onBack) }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            bySession.forEach { sets ->
-                SectionLabel(dateFmt.format(Instant.ofEpochMilli(sets.first().startedMs)))
+            if (bySession.isEmpty()) {
+                HqText("No finished sets yet. History appears after your first workout with this exercise.", 14.sp, color = c.muted)
+            } else {
                 HqCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        HqText("Heaviest set per workout", 15.sp, FontWeight.Medium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            HistoryRange.entries.forEach { r ->
+                                val on = r == range
+                                HqText(r.label, 13.sp, if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) c.primary else c.muted,
+                                    modifier = Modifier.clickable(role = Role.Button) { range = r }.padding(horizontal = 6.dp, vertical = 8.dp))
+                            }
+                        }
+                        if (chart.isEmpty()) HqText("Nothing in this period.", 13.sp, color = c.muted)
+                        else LineChart(chart, goal = null, unit = "kg")
+                    }
+                }
+            }
+            bySession.forEach { sets ->
+                val first = sets.first()
+                val points = sets.map { SetPoint(it.weightKg, it.reps) }
+                val e1rm = points.maxOf { Strength.e1rm(it) }
+                SectionLabel(dateFmt.format(Instant.ofEpochMilli(first.startedMs)) + if (first.sessionName.isNotBlank()) "  ·  ${first.sessionName}" else "")
+                HqCard(Modifier.fillMaxWidth()) {
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                        HqText("1RM est. ${NumberEntry.format(Math.round(e1rm * 10) / 10.0)} kg", 13.sp, color = c.muted)
+                        HqText("Volume ${NumberEntry.format(Math.round(Strength.volume(points)).toDouble())} kg", 13.sp, color = c.muted)
+                    }
                     sets.forEach { s ->
                         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                             HqText("Set ${s.setIndex}", 14.sp, color = c.muted, modifier = Modifier.weight(1f))
@@ -96,3 +131,5 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
         }
     }
 }
+
+private enum class HistoryRange(val label: String, val days: Long?) { MONTH_1("1 month", 31), MONTHS_2("2 months", 62), MONTHS_6("6 months", 183), ALL("All", null) }
