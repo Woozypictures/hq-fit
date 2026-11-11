@@ -60,6 +60,7 @@ private object Routes {
     const val PROGRESS = "progress"
     const val SETTINGS = "settings"
     const val DESIGN = "design"
+    const val SCALE = "scale"
     const val WORKOUT = "workout"
     const val SUMMARY = "summary"
     const val RECORDS = "records"
@@ -228,8 +229,10 @@ fun HqFitRoot(
                     onScheme = onScheme,
                     onBack = { nav.popBackStack() },
                     onDesign = { nav.navigate(Routes.DESIGN) },
+                    onScale = { nav.navigate(Routes.SCALE) },
                 )
             }
+            composable(Routes.SCALE) { ScaleScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.DESIGN) { DesignScreen(onBack = { nav.popBackStack() }) }
             composable(
                 "${Routes.PREVIEW}/{id}",

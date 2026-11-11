@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.Flag
 import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.rounded.MonitorWeight
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.SwapVert
@@ -46,6 +47,7 @@ fun SettingsScreen(
     onScheme: (String) -> Unit,
     onBack: () -> Unit,
     onDesign: () -> Unit,
+    onScale: () -> Unit,
 ) {
     val c = HqTheme.colors
     Column(
@@ -75,6 +77,11 @@ fun SettingsScreen(
                 SchemePicker(selectedKey = scheme, onSelect = onScheme)
             }
             ListRow(Icons.Rounded.Palette, "Design components", "Every component, in this theme", onClick = onDesign)
+        }
+
+        SectionLabel("Body")
+        HqCard(Modifier.fillMaxWidth()) {
+            ListRow(Icons.Rounded.MonitorWeight, "Scale and weight", "Pair your scale, type a weight, weekly reminder", onClick = onScale)
         }
 
         SectionLabel("Coming")

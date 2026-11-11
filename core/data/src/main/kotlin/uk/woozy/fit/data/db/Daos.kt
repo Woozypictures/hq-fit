@@ -80,6 +80,12 @@ interface WeightDao {
 
     @Query("SELECT * FROM weight_entry ORDER BY epochMs DESC LIMIT 1")
     suspend fun latest(): WeightEntryEntity?
+
+    @Query("SELECT COUNT(*) FROM weight_entry WHERE epochMs BETWEEN :from AND :to")
+    suspend fun countBetween(from: Long, to: Long): Int
+
+    @Query("DELETE FROM weight_entry WHERE id = :id")
+    suspend fun delete(id: Long)
 }
 
 @Dao
