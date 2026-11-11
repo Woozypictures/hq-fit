@@ -55,7 +55,7 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 | 1 Foundation | Built and released. Colour schemes added after |
 | 2 Database and encryption | Built; CI green (run 5, JVM tests passed). Phone checks 8 to 11 below still open. Foundation tables only; each later milestone adds its tables by migration |
 | 3 Library, programmes, calendar | First slice built, CI green (run 10, tests passed): library, your Full body A/B/C seeded and scheduled, Train calendar, move a day, Today hero. Editors for workouts and programmes not yet built |
-| 4 Active workout | First slice built, awaiting CI: log sets with the keypad, previous column, rest timer, records, summary. Not yet: swipe actions, replace or add exercise, rest-timer service and notification, edit after saving, history and PR screens |
+| 4 Active workout | First slice built, CI green (run 13, tests passed): log sets with the keypad, previous column, rest timer, records, summary. Not yet: swipe actions, replace or add exercise, rest-timer service and notification, edit after saving, history and PR screens |
 | 5 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
