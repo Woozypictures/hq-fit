@@ -32,3 +32,8 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 }
+
+// Debug and release both write the same schema file; run them one after the other so a read never hits a half-written file.
+afterEvaluate {
+    tasks.findByName("kspReleaseKotlin")?.mustRunAfter("kspDebugKotlin")
+}
