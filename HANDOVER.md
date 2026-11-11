@@ -54,7 +54,7 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 |---|---|
 | 1 Foundation | Built and released. Colour schemes added after |
 | 2 Database and encryption | Built; CI green (run 5, JVM tests passed). Phone checks 8 to 11 below still open. Foundation tables only; each later milestone adds its tables by migration |
-| 3 Library, programmes, calendar | First slice built, awaiting CI: library, your Full body A/B/C seeded and scheduled, Train calendar, move a day, Today hero. Editors for workouts and programmes not yet built |
+| 3 Library, programmes, calendar | First slice built, CI green (run 10, tests passed): library, your Full body A/B/C seeded and scheduled, Train calendar, move a day, Today hero. Editors for workouts and programmes not yet built |
 | 4 to 11 | Not started. Order and scope are in Stage 4 of the Doc |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
@@ -88,7 +88,7 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 
 ## 9. Open items
 
-1. Programme details before milestone 3 (current Everfit programme: Fullbody A, B, C).
+1. Programme details: received 11 Nov 2026 and seeded. Still to confirm on the phone: starting weights, and that the Sunday check-in tasks (mood, metrics, photo) are wanted as reminders in HQ Fit (not built).
 2. Cronometer full export (Servings, Daily Nutrition, Biometrics) and any Everfit history before milestone 9.
 3. Frosted glass style, pull to refresh, drag-to-reorder cards: planned (see "Carried over from HQ" in Stage 4).
 4. `allowBackup` is off until the backup design lands in milestone 9.
