@@ -23,9 +23,12 @@ import androidx.room.RoomDatabase
         ScheduledWorkoutEntity::class,
         WorkoutSessionEntity::class,
         SetLogEntity::class,
+        FoodEntity::class,
+        DiaryEntryEntity::class,
+        RecurringFoodEntity::class,
     ],
-    version = 3,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+    version = 4,
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4)],
     exportSchema = true,
 )
 abstract class HqFitDatabase : RoomDatabase() {
@@ -39,4 +42,7 @@ abstract class HqFitDatabase : RoomDatabase() {
     abstract fun programmes(): ProgrammeDao
     abstract fun schedule(): ScheduleDao
     abstract fun sessions(): SessionDao
+    abstract fun foods(): FoodDao
+    abstract fun diary(): DiaryDao
+    abstract fun recurring(): RecurringDao
 }

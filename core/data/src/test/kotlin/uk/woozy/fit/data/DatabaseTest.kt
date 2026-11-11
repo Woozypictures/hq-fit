@@ -19,6 +19,11 @@ import uk.woozy.fit.data.db.ExerciseCatalogue
 import uk.woozy.fit.data.db.ExerciseEntity
 import uk.woozy.fit.data.db.HqFitDatabase
 import uk.woozy.fit.data.db.Sessions
+import uk.woozy.fit.data.db.Diary
+import uk.woozy.fit.data.db.FoodEntity
+import uk.woozy.fit.data.db.RecurringFoodEntity
+import uk.woozy.fit.model.Meal
+import uk.woozy.fit.model.Nutrients
 import uk.woozy.fit.model.RecordType
 import uk.woozy.fit.data.db.Seed
 import uk.woozy.fit.data.db.TargetEntity
@@ -321,5 +326,87 @@ class DatabaseTest {
         val history = db.sessions().exerciseHistory(ext.exerciseId)
         assertEquals(2, history.size)
         assertEquals(10, history.first().reps)
+    }
+
+    private suspend fun oats() = FoodEntity(
+        name = "Oats", source = "custom", servingG = 40.0, createdMs = 1,
+        per100 = Nutrients.encode(mapOf("energy" to 372.0, "protein" to 11.0, "carbs" to 60.0, "fibre" to 8.0, "fat" to 8.0)),
+    ).let { it.copy(id = db.foods().insert(it)) }
+
+    @Test
+    fun loggingASnapshotScalesFromPer100g() = runBlocking {
+        val food = oats()
+        Diary.log(db, food, 40.0, "2026-11-11", Meal.BREAKFAST, nowMs = 10)
+        val day = db.diary().day("2026-11-11")
+        assertEquals(1, day.size)
+        val n = Nutrients.decode(day.single().nutrients)
+        assertEquals(148.8, n.getValue("energy"), 1e-9)
+        assertEquals(4.4, n.getValue("protein"), 1e-9)
+    }
+
+    @Test
+    fun editingOrDeletingTheFoodNeverChangesPastDays() = runBlocking {
+        val food = oats()
+        Diary.log(db, food, 100.0, "2026-11-11", Meal.BREAKFAST, nowMs = 10)
+        db.foods().update(food.copy(per100 = Nutrients.encode(mapOf("energy" to 999.0))))
+        assertEquals(372.0, Nutrients.decode(db.diary().day("2026-11-11").single().nutrients).getValue("energy"), 0.0)
+    }
+
+    @Test
+    fun changingTheAmountRescalesTheSnapshot() = runBlocking {
+        val food = oats()
+        val id = Diary.log(db, food, 40.0, "2026-11-11", Meal.BREAKFAST, nowMs = 10)
+        Diary.changeAmount(db, id, 80.0, Meal.LUNCH)
+        val e = db.diary().get(id)!!
+        assertEquals(80.0, e.grams!!, 0.0)
+        assertEquals("lunch", e.meal)
+        assertEquals(297.6, Nutrients.decode(e.nutrients).getValue("energy"), 1e-9)
+    }
+
+    @Test
+    fun quickAddWithoutEnergyUsesMacros() = runBlocking {
+        Diary.quickAdd(db, "Mystery bar", mapOf("protein" to 10.0, "carbs" to 20.0, "fat" to 5.0), "2026-11-11", Meal.SNACKS, nowMs = 5)
+        val n = Nutrients.decode(db.diary().day("2026-11-11").single().nutrients)
+        assertEquals(10 * 4 + 20 * 4 + 5 * 9.0, n.getValue("energy"), 0.0)
+    }
+
+    @Test
+    fun dailyTotalsAddUpAHandCheckedDay() = runBlocking {
+        val food = oats()
+        Diary.log(db, food, 50.0, "2026-11-11", Meal.BREAKFAST, nowMs = 1)
+        Diary.log(db, food, 30.0, "2026-11-11", Meal.SNACKS, nowMs = 2)
+        Diary.quickAdd(db, "Coffee", mapOf("energy" to 50.0), "2026-11-11", Meal.SNACKS, nowMs = 3)
+        val totals = Diary.totals(db.diary().day("2026-11-11"))
+        assertEquals(372.0 * 0.8 + 50.0, totals.getValue("energy"), 1e-9)
+        assertEquals(8.8, totals.getValue("protein"), 1e-9)
+    }
+
+    @Test
+    fun repeatRulesLogOncePerDayNeverTwice() = runBlocking {
+        val food = oats()
+        db.recurring().insert(RecurringFoodEntity(foodId = food.id, grams = 10.0, meal = "supplements", fromDate = "2026-11-01"))
+        Diary.applyRepeats(db, "2026-11-11", nowMs = 1)
+        Diary.applyRepeats(db, "2026-11-11", nowMs = 2)
+        assertEquals(1, db.diary().day("2026-11-11").size)
+        Diary.applyRepeats(db, "2026-11-12", nowMs = 3)
+        assertEquals(1, db.diary().day("2026-11-12").size)
+        // before the rule's start date nothing is added
+        Diary.applyRepeats(db, "2026-10-30", nowMs = 4)
+        assertEquals(0, db.diary().day("2026-10-30").size)
+    }
+
+    @Test
+    fun foodSearchFindsByNameAndPutsCustomFirst() = runBlocking {
+        db.foods().insert(FoodEntity(name = "Oat milk", source = "off", per100 = "", createdMs = 1))
+        oats()
+        assertEquals(listOf("Oats", "Oat milk"), db.foods().search("oat").map { it.name })
+    }
+
+    @Test
+    fun waterTotalAndUndo() = runBlocking {
+        db.water().insert(WaterEntryEntity(epochMs = 100, ml = 250))
+        db.water().insert(WaterEntryEntity(epochMs = 200, ml = 250))
+        db.water().deleteLatestBetween(0, 1_000)
+        assertEquals(250, db.water().totalBetween(0, 1_000))
     }
 }

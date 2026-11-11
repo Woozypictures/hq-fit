@@ -59,40 +59,6 @@ private fun TabPage(content: @Composable () -> Unit) {
     }
 }
 
-/** Diary: meal groups as laid out in the spec, empty until milestone 5. */
-@Composable
-fun DiaryScreen(targets: Targets = Targets()) {
-    val c = HqTheme.colors
-    val today = remember { LocalDate.now() }
-    TabPage {
-        ScreenTitle("Diary")
-        HqText(
-            today.format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)),
-            14.sp, FontWeight.Medium, c.primary,
-        )
-        HqCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                SectionLabel("Energy")
-                HqText("0 / ${formatWhole(targets.energyKcal.toDouble())} kcal", 20.sp, FontWeight.SemiBold)
-            }
-        }
-        HqCard(Modifier.fillMaxWidth()) {
-            listOf("Breakfast", "Lunch", "Dinner", "Snacks", "Supplements").forEach { group ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Rounded.Add, contentDescription = null, tint = c.muted, modifier = Modifier.size(22.dp))
-                    Spacer(Modifier.size(12.dp))
-                    HqText(group, 16.sp, FontWeight.Medium, modifier = Modifier.weight(1f))
-                    HqText("0 kcal", 14.sp, color = c.muted)
-                }
-            }
-        }
-        HqText("Logging foods arrives in milestone 5.", 13.sp, color = c.muted)
-    }
-}
-
 /** Progress: the cards from the spec, each saying what feeds it. */
 @Composable
 fun ProgressScreen() {

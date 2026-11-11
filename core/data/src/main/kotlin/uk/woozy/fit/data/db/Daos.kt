@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -88,6 +89,13 @@ interface WaterDao {
 
     @Query("SELECT COALESCE(SUM(ml), 0) FROM water_entry WHERE epochMs >= :from AND epochMs < :to")
     suspend fun totalBetween(from: Long, to: Long): Int
+
+    @Query("SELECT COALESCE(SUM(ml), 0) FROM water_entry WHERE epochMs >= :from AND epochMs < :to")
+    fun observeTotal(from: Long, to: Long): Flow<Int>
+
+    /** Takes back the most recent drink in a window (a mis-tap). */
+    @Query("DELETE FROM water_entry WHERE id = (SELECT id FROM water_entry WHERE epochMs >= :from AND epochMs < :to ORDER BY epochMs DESC LIMIT 1)")
+    suspend fun deleteLatestBetween(from: Long, to: Long)
 }
 
 @Dao
@@ -295,4 +303,70 @@ interface SessionDao {
             "ORDER BY s.startedMs DESC, l.setIndex",
     )
     suspend fun exerciseHistory(exerciseId: Long): List<HistoryRow>
+}
+
+@Dao
+interface FoodDao {
+    @Insert
+    suspend fun insert(row: FoodEntity): Long
+
+    @Update
+    suspend fun update(row: FoodEntity)
+
+    @Query("SELECT * FROM food WHERE id = :id")
+    suspend fun get(id: Long): FoodEntity?
+
+    @Query("SELECT * FROM food WHERE barcode = :barcode LIMIT 1")
+    suspend fun byBarcode(barcode: String): FoodEntity?
+
+    @Query("SELECT * FROM food WHERE name LIKE '%' || :text || '%' OR brand LIKE '%' || :text || '%' ORDER BY (source = 'custom') DESC, name LIMIT 60")
+    suspend fun search(text: String): List<FoodEntity>
+
+    @Query("SELECT COUNT(*) FROM food")
+    suspend fun count(): Int
+}
+
+@Dao
+interface DiaryDao {
+    @Insert
+    suspend fun insert(row: DiaryEntryEntity): Long
+
+    @Insert
+    suspend fun insertAll(rows: List<DiaryEntryEntity>)
+
+    @Query("SELECT * FROM diary_entry WHERE date = :date ORDER BY createdMs, id")
+    fun observeDay(date: String): Flow<List<DiaryEntryEntity>>
+
+    @Query("SELECT * FROM diary_entry WHERE date = :date ORDER BY createdMs, id")
+    suspend fun day(date: String): List<DiaryEntryEntity>
+
+    @Query("SELECT * FROM diary_entry WHERE id = :id")
+    suspend fun get(id: Long): DiaryEntryEntity?
+
+    @Query("UPDATE diary_entry SET grams = :grams, nutrients = :nutrients, meal = :meal WHERE id = :id")
+    suspend fun update(id: Long, grams: Double?, nutrients: String, meal: String)
+
+    @Query("DELETE FROM diary_entry WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("SELECT COUNT(*) FROM diary_entry WHERE date = :date AND recurringId = :recurringId")
+    suspend fun countForRule(date: String, recurringId: Long): Int
+
+    @Query("SELECT * FROM diary_entry WHERE date >= :from AND date <= :to ORDER BY date, createdMs")
+    suspend fun between(from: String, to: String): List<DiaryEntryEntity>
+}
+
+@Dao
+interface RecurringDao {
+    @Insert
+    suspend fun insert(row: RecurringFoodEntity): Long
+
+    @Query("SELECT * FROM recurring_food WHERE active = 1 AND fromDate <= :date")
+    suspend fun activeOn(date: String): List<RecurringFoodEntity>
+
+    @Query("SELECT * FROM recurring_food ORDER BY id")
+    suspend fun all(): List<RecurringFoodEntity>
+
+    @Query("UPDATE recurring_food SET active = 0 WHERE id = :id")
+    suspend fun stop(id: Long)
 }

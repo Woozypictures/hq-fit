@@ -176,3 +176,52 @@ data class SetLogEntity(
     val done: Boolean = false,
     val doneAtMs: Long? = null,
 )
+
+/**
+ * A food, with its nutrients per 100 g in [per100] ("key=value;key=value", see Nutrients). [source] is custom,
+ * off (Open Food Facts), cronometer or bundled. [servingG] is the usual serving, when there is one.
+ */
+@Entity(tableName = "food", indices = [Index("name"), Index("barcode")])
+data class FoodEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val brand: String = "",
+    val barcode: String? = null,
+    val source: String,
+    val servingG: Double? = null,
+    val servingLabel: String = "",
+    val per100: String,
+    /** True when the source left out figures, so totals may be low. */
+    val incomplete: Boolean = false,
+    val createdMs: Long,
+)
+
+/**
+ * One thing eaten. [nutrients] is a snapshot of the amounts actually eaten, taken when it was logged, so editing
+ * or deleting the food later never changes a past day. [foodId] and [grams] are null for a quick add.
+ */
+@Entity(tableName = "diary_entry", indices = [Index("date"), Index("recurringId")])
+data class DiaryEntryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val date: String,
+    val meal: String,
+    val foodId: Long?,
+    val name: String,
+    val grams: Double?,
+    val nutrients: String,
+    val createdMs: Long,
+    /** Set when a repeat rule added this entry, so a day gets each rule once. */
+    val recurringId: Long? = null,
+)
+
+/** A food logged automatically once a day (supplements, a daily coffee). */
+@Entity(tableName = "recurring_food")
+data class RecurringFoodEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val foodId: Long,
+    val grams: Double,
+    val meal: String,
+    val active: Boolean = true,
+    /** First date it applies from (ISO). */
+    val fromDate: String,
+)

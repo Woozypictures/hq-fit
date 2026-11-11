@@ -39,6 +39,10 @@ import uk.woozy.fit.data.db.ScheduledWorkoutEntity
 import uk.woozy.fit.data.db.Sessions
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
+import uk.woozy.fit.data.db.WaterEntryEntity
+import uk.woozy.fit.model.Meal
+import uk.woozy.fit.model.Nutrients
+import uk.woozy.fit.data.db.Diary
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -59,6 +63,8 @@ private object Routes {
     const val WORKOUT = "workout"
     const val SUMMARY = "summary"
     const val RECORDS = "records"
+    const val ADD = "add"
+    const val CUSTOM_FOOD = "customfood"
     const val HISTORY = "history"
     const val PREVIEW = "preview"
     const val LIBRARY = "library"
@@ -108,6 +114,14 @@ fun HqFitRoot(
             nav.navigate("${Routes.WORKOUT}/$id")
         }
     }
+    val targets = rememberTargets(db)
+    val todayText = today.toString()
+    val dayFlow = remember(db) { db.diary().observeDay(todayText) }
+    val dayEntries by dayFlow.collectAsState(initial = emptyList())
+    val eatenToday = Diary.totals(dayEntries)[Nutrients.ENERGY] ?: 0.0
+    val (dayFrom, dayTo) = dayBounds(today)
+    val waterFlow = remember(db) { db.water().observeTotal(dayFrom, dayTo) }
+    val waterToday by waterFlow.collectAsState(initial = 0)
     val todays = calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
     val next = calendar.firstOrNull { it.date > today.toString() && it.status == "planned" }
 
@@ -135,6 +149,10 @@ fun HqFitRoot(
                         else todays?.let { nav.navigate("${Routes.PREVIEW}/${it.id}") }
                     },
                     workoutTitle = active?.name ?: todays?.templateName,
+                    eaten = eatenToday,
+                    waterMl = waterToday,
+                    onAddWater = { scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) } },
+                    targets = targets,
                     buttonLabel = if (active != null) "Resume workout" else "View workout",
                     workoutCaption = when {
                         active != null -> "In progress"
@@ -153,7 +171,27 @@ fun HqFitRoot(
                     onRecords = { nav.navigate(Routes.RECORDS) },
                 )
             }
-            composable(Routes.DIARY) { DiaryScreen() }
+            composable(Routes.DIARY) {
+                DiaryScreen(db = db, onAdd = { meal, date -> nav.navigate("${Routes.ADD}/${meal.key}/$date") })
+            }
+            composable(
+                "${Routes.ADD}/{meal}/{date}?quick={quick}",
+                arguments = listOf(
+                    navArgument("meal") { type = NavType.StringType },
+                    navArgument("date") { type = NavType.StringType },
+                    navArgument("quick") { type = NavType.BoolType; defaultValue = false },
+                ),
+            ) { backStack ->
+                AddFoodScreen(
+                    db = db,
+                    meal = Meal.fromKey(backStack.arguments?.getString("meal").orEmpty()),
+                    date = backStack.arguments?.getString("date") ?: todayText,
+                    startQuick = backStack.arguments?.getBoolean("quick") ?: false,
+                    onBack = { nav.popBackStack() },
+                    onCustom = { nav.navigate(Routes.CUSTOM_FOOD) },
+                )
+            }
+            composable(Routes.CUSTOM_FOOD) { CustomFoodScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.PROGRESS) { ProgressScreen() }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
@@ -217,6 +255,18 @@ fun HqFitRoot(
 
     if (quickAdd) {
         QuickAddSheet(
+            onSearchFood = {
+                quickAdd = false
+                nav.navigate("${Routes.ADD}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText")
+            },
+            onQuickAdd = {
+                quickAdd = false
+                nav.navigate("${Routes.ADD}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText?quick=true")
+            },
+            onWater = {
+                quickAdd = false
+                scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) }
+            },
             onDismiss = { quickAdd = false },
             onStartWorkout = {
                 quickAdd = false
@@ -232,7 +282,13 @@ fun HqFitRoot(
 /** The + menu. Rows light up as the milestone that powers them lands. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickAddSheet(onDismiss: () -> Unit, onStartWorkout: () -> Unit) {
+private fun QuickAddSheet(
+    onSearchFood: () -> Unit,
+    onQuickAdd: () -> Unit,
+    onWater: () -> Unit,
+    onDismiss: () -> Unit,
+    onStartWorkout: () -> Unit,
+) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -240,10 +296,10 @@ private fun QuickAddSheet(onDismiss: () -> Unit, onStartWorkout: () -> Unit) {
     ) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { SectionLabel("Quick add") }
-            ListRow(Icons.Rounded.Search, "Search food", "Arrives in milestone 5", enabled = false)
+            ListRow(Icons.Rounded.Search, "Add food", "Search your foods or create one", onClick = onSearchFood)
             ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Arrives in milestone 6", enabled = false)
-            ListRow(Icons.Rounded.WaterDrop, "Add water", "Arrives in milestone 5", enabled = false)
-            ListRow(Icons.Rounded.EditNote, "Quick add or note", "Arrives in milestone 5", enabled = false)
+            ListRow(Icons.Rounded.WaterDrop, "Add water", "One glass", onClick = onWater)
+            ListRow(Icons.Rounded.EditNote, "Quick add", "A name and calories", onClick = onQuickAdd)
             ListRow(Icons.Rounded.PlayArrow, "Start workout", "Today's workout, or resume the one running", onClick = onStartWorkout)
         }
     }

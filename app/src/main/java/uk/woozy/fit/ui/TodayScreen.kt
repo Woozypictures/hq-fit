@@ -58,6 +58,9 @@ fun TodayScreen(
     workoutTitle: String?,
     workoutCaption: String,
     buttonLabel: String,
+    eaten: Double,
+    waterMl: Int,
+    onAddWater: () -> Unit,
     name: String = "Mahesh",
     targets: Targets = Targets(),
 ) {
@@ -108,9 +111,10 @@ fun TodayScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("Energy")
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    EnergyRing("Consumed", "0", 0f, c.primary)
+                    EnergyRing("Consumed", formatWhole(eaten), (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.primary)
                     EnergyRing("Burned", "0", 0f, c.protein)
-                    EnergyRing("Remaining", formatWhole(targets.energyKcal.toDouble()), 1f, c.fat)
+                    val left = targets.energyKcal - eaten
+                    EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(kotlin.math.abs(left)), (left / targets.energyKcal).toFloat().coerceIn(0f, 1f), c.fat)
                 }
             }
         }
@@ -119,11 +123,18 @@ fun TodayScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SectionLabel("Water")
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    repeat(targets.waterGlasses) {
-                        Icon(Icons.Rounded.WaterDrop, contentDescription = null, tint = c.track, modifier = Modifier.size(28.dp))
+                    repeat(targets.waterGlasses) { i ->
+                        val filled = waterMl >= (i + 1) * targets.waterGlassMl
+                        Icon(
+                            Icons.Rounded.WaterDrop, contentDescription = null, tint = if (filled) c.carbs else c.track,
+                            modifier = Modifier.size(28.dp),
+                        )
                     }
                 }
-                HqText("0 / ${formatWhole(targets.waterMl.toDouble())} ml", 14.sp, color = c.muted)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    HqText("${formatWhole(waterMl.toDouble())} / ${formatWhole(targets.waterMl.toDouble())} ml", 14.sp, color = c.muted, modifier = Modifier.weight(1f))
+                    HqPillButton("+ ${targets.waterGlassMl} ml", onClick = onAddWater)
+                }
             }
         }
 
@@ -136,7 +147,7 @@ fun TodayScreen(
         }
 
         HqText(
-            "Energy and water fill in at milestone 5, steps at 7. Logging a workout arrives in milestone 4.",
+            "Burned calories and steps fill in at milestone 7.",
             13.sp, color = c.muted,
         )
         Spacer(Modifier.height(8.dp))
