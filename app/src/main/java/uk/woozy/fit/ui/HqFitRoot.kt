@@ -62,6 +62,7 @@ private object Routes {
     const val DESIGN = "design"
     const val SCALE = "scale"
     const val HEALTH = "health"
+    const val BACKUP = "backup"
     const val WORKOUT = "workout"
     const val SUMMARY = "summary"
     const val RECORDS = "records"
@@ -95,6 +96,7 @@ private fun NavHostController.navigateTab(route: String) {
 fun HqFitRoot(
     db: HqFitDatabase,
     off: uk.woozy.fit.data.off.OffClient,
+    container: uk.woozy.fit.AppContainer,
     themeMode: ThemeMode,
     onThemeMode: (ThemeMode) -> Unit,
     scheme: String,
@@ -232,8 +234,10 @@ fun HqFitRoot(
                     onDesign = { nav.navigate(Routes.DESIGN) },
                     onScale = { nav.navigate(Routes.SCALE) },
                     onHealth = { nav.navigate(Routes.HEALTH) },
+                    onBackup = { nav.navigate(Routes.BACKUP) },
                 )
             }
+            composable(Routes.BACKUP) { BackupScreen(db = db, container = container, onBack = { nav.popBackStack() }) }
             composable(Routes.HEALTH) { HealthScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.SCALE) { ScaleScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.DESIGN) { DesignScreen(onBack = { nav.popBackStack() }) }

@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
                         DbGate.Ready -> HqFitRoot(
                             db = container.database.db!!,
                             off = container.off,
+                            container = container,
                             themeMode = mode,
                             onThemeMode = {
                                 mode = it

@@ -47,7 +47,7 @@ class SummaryProvider : ContentProvider() {
     companion object {
         const val AUTHORITY = "uk.woozy.fit.summary"
         private const val TODAY = 1
-        private val LOCK = Any()
+        internal val LOCK = Any()
 
         /** Column names HQ should read. [version] lets HQ ignore a layout it does not know. */
         val COLUMNS = arrayOf(

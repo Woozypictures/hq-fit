@@ -56,6 +56,21 @@ class KeyVault(context: Context) {
         return dbKey
     }
 
+    /** The key file without this phone's Keystore part, for a backup. Null when there is none or it was never confirmed. */
+    fun exportForBackup(): String? {
+        val f = read() ?: return null
+        if (f["confirmed"] != "1") return null
+        return (f - "keystore").entries.joinToString("\n") { "${it.key}=${it.value}" }
+    }
+
+    /** Puts a backup's key file in place. The Keystore part is missing, so the next start asks for the recovery key. */
+    fun installFromBackup(text: String) {
+        runCatching { keystore.delete() }
+        val tmp = File(file.parentFile, "dbkey.tmp")
+        tmp.writeText(text.lines().filter { '=' in it && !it.startsWith("keystore=") }.joinToString("\n"))
+        check(tmp.renameTo(file)) { "Could not save the key file" }
+    }
+
     fun wipe() {
         file.delete()
         runCatching { keystore.delete() }

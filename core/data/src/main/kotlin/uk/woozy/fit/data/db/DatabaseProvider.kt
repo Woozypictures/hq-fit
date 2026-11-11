@@ -22,6 +22,7 @@ sealed interface DbGate {
 class DatabaseProvider(private val context: Context) {
     private val vault = KeyVault(context)
     private val dbName = "hqfit.db"
+    private val SCHEMA_VERSION = 4
 
     @Volatile
     var db: HqFitDatabase? = null
@@ -75,6 +76,35 @@ class DatabaseProvider(private val context: Context) {
 
     private fun deleteFiles() {
         context.deleteDatabase(dbName)
+    }
+
+    /** Writes a backup zip of the database and key file. Returns false when there is nothing safe to back up yet. */
+    suspend fun backupTo(out: java.io.OutputStream, nowMs: Long): Boolean = withContext(Dispatchers.IO) {
+        val open = db ?: return@withContext false
+        val keyText = vault.exportForBackup() ?: return@withContext false
+        // Fold the write-ahead log into the main file so the copy is complete.
+        open.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() }
+        uk.woozy.fit.data.backup.Backup.write(context.getDatabasePath(dbName), keyText, SCHEMA_VERSION, nowMs, out)
+        true
+    }
+
+    /**
+     * Replaces everything on this phone with a backup. The old data is gone afterwards. The next start asks for
+     * the backup's recovery key. Throws [uk.woozy.fit.data.backup.InvalidBackupException] for a bad file, before
+     * anything is touched.
+     */
+    suspend fun restoreFrom(input: java.io.InputStream) = withContext(Dispatchers.IO) {
+        val work = java.io.File(context.cacheDir, "restore")
+        work.deleteRecursively()
+        val c = uk.woozy.fit.data.backup.Backup.read(input, work, SCHEMA_VERSION)
+        db?.close()
+        db = null
+        deleteFiles()
+        val target = context.getDatabasePath(dbName)
+        target.parentFile?.mkdirs()
+        c.dbFile.copyTo(target, overwrite = true)
+        vault.installFromBackup(c.keyText)
+        work.deleteRecursively()
     }
 
     fun isWellFormed(input: String) = RecoveryCrypto.isWellFormed(input)
