@@ -52,7 +52,7 @@ Status in one line: every planned feature except the Everfit history import and 
 ## 6. Feature status (all built unless stated)
 
 - Train: Full body A/B/C programme seeded (Mon/Wed/Fri, 10 weeks), week strip, move a day, past workouts, workout and programme editor (rename, sets/reps/weight/rest, reorder, supersets, add via picker, schedule), custom exercises.
-- Live workout: section cards (Warm up / Workout / Cool down) with Start and Complete section, keypad with plus/minus (step set in Settings), previous column, swipe to delete with Undo, set types (warm-up, drop, failure), RPE, replace/add exercise or superset, rest timer with notification and vibration (can be turned off), edit after saving, summary with records (Epley 1RM), exercise history and records screens, exercise pictures and steps (tap an exercise).
+- Live workout: section cards (Warm up / Workout / Cool down) with Start and Complete section, keypad with plus/minus (step set in Settings), previous column, swipe to delete with Undo, Mark all complete per exercise, set types (warm-up, drop, failure), RPE, replace/add exercise or superset, rest timer with notification and vibration (can be turned off), edit after saving, summary with records (Epley 1RM), exercise history and records screens, exercise pictures and steps (tap an exercise).
 - Food: diary, quick add, repeating foods, recipes, barcode scanner (CameraX + ML Kit) with Open Food Facts, custom foods, about 2,850 bundled CoFID foods, full nutrient summary, targets editor, water with undo, Cronometer daily-totals import (about 400 days, one entry per day).
 - Body: scale pairing and live weight, typed weight, weekly weigh-in reminder, Sunday check-in tick boxes with reminder.
 - Today: workout card, energy ring, water, steps and active kcal, check-in; pull to refresh; reorderable cards.
@@ -69,7 +69,7 @@ Status in one line: every planned feature except the Everfit history import and 
 4. HQ app changes: on hold until the chats are merged (section 9).
 5. Exercise pictures cover 239 names (all but Machine-Assisted Pull-Up of the programme); most of OpenGym's names differ from free-exercise-db. Extend `tools/build_exercise_images.py` overrides to add more. Pictures load from raw.githubusercontent.com once, then cache.
 6. Cronometer servings file has no nutrients, so food-level history cannot be rebuilt; day totals only. Cronometer vitamin D IU is converted /40 to mcg; its "Water (g)" is not imported.
-7. Open question to ask Mahesh: should "Complete section" tick skipped sets (currently they stay unticked and do not count)?
+7. Decided 11 Nov: Complete section leaves unticked sets unticked (they do not count). Each exercise has a "Mark all complete" button that ticks its remaining sets (fills target reps, no rest timer).
 
 ## 8. Known risks and limits
 
