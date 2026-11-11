@@ -1,158 +1,108 @@
-# HQ Fit handover
+# HQ Fit handover (merge document)
 
-Owner: Mahesh Sharma. Written 11 Nov 2026. Personal system, single user. The repo is public; nothing secret is in it. Companion to the HQ handover (HQ is the dashboard app; HQ Fit is the training and nutrition app).
+Owner: Mahesh Sharma. Rewritten 11 Nov 2026 to start the merged HQ + HQ Fit chat. Personal system, single user. Repo is public and holds nothing secret. Companion: `claude/hq-handover.md` in the DASHBOARD Project (the HQ dashboard app). Plan: Claude Doc "HQ Fit" https://claude.ai/artifact/BkCFSDBQZRfmNYso315BEy (Stage 3 = screen spec, Stage 4 = build plan).
 
-## 1. Goal
+## 1. What HQ Fit is
 
-One native Android app that replaces Everfit (training) and Cronometer (nutrition), keeps data on the phone, and feeds HQ. Plan and screen spec live in the Claude Doc "HQ Fit" (https://claude.ai/artifact/BkCFSDBQZRfmNYso315BEy): Stages 1 and 2 (audit, architecture), Stage 3 (screen spec), Stage 4 (build plan, 11 milestones). Read Stage 4 before changing anything.
+A native Android app (`uk.woozy.fit`, Kotlin, Jetpack Compose, AGPL-3.0, repo `Woozypictures/hq-fit`) that replaces Everfit (training) and Cronometer (nutrition). Data stays on the phone, encrypted. It writes food, water, weight and workouts to Health Connect and exposes a read-only summary to HQ (`uk.woozy.hq`) through a signature-protected ContentProvider.
 
-## 2. Pieces and where they live
+Status in one line: every planned feature except the Everfit history import and a JSON export is built and compiles (CI run 44 green). Almost nothing has been verified on a real phone; Mahesh has installed it and begun testing (section 10).
 
-| Piece | Where | Notes |
-|---|---|---|
-| App | GitHub `Woozypictures/hq-fit` (public), branch `main` | Kotlin, Jetpack Compose, package `uk.woozy.fit`, AGPL-3.0 |
-| Builds and releases | `.github/workflows/build.yml` | Tests, lint, screenshots, signed APK, release `v0.<run>`; log and screenshots pushed to orphan branch `build-log` |
-| Updates on phone | Obtainium pointed at the repo | Public repo, so no token needed |
-| Signing key | GitHub Actions secrets `HQ_KEYSTORE_B64`, `HQ_KEYSTORE_PASS` (alias `hq`) | Same key as HQ. Not in the repo |
-| Companion app | `Woozypictures/hq`, package `uk.woozy.hq` | See the HQ handover |
+## 2. Pieces
 
-## 3. Data ownership (planned, see Stage 2)
-
-- Samsung Health owns steps, sleep, heart rate and active calories, shared through Health Connect.
-- HQ Fit owns workouts, sets, programmes, PRs, food diary, nutrients, water, targets and bodyweight.
-- Bodyweight: HQ Fit pairs directly with the Kamtron CS20M scale (a Qingniu-family model that openScale decodes) and writes weight to Health Connect. Feelfit and Google Fit are not needed after milestone 7.
-- HQ reads a read-only summary from HQ Fit through a signature-protected provider (milestone 8).
-- Nothing in this list is built yet beyond the shell. See section 7.
-
-## 4. Code structure
-
-- `app`: screens in `ui/`, navigation in `ui/HqFitRoot.kt` (Today, Train, +, Diary, Progress; the active workout is a full-screen route over the tab bar), manual dependency container in `HqFitApplication.kt`.
-- `core/model`: plain Kotlin (`Targets`, `ThemeMode`), with JUnit tests.
-- `core/data`: storage. Preferences only for now (`ThemeSettings`); the encrypted database arrives in milestone 2.
-- `core/designsystem`: theme, colour schemes (`Schemes.kt`), Google Sans, components, the component gallery, Paparazzi screenshot tests.
-- Look: Everfit by default (page `#F6F7FC`, cards white, blue `#2355FB`), plus HQ's 17 colour schemes. Appearance (light, dark, system) is separate from scheme. One font, Google Sans (OFL).
-
-## 5. Build, signing, updates
-
-- CI runs on every push to `main`. Version code is the run number.
-- It runs `:core:model:test`, `:core:designsystem:recordPaparazziDebug`, `:app:lintDebug`, `:app:assembleRelease`, then checks the APK certificate and publishes the release with `app-release.apk` and `screenshots.zip`.
-- Debug a failed build: `git fetch origin build-log && git show origin/build-log:build.log`. Screenshots are under `shots/` on the same branch.
-- Signing key risk: the same as HQ's. If the secret and Mahesh's copy are both lost, updates stop installing in place.
-- The Claude session cannot compile locally (no Android SDK, no access to Google Maven). CI is the compiler; expect an occasional fix-up build.
-
-## 6. Rules carried over from HQ
-
-- A failing source never wipes cached data. A failed write stays queued and retries.
-- No tokens or personal data in logs. Credentials, if any are added later, stay in private app storage.
-- Do not break Obtainium updates: same package ID (`uk.woozy.fit`) and same signing key.
-- Never claim on-device testing. Anything that needs the phone is listed in section 8.
-- Style: no em-dashes, UK English, letter-spaced titles only in the Everfit-style workout headers.
-
-## 7. Status
-
-| Milestone | State |
+| Piece | Where |
 |---|---|
-| 1 Foundation | Built and released. Colour schemes added after |
-| 2 Database and encryption | Built; CI green (run 5, JVM tests passed). Phone checks 8 to 11 below still open. Foundation tables only; each later milestone adds its tables by migration |
-| 3 Library, programmes, calendar | First slice built, CI green (run 10, tests passed): library, your Full body A/B/C seeded and scheduled, Train calendar, move a day, Today hero. Editors for workouts and programmes not yet built |
-| 4 Active workout | First slice built, CI green (run 13, tests passed): log sets with the keypad, previous column, rest timer, records, summary. Not yet: swipe actions, replace or add exercise, rest-timer service and notification, edit after saving, history and PR screens |
-| 4b Active workout, rest of it | Built, CI green (run 15): rest timer notification and alarm, replace and add exercise, records screen, exercise history |
-| 5 Food diary | First slice built, CI green (run 17): diary, add food, quick add, water, repeating foods, nutrient snapshots. Not yet: recipes and meals, targets editor, full nutrient summary |
-| 6 Barcode and food data | Built, CI green (run 18): CameraX and ML Kit scanner, Open Food Facts lookup and search, cached foods, custom foods. No bundled CoFID or USDA database yet (needs your export or a file) |
-| 7 Scale and Health Connect | Built, CI green (runs 20 and 22): Qingniu packet decoder (tested on hand-built frames, not real ones), Bluetooth session, Scale screen with manual entry, packet log and weekly reminder; Health Connect permissions, today's steps, sleep, resting HR and calories, weight import, optional send of weights and workouts. Not yet: nutrition and water writing, mirroring deletes, steps on Today |
-| 8 Provider for HQ | Provider built, CI green (run 23): `content://uk.woozy.fit.summary/today`, signature permission `uk.woozy.fit.permission.READ_SUMMARY`, read-only. HQ side not changed yet |
-| Added after milestone 10 | CI green (runs 28, 29): Cronometer daily-summary importer (one entry per logged day, totals only, about 400 days; the servings file has no nutrient figures so food-level history cannot be rebuilt), food and water sync to Health Connect on from launch (imported Cronometer days are not re-sent), automatic sync each time the app opens, deleted weights and food entries mirrored, steps and active calories on Today, Sunday check-in tick boxes with a Sunday 18:00 reminder and fields in the HQ provider (`checkin_*`). Database is version 5 |
-| 9 Backups and export | Built, CI green (run 25): encrypted backup zip (database plus recovery-wrapped key), nightly alarm around 03:30, optional folder copy, restore with the recovery key, CSV export of weights, diary and sets. Not yet: Everfit importer (the Everfit page could not be read in this session; needs an export or a browser), JSON export |
-| 10 Progress | Charts built, CI green (run 26): weight against 80 kg with trend and forecast date, 14-day calories, 8-week sessions and volume, link to records. Drawn with Canvas, no chart library. Not yet: frosted style, pull to refresh, card reordering, accessibility pass |
-| 11 Switch-over | Checklist below, nothing to build until the phone checks pass |
+| App | GitHub `Woozypictures/hq-fit`, branch `main`; modules `:app`, `:core:model` (JVM), `:core:data` (Room 2.6.1 + SQLCipher 4.6.1), `:core:designsystem` (Paparazzi) |
+| CI | `.github/workflows/build.yml`: tests, lint, screenshots, signed APK, release `v0.<run>`; log and screenshots on orphan branch `build-log` |
+| Updates | Obtainium pointed at the repo (public, no token) |
+| Signing | GitHub Actions secrets `HQ_KEYSTORE_B64`, `HQ_KEYSTORE_PASS` (alias `hq`), same key as HQ. Never put it in a file in the repo or this doc. If the secret and Mahesh's copy are both lost, updates stop installing in place |
+| HQ app | `Woozypictures/hq` (private), see HQ handover |
+| Project docs | DASHBOARD Project: `claude/hq-fit-handover.md` (this), `claude/hq-handover.md` |
 
-Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
+## 3. Data ownership
 
-Done in milestone 2: Room on SQLCipher (`core/data/db`), random 32-byte database key wrapped by an Android Keystore key and by a recovery key (PBKDF2 200k + AES-GCM, `core/data/crypto`), first-run recovery key screen (typed back to confirm), recovery screen for a phone that cannot open the data, seed of 37 nutrients with Health Connect field names and the starting targets. Tables so far: nutrient, target, exercise, weight_entry, water_entry, meta. Not yet seeded: the exercise library (arrives with milestone 3, where it is first used). Tests: recovery crypto on the JVM, DAOs and seed on an in-memory Room database through Robolectric. Encryption on disk is not covered by tests because SQLCipher needs the phone's native library.
+- Samsung Health owns steps, sleep, resting HR, active calories (read via Health Connect).
+- HQ Fit owns workouts, sets, programmes, PRs, food diary, nutrients, water, targets, bodyweight, check-ins.
+- Bodyweight comes from the Kamtron CS20M scale paired directly (Qingniu/QN protocol, ported from openScale, credited in NOTICE), plus weights other apps put in Health Connect.
+- Health Connect writes: weights, workouts, food (`NutritionRecord`), water. Records carry `clientRecordId` `hqfit-weight|session|meal|water-<rowId>`; meals and workouts also a rising `clientRecordVersion` so edits update. Reads skip the app's own package. Imported Cronometer day totals are not re-sent.
+- Provider for HQ: `content://uk.woozy.fit.summary/today`, permission `uk.woozy.fit.permission.READ_SUMMARY` (signature), read-only. Columns: date, kcal, protein_g, net_carbs_g, fat_g, water_ml, kcal_target, protein_target_g, net_carbs_target_g, fat_target_g, weight_kg, weight_at_ms, workout_today, workout_today_done, workouts_done_week, workouts_planned_week, checkin_date, checkin_mood, checkin_metrics, checkin_photo, version(=1). Empty cursor when the database cannot be opened.
+- Targets: 2,297 kcal, 150 g protein, 260 g net carbs, 70 g fat, 8,500 steps, 8 x 250 ml water, goal 87.4 to 80 kg. Net carbs = carbs minus fibre.
 
-Done in milestone 3 (first slice, database version 2): bundled exercise library (about 5,600 entries, text from the openGym catalogue, no pictures yet), search with muscle and equipment filters, and your Full body A / B / C programme from the Everfit handover seeded exactly (warm up, prehab, five movements, arm superset, cool down, rest times, notes), scheduled Mon / Wed / Fri for 10 weeks from the first run. Train shows the week strip and coming-up list; tap a day to see the workout by section; Move to another day keeps the original date; Today shows today's workout. Starting weights for Romanian deadlift (10 kg per dumbbell) and hip thrust (40 kg) are guesses, as in the handover.
+## 4. Code map
 
-Not in this slice (still milestone 3): workout editor, programme editor (copy day or week, duplicate), custom exercises with photo or clip, drag to reschedule, exercise stills, percent-of-1RM and RIR targets. The Start workout button opens the placeholder until milestone 4.
+- `app/ui/`: `HqFitRoot.kt` (navigation, tabs Today/Train/+/Diary/Progress, routes), `TodayScreen`, `TrainScreens`, `WorkoutScreen` (section cards, keypad, set types, RPE), `EditorScreens` (workout editor, custom exercise), `PastWorkouts`, `FoodScreens`, `FoodExtras` (recipes, nutrient summary, targets editor), `TabScreens` (Progress) + `Charts.kt` (Canvas), `ScaleScreen`, `HealthScreen`, `BackupScreen`, `SettingsScreens`/`SettingsExtras` (Profile, Workout, HQ connection), `ExerciseMedia` (pictures).
+- `app/`: `SummaryProvider`, `BackupRunner` (+ nightly alarm 03:30), `WeighInReminder`, `CheckInReminder` (Sunday 18:00), `RestTimer`, `health/HealthGateway` + `HealthSync`, `scale/ScaleSession` (GATT).
+- `core/data`: `db/` (entities, DAOs, `HqFitDatabase`, `DB_VERSION`, `Seed`, `DatabaseProvider`), `crypto/` (KeyVault, recovery key), `scale/QnProtocol` (pure, tested), `backup/`, `imports/CronometerImport`, `share/HqSummary`, `off/` (Open Food Facts), assets `exercises.tsv` (about 5,600, OpenGym text), `cofid.tsv`.
+- `core/model`: pure Kotlin (Targets, Nutrients, Trend, Scheduler, programme, NumberEntry).
+- `tools/`: `build_cofid.py`, `build_exercise_images.py` (regenerate assets from source files).
+- Look: Everfit by default (page #F6F7FC, white cards, blue #2355FB) plus HQ's 17 schemes; appearance separate from scheme; optional Frosted glass (dark #2E2E2E, translucent cards). Font Google Sans (OFL).
+- Encryption: random 32-byte DB key wrapped by the Android Keystore and by a recovery key (PBKDF2 200k + AES-GCM). Backup file `.hqfitbak` = encrypted DB + recovery-wrapped key; opens only with the recovery key.
+- Database version 6 with AutoMigrations 1 to 6. After bumping `DB_VERSION`, copy the generated schema: `git show origin/build-log:shots/schemas/uk.woozy.fit.data.db.HqFitDatabase/N.json > core/data/schemas/.../N.json` (a test fails if it is missing). New entity fields go last with defaults (BackupTest uses positional constructors).
 
-Done in milestone 4 (first slice, database version 3): start a workout from Train or Today (Resume workout if one is running); sections, supersets and notes as in your programme; set table with a PREVIOUS column (same set number last time) and weight starting from last time's weight; our keypad with plus/minus 2.5 kg or 1 rep; ticking a set fills the target reps if you did not type any and starts the rest timer (vibrates at zero); Add set and Delete last set; screen stays on; every change is saved straight away, so closing the app leaves the session as it was; Finish (warns about unticked sets) or Discard; summary with time, sets, volume, new records (heaviest, estimated 1RM, best set volume, judged against earlier sessions only, so the first time is a baseline) and a 1 to 5 feeling. Finishing marks the calendar day done. Estimated 1RM uses Epley.
+## 5. Working rules for the next session
 
-Not in this slice (rest of milestone 4): swipe to delete with Undo, Replace, Add exercise before or after, Add superset, Mark all, section-complete celebration, set types in the UI (drop, failure, warm-up) and RPE or RIR entry, the rest timer as a foreground service with a notification (for now it only runs while the app is open), editing a finished workout, exercise history and personal records screens.
+- CI is the compiler (no Android SDK or Google Maven in the sandbox). Loop: push to `main`; `until git fetch -q origin build-log:refs/remotes/origin/build-log -f && git show origin/build-log:status.txt | grep -q "$sha"; do sleep 20; done`; then print `status.txt` and `grep -E "^e: |FAILED"` on `build.log`. Use a 600000 ms timeout; bare `sleep` is blocked. Expect an occasional fix-up build.
+- Commit trailer: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` and the Claude-Session line.
+- Keep this file current in the repo and in the Project (`Projects project_write` with `local_path` as an absolute path).
+- Never claim on-device testing. Style: UK English, no em-dashes.
+- Kotlin/Compose gotchas hit: cross-module smart casts (copy to a local val); named arguments for entity constructors; icon `EventRepeat` needs its extension import (use `CalendarMonth`); `combinedClickable`/`SwipeToDismissBox` need `@OptIn`; local functions that call composables must be `@Composable`; do not read `LocalContext` inside a click lambda.
+- Obtainium: same package id and signing key, never change either.
+- A failing source never wipes cached data; no tokens or personal data in logs.
 
-Not done and not faked: every screen shows empty values with an "arrives in milestone N" caption. Nothing logs data yet.
+## 6. Feature status (all built unless stated)
 
-## 8. Needs checking on the phone (never tested on a device by Claude)
+- Train: Full body A/B/C programme seeded (Mon/Wed/Fri, 10 weeks), week strip, move a day, past workouts, workout and programme editor (rename, sets/reps/weight/rest, reorder, supersets, add via picker, schedule), custom exercises.
+- Live workout: section cards (Warm up / Workout / Cool down) with Start and Complete section, keypad with plus/minus (step set in Settings), previous column, swipe to delete with Undo, set types (warm-up, drop, failure), RPE, replace/add exercise or superset, rest timer with notification and vibration (can be turned off), edit after saving, summary with records (Epley 1RM), exercise history and records screens, exercise pictures and steps (tap an exercise).
+- Food: diary, quick add, repeating foods, recipes, barcode scanner (CameraX + ML Kit) with Open Food Facts, custom foods, about 2,850 bundled CoFID foods, full nutrient summary, targets editor, water with undo, Cronometer daily-totals import (about 400 days, one entry per day).
+- Body: scale pairing and live weight, typed weight, weekly weigh-in reminder, Sunday check-in tick boxes with reminder.
+- Today: workout card, energy ring, water, steps and active kcal, check-in; pull to refresh; reorderable cards.
+- Progress: weight vs 80 kg with trend and forecast date, 14-day calories, 8-week sessions and volume.
+- Health Connect: permissions, steps/sleep/HR/kcal read, weights imported from other apps, food/water/weights/workouts written (last 3 days on each open, full 90 days weekly).
+- Backups: manual and nightly encrypted backups (last 7 local plus optional folder), restore with recovery key, CSV exports (weights, diary, sets).
+- Settings: appearance, colour scheme (18), Frosted glass, Targets, Scale, Health Connect, Backup, Profile, Workout, HQ connection (live preview of the provider output), Import and export (opens Backup).
 
-1. The APK installs next to HQ and opens.
-2. Five tabs open; the + opens the Quick add sheet; Start workout opens the full-screen placeholder and Close returns.
-3. Settings (your initial on Today): Appearance Light, Dark and System switch the look; the choice survives closing the app.
-4. Colour scheme picker: all 18 swatches scroll and apply; dark-native schemes (Digital, Noir, Athletic, Arcade) stay dark in Light appearance, as in HQ.
-5. Status bar and gesture bar icons stay readable in light and dark schemes.
-6. Obtainium finds the repo and updates in place.
-7. Settings > Design components renders without crashing and scrolls.
-8. First launch shows "Protect your data"; the recovery key appears, a wrong retype is refused, the right one opens Today. Write the key down.
-9. Close and reopen: no prompt, straight to Today. Clear nothing; this proves the Keystore path.
-10. Optional proof of encryption: with a file manager on a rooted device or `adb run-as uk.woozy.fit`, `databases/hqfit.db` is not readable as SQLite.
-12. Train: the week strip shows dots on Mon, Wed, Fri; tap a day opens the workout with sections, supersets and notes matching Everfit.
-13. Workout screen: Move to another day changes the date; the Train list shows "moved from".
-14. Today shows today's workout (or the next one on a rest day).
-15. Exercise library: search "squat", filter by muscle and equipment; scrolling 100 rows is smooth.
-17. Workout: start Fullbody B (Train or Today). Tick a set: the reps fill from the target and the rest timer shows in the header; leaving the app and coming back keeps everything; "Resume workout" appears on Today.
-18. Keypad: tap weight or reps, type, plus and minus step by 2.5 kg or 1 rep, Done moves from weight to reps. The set table is not covered by the keypad.
-19. Finish: summary shows time, sets and volume; a second session with heavier weights shows records; the day on Train turns green.
-20. Discard: removes the session and the day stays planned.
-16. First launch after updating from the previous version keeps your data (database upgrade 1 to 2) and adds the library and programme.
-21. Rest notification: tick a set, leave the app; a countdown notification appears, and "Rest over" with a vibration when it ends. Allow notifications when asked.
-22. Replace and add exercise in a workout; Records and exercise history screens show finished sessions.
-23. Diary: add food, quick add, change an amount, add water, repeating foods appear once per day.
-24. Scanner: the camera permission prompt appears; a barcode looks the food up on Open Food Facts; search works; a found food is cached and works offline.
-25. Scale (Settings > Scale and weight): allow Bluetooth when asked; Find scale lists the scale after you step on it; tap it; the weight appears and saves once it settles. If it does not pair, open the packet log on that screen and send it to Claude. Body composition is not read.
-26. Typed weight saves and can be deleted. Weekly reminder: turn it on, set a day and hour, allow notifications; it appears on that day.
-27. Health Connect (Settings): Grant access; today's steps, sleep, resting HR and calories show; "Sync now" imports Feelfit weights and, with the switch on, sends weights and workouts without duplicating on a second sync.
-28. HQ provider: needs HQ changed to read it. Until then nothing can be checked on the phone.
+## 7. Not built, and decisions
 
-29. Backup (Settings > Backup and restore): Back up now reports success; choose a folder and run again, the file appears there. Nightly switch on; next morning the status line shows a 03:30 backup.
-30. Restore: copy a backup file, tap Restore, the app restarts and asks for the recovery key; the right key brings back your data. Try this on a spare phone or accept it replaces the current data.
-31. CSV export of weights, diary and sets opens in a spreadsheet.
-32. Progress: weight chart shows your weigh-ins and the 80 kg line; calories and training charts fill as you log.
+1. Everfit history import. Everfit does not export; screenshots only. Mahesh will prompt a browser session from his personal PC (MAHESH-PC); Claude should read the exercise metrics for his client account `https://app.everfit.io/home/client/6593ff40354fc4001f737a63/metrics?tab=exercise` and import PRs/history. No browser was reachable from the earlier session.
+2. JSON export (CSV and encrypted backup exist).
+3. Custom exercise photos or clips: not wanted for now.
+4. HQ app changes: on hold until the chats are merged (section 9).
+5. Exercise pictures cover 239 names (all but Machine-Assisted Pull-Up of the programme); most of OpenGym's names differ from free-exercise-db. Extend `tools/build_exercise_images.py` overrides to add more. Pictures load from raw.githubusercontent.com once, then cache.
+6. Cronometer servings file has no nutrients, so food-level history cannot be rebuilt; day totals only. Cronometer vitamin D IU is converted /40 to mcg; its "Water (g)" is not imported.
+7. Open question to ask Mahesh: should "Complete section" tick skipped sets (currently they stay unticked and do not count)?
 
-11. If the app is force-closed while the recovery key is on screen, the next launch makes a new key (the unconfirmed one held no data).
+## 8. Known risks and limits
 
-## 9. Open items
+- Everything below runs on assumptions until tested on the phone: the QN packet decoder (hand-built frames only), Health Connect writes and permission flow, backup/restore, nightly alarm, provider, Cronometer import, section cards, pictures.
+- A restore that fails after the old data is deleted cannot roll back.
+- GATT status 133 on first scale connect is logged but not retried.
+- Food search ranks by name only; with CoFID loaded generic searches return many near matches (limit 60).
+- Carbs for CoFID foods are stored as CoFID carbohydrate plus fibre so net carbs equal CoFID's figure.
 
-1. Programme details: received 11 Nov 2026 and seeded. Still to confirm on the phone: starting weights, and that the Sunday check-in tasks (mood, metrics, photo) are wanted as reminders in HQ Fit (not built; still unanswered).
-2. Food database: done (CoFID bundled, item 43). Everfit history: to be read from the browser from his personal PC.
-3. Frosted glass style, pull to refresh, reorderable cards: done (items 40, 41).
-4. `allowBackup` is off until the backup design lands in milestone 9.
-6. Leftovers: workout and programme editors, custom exercises with photos, swipe actions, set types and RPE, recipes and meals, targets editor, steps on Today, Vico charts.
-7. HQ needs a small change to read the summary provider and drop its own nutrition reads once you switch over.
-5. Exercise media: no licensed animations; text from OpenGym's catalogue, stills from free-exercise-db, own clips later.
+## 9. Merge plan with HQ
 
-## 10. Switch-over checklist (milestone 11)
+Both apps share a signing key, so the provider permission works. Work to do in the merged chat:
+1. HQ reads `content://uk.woozy.fit.summary/today` (needs `<uses-permission android:name="uk.woozy.fit.permission.READ_SUMMARY"/>` and a `<queries>` entry for `uk.woozy.fit`), shows kcal/macros against targets, water, weight, today's workout and weekly count, and the Sunday check-in boxes in the Health/Fitness tab; ignore rows whose `version` it does not know.
+2. HQ stops reading nutrition and weight from Health Connect once HQ Fit is the source (avoid double counting).
+3. Decide whether HQ's Fitness sub-page needs anything else from HQ Fit (extend the provider, bump `version`).
+4. Then run the switch-over checklist (section 11).
 
-Do these in order, only after the phone checks above pass.
+## 10. Phone checks (renumbered; none confirmed by Claude)
 
-1. Run both apps side by side for a week: log the same food in Cronometer and HQ Fit and compare totals.
-2. Import weight history from Health Connect (Settings > Health Connect > Sync now) before removing Feelfit.
-3. Take a backup and restore it once, so you know the recovery key works.
-4. Turn on the HQ Fit nightly backup folder.
-5. Change HQ to read `content://uk.woozy.fit.summary/today` and stop reading nutrition from Health Connect.
-6. Only then stop using Cronometer and Everfit. Nutrition and water writing to Health Connect is not built; HQ gets food totals from the provider instead.
+Foundation: 1 APK installs next to HQ and opens; 2 five tabs, + menu, Settings; 3 light/dark/system persists; 4 all 18 colour schemes, dark-native stay dark; 5 status/gesture bar icons readable; 6 Obtainium updates in place; 7 Settings > Design components opens.
+Data and security: 8 first launch shows "Protect your data", wrong retype refused, right one opens Today (write the key down); 9 reopen goes straight to Today; 10 force-closing while the key is on screen makes a new key next launch; 11 update from an older build keeps data.
+Train and workout: 12 Train shows Mon/Wed/Fri dots and sections/supersets match Everfit; 13 Move to another day; 14 Today shows the workout; 15 exercise library search; 16 start Fullbody B, tick a set (reps fill, rest timer, notification, vibration at zero), leave and return, Resume workout appears; 17 keypad and step setting; 18 swipe set to delete with Undo, long-press set for type and RPE; 19 section cards: Start, Complete section, last section finishes; 20 tap an exercise for pictures and steps (needs connection once); 21 Finish shows time, sets, volume, records; Discard keeps the day planned; edit a finished workout; 22 replace/add exercise; Records and history screens; 23 New workout, Edit workout, New exercise, Past workouts.
+Food: 24 add food, quick add, change amount, water + Undo (also gone from Health Connect), repeating foods; 25 barcode scan, search, offline cache; 26 search "bread" (CoFID) and log 100 g; 27 Create a recipe; All nutrients summary; Targets editor.
+Body and sync: 28 Scale: Bluetooth permission, Find scale after stepping on, live weight saves once settled; if it fails send the packet log; 29 typed weight and delete; weekly reminder; 30 Health Connect grant, steps/sleep/HR/kcal, Sync now imports weights, food/water/weights/workouts appear and are not duplicated, Cronometer-era days not re-sent; 31 delete a weight or diary entry removes it from Health Connect; 32 Today steps and kcal; Sunday check-in and 18:00 reminder.
+Backup: 33 Back up now, folder copy, nightly status after 03:30; 34 Restore on a spare phone (asks for the recovery key); 35 Cronometer import adds about 400 days, running twice adds nothing; 36 CSV export opens in a spreadsheet; 37 Progress charts fill as you log.
+Polish: 38 pull to refresh, reorder cards; 39 Frosted glass toggle; 40 Profile name on Today; HQ connection preview matches the day.
+HQ link: needs the HQ change first (section 9).
 
-## 11. Added late (check on the phone)
+## 11. Switch-over checklist
 
-33. Settings > Backup and restore > Import from Cronometer: choose the daily summary CSV; about 400 days appear in the Diary and the Progress charts. Running it again adds nothing.
-34. Health Connect: after granting access, opening the app sends food, water, weights and workouts. Check they show in Health Connect and that HQ does not double count Cronometer-era days (imported days are not re-sent).
-35. Today shows steps and active calories from Health Connect. On a Sunday the check-in tick boxes appear; the reminder fires at 18:00.
-36. Deleting a weight or a diary entry removes it from Health Connect too. Undoing water does not yet.
-37. Workout editor: Train > New workout, or Edit workout in a preview. Rename, change sets/reps/weight/rest, move up/down, superset toggle, add via picker, schedule on the calendar. Train also has Past workouts and New exercise (custom).
-38. Active workout: swipe a set to delete (Undo bar appears). Long-press a set for type (warm-up, drop, failure) and RPE 6 to 10. A finished session can be edited with Edit sets; duration stays fixed. Database is now version 6.
-39. Food: Add food > Create a recipe (ingredients in grams, cooked weight, servings). Diary > All nutrients shows the grouped summary against targets. Settings > Targets edits energy, macros, steps, water glasses and other nutrients (Aim for / Stay under).
-40. Today: pull down to refresh (also syncs Health Connect). Reorder cards toggles Up/Down buttons per card; the order is remembered.
-41. Settings > Frosted glass: dark page with translucent cards as in HQ. Progress bars and rings announce their value to TalkBack.
-42. Water: Undo on Today and in the Diary removes the latest glass here and from Health Connect.
-43. Food search now includes about 2,850 UK CoFID 2021 foods (brand "UK CoFID", per 100 g, built by tools/build_cofid.py into assets/cofid.tsv; "Tr" is 0, "N" is left out; carbs = CoFID carbohydrate + fibre so net carbs match CoFID). Check: search "bread", log 100 g, and the numbers look sane. Alcoholic drinks are per 100 ml in the source.
-44. Still not done: Everfit history import (screenshots only; he will prompt a browser session from MAHESH-PC); JSON export. Custom exercise photos are not wanted for now. HQ app changes are on hold until the chats are merged.
-45. Review pass (run 41): Health Connect sync now sends 3 days on each app open and a full 90 days at most weekly (avoids write rate limits); meals and workouts carry a rising clientRecordVersion so an edit updates the Health Connect record (without it edits were ignored); the database opens once even if the HQ provider and the screen ask together; the schema version is one constant (DB_VERSION) with a test that its schema JSON is committed; the scale notification buffer is copied before use. Known and left: a failed restore after the old data is deleted cannot roll back; GATT status 133 on first connect is logged but not retried (try again if it happens).
-46. Settings "Coming" rows replaced: Profile (name shown on Today, height), Workout (keypad weight step, rest timer on/off), HQ connection (live preview of what the provider returns; HQ itself is not changed yet), Import and export (opens Backup, which holds the Cronometer import and CSV).
-47. Live workout is now section cards as in Everfit: swipe or tap Warm up / Workout / Cool down; each section shows its exercises with a Start button, then the sets, then Complete section, which slides to the next. The last section's button finishes the workout. Sections already started or finished are remembered from ticked sets.
-48. Exercise pictures: 239 exercise names (all but 3 of the programme's) are mapped to free-exercise-db stills (tools/build_exercise_images.py). They load from raw.githubusercontent.com the first time and are cached by Coil, so they need a connection once. Thumbnails show in the workout, the picker and the Start cards; tap an exercise in a workout for both pictures and the steps. Not mapped: Machine-Assisted Pull-Up and most of OpenGym's 5,600-name catalogue (names differ). Check: open a workout, tap an exercise name.
+1. Run both apps side by side for a week (same food in Cronometer and HQ Fit, compare totals).
+2. Sync Health Connect to bring in Feelfit weight history before removing Feelfit.
+3. Take a backup and restore it once.
+4. Turn on the nightly backup folder.
+5. Change HQ (section 9), confirm no double counting.
+6. Only then stop using Cronometer and Everfit (after the Everfit history import).
