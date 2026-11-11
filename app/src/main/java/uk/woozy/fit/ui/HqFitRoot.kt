@@ -64,6 +64,9 @@ private object Routes {
     const val HEALTH = "health"
     const val BACKUP = "backup"
     const val EDIT = "edit"
+    const val RECIPE = "recipe"
+    const val NUTRIENTS = "nutrients"
+    const val TARGETS = "targets"
     const val PAST = "past"
     const val NEW_EXERCISE = "newexercise"
     const val WORKOUT = "workout"
@@ -206,7 +209,7 @@ fun HqFitRoot(
                 )
             }
             composable(Routes.DIARY) {
-                DiaryScreen(db = db, onAdd = { meal, date -> nav.navigate("${Routes.ADD}/${meal.key}/$date") })
+                DiaryScreen(db = db, onAdd = { meal, date -> nav.navigate("${Routes.ADD}/${meal.key}/$date") }, onNutrients = { nav.navigate("${Routes.NUTRIENTS}/$it") })
             }
             composable(
                 "${Routes.ADD}/{meal}/{date}?quick={quick}",
@@ -224,6 +227,7 @@ fun HqFitRoot(
                     off = off,
                     onBack = { nav.popBackStack() },
                     onCustom = { nav.navigate(Routes.CUSTOM_FOOD) },
+                    onRecipe = { nav.navigate(Routes.RECIPE) },
                     onScan = {
                         val m = backStack.arguments?.getString("meal").orEmpty()
                         val d = backStack.arguments?.getString("date") ?: todayText
@@ -263,6 +267,7 @@ fun HqFitRoot(
                     onScale = { nav.navigate(Routes.SCALE) },
                     onHealth = { nav.navigate(Routes.HEALTH) },
                     onBackup = { nav.navigate(Routes.BACKUP) },
+                    onTargets = { nav.navigate(Routes.TARGETS) },
                 )
             }
             composable(Routes.BACKUP) { BackupScreen(db = db, container = container, onBack = { nav.popBackStack() }) }
@@ -285,6 +290,11 @@ fun HqFitRoot(
                 TemplateEditorScreen(db = db, templateId = backStack.arguments?.getLong("id") ?: 0L, onBack = { nav.popBackStack() })
             }
             composable(Routes.PAST) { PastWorkoutsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
+            composable(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
+            composable(Routes.TARGETS) { TargetsEditorScreen(db = db, onBack = { nav.popBackStack() }) }
+            composable("${Routes.NUTRIENTS}/{date}", arguments = listOf(navArgument("date") { type = NavType.StringType })) { backStack ->
+                NutrientSummaryScreen(db = db, date = backStack.arguments?.getString("date") ?: LocalDate.now().toString(), onBack = { nav.popBackStack() })
+            }
             composable(Routes.NEW_EXERCISE) { NewExerciseScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.RECORDS) {
                 RecordsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.HISTORY}/$it") })

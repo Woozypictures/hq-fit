@@ -30,6 +30,9 @@ interface TargetDao {
     @Query("SELECT * FROM target")
     suspend fun all(): List<TargetEntity>
 
+    @Query("DELETE FROM target WHERE `key` = :key")
+    suspend fun delete(key: String)
+
     @Query("SELECT * FROM target WHERE `key` = :key")
     suspend fun get(key: String): TargetEntity?
 }

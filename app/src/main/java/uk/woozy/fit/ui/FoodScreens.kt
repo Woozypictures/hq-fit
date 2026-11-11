@@ -90,6 +90,8 @@ fun rememberTargets(db: HqFitDatabase): Targets {
             netCarbsG = m["carbs"]?.toInt() ?: d.netCarbsG,
             fatG = m["fat"]?.toInt() ?: d.fatG,
             steps = m["steps"]?.toInt() ?: d.steps,
+            waterGlasses = m["water_glasses"]?.toInt() ?: d.waterGlasses,
+            waterGlassMl = m["water_glass_ml"]?.toInt() ?: d.waterGlassMl,
         )
     }
     return t
@@ -112,7 +114,7 @@ private val longDate = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)
 /** The food diary for one day: energy, macros against target, meal groups, water. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit) {
+fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (String) -> Unit = {}) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
     var dateText by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
@@ -170,6 +172,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit) {
                 MacroBar("Protein", totals[Nutrients.PROTEIN] ?: 0.0, targets.proteinG.toDouble(), "g", c.protein)
                 MacroBar("Net carbs", Nutrients.netCarbs(totals), targets.netCarbsG.toDouble(), "g", c.carbs)
                 MacroBar("Fat", totals[Nutrients.FAT] ?: 0.0, targets.fatG.toDouble(), "g", c.fat)
+                TextButton(onClick = { onNutrients(dateText) }) { HqText("All nutrients", 14.sp, FontWeight.SemiBold, c.primary) }
             }
         }
 
@@ -303,6 +306,7 @@ fun AddFoodScreen(
     onBack: () -> Unit,
     onCustom: () -> Unit,
     onScan: () -> Unit,
+    onRecipe: () -> Unit = {},
 ) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
@@ -329,6 +333,7 @@ fun AddFoodScreen(
         HqCard(Modifier.fillMaxWidth().padding(16.dp)) {
             ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Look a product up in Open Food Facts", onClick = onScan)
             ListRow(Icons.Rounded.Add, "Create a custom food", "Your own figures per 100 g", onClick = onCustom)
+            ListRow(Icons.Rounded.Add, "Create a recipe", "Combine foods into one", onClick = onRecipe)
             ListRow(Icons.Rounded.EditNote, "Quick add", "A name and calories, no food needed", onClick = { quick = true })
         }
         if (results.isEmpty()) {

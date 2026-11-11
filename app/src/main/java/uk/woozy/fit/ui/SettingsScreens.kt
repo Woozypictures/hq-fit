@@ -50,6 +50,7 @@ fun SettingsScreen(
     onScale: () -> Unit,
     onHealth: () -> Unit,
     onBackup: () -> Unit,
+    onTargets: () -> Unit,
 ) {
     val c = HqTheme.colors
     Column(
@@ -83,6 +84,7 @@ fun SettingsScreen(
 
         SectionLabel("Body")
         HqCard(Modifier.fillMaxWidth()) {
+            ListRow(Icons.Rounded.Flag, "Targets", "Energy, macros, steps, water, nutrients", onClick = onTargets)
             ListRow(Icons.Rounded.MonitorWeight, "Scale and weight", "Pair your scale, type a weight, weekly reminder", onClick = onScale)
             ListRow(Icons.Rounded.FavoriteBorder, "Health Connect", "Permissions, steps, sleep, sync", onClick = onHealth)
             ListRow(Icons.Rounded.Backup, "Backup and restore", "Encrypted backups, restore, CSV export", onClick = onBackup)
@@ -91,7 +93,6 @@ fun SettingsScreen(
         SectionLabel("Coming")
         HqCard(Modifier.fillMaxWidth()) {
             ListRow(Icons.Rounded.Person, "Profile", "Units and height · milestone 5", enabled = false)
-            ListRow(Icons.Rounded.Flag, "Targets", "Energy, macros, nutrients · milestone 5", enabled = false)
             ListRow(Icons.Rounded.FitnessCenter, "Workout", "Rest time, weight steps, RPE · milestone 4", enabled = false)
             ListRow(Icons.Rounded.Link, "HQ connection", "Share a summary with HQ · milestone 8", enabled = false)
             ListRow(Icons.Rounded.SwapVert, "Import and export", "Cronometer, Everfit, CSV · milestone 9", enabled = false)
