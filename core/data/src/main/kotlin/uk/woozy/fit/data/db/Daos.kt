@@ -84,6 +84,9 @@ interface WeightDao {
     @Query("SELECT COUNT(*) FROM weight_entry WHERE epochMs BETWEEN :from AND :to")
     suspend fun countBetween(from: Long, to: Long): Int
 
+    @Query("SELECT * FROM weight_entry WHERE epochMs >= :from AND source != 'import' ORDER BY epochMs")
+    suspend fun ownSince(from: Long): List<WeightEntryEntity>
+
     @Query("DELETE FROM weight_entry WHERE id = :id")
     suspend fun delete(id: Long)
 }
@@ -266,6 +269,9 @@ interface SessionDao {
 
     @Query("SELECT * FROM exercise WHERE id = :id")
     suspend fun exercise(id: Long): ExerciseEntity?
+
+    @Query("SELECT * FROM workout_session WHERE status = 'done' AND endedMs IS NOT NULL AND startedMs >= :from ORDER BY startedMs")
+    suspend fun doneSince(from: Long): List<WorkoutSessionEntity>
 
     @Query("UPDATE workout_session SET status = 'done', endedMs = :endedMs, feeling = :feeling WHERE id = :id")
     suspend fun finish(id: Long, endedMs: Long, feeling: Int?)
