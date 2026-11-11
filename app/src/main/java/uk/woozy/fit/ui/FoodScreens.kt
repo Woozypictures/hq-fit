@@ -126,6 +126,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
     val (from, to) = dayBounds(date)
     val waterFlow = remember(db, dateText) { db.water().observeTotal(from, to) }
     val waterMl by waterFlow.collectAsState(initial = 0)
+    val waterContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     val names by produceState(emptyMap<String, Pair<String, String>>(), db) {
         value = db.nutrients().all().associate { it.key to (it.name to it.unit) }
     }
@@ -188,7 +189,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
                     HqPillButton("+ ${targets.waterGlassMl} ml", onClick = {
                         scope.launch { db.water().insert(WaterEntryEntity(epochMs = waterStamp(date), ml = targets.waterGlassMl)) }
                     }, modifier = Modifier.weight(1f))
-                    HqPillButton("Undo", onClick = { scope.launch { undoWater(db, appContext, from, to) } }, modifier = Modifier.weight(1f), style = PillStyle.Outline)
+                    HqPillButton("Undo", onClick = { scope.launch { undoWater(db, waterContext, from, to) } }, modifier = Modifier.weight(1f), style = PillStyle.Outline)
                 }
             }
         }
