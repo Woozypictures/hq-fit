@@ -338,6 +338,7 @@ fun ActiveWorkoutScreen(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun ExerciseCard(
     group: List<SetLogEntity>,
