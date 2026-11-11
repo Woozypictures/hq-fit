@@ -223,7 +223,7 @@ fun HqFitRoot(
             ) { backStack ->
                 CustomFoodScreen(db = db, barcode = backStack.arguments?.getString("barcode"), onBack = { nav.popBackStack() })
             }
-            composable(Routes.PROGRESS) { ProgressScreen() }
+            composable(Routes.PROGRESS) { ProgressScreen(db = db, onRecords = { nav.navigate(Routes.RECORDS) }, onScale = { nav.navigate(Routes.SCALE) }) }
             composable(Routes.SETTINGS) {
                 SettingsScreen(
                     themeMode = themeMode,
