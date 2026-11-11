@@ -294,8 +294,9 @@ private fun ExerciseCard(
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     HqText(first.exerciseName, 16.sp, FontWeight.SemiBold)
+                    val timed = first.durationSec
                     val target = when {
-                        first.durationSec != null -> formatDuration(first.durationSec)
+                        timed != null -> formatDuration(timed)
                         first.targetRepsMin != null && first.targetRepsMax != null && first.targetRepsMin != first.targetRepsMax ->
                             "Target ${first.targetRepsMin}-${first.targetRepsMax} reps"
                         first.targetRepsMax != null -> "Target ${first.targetRepsMax} reps"
