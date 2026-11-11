@@ -61,7 +61,9 @@ One native Android app that replaces Everfit (training) and Cronometer (nutritio
 | 6 Barcode and food data | Built, CI green (run 18): CameraX and ML Kit scanner, Open Food Facts lookup and search, cached foods, custom foods. No bundled CoFID or USDA database yet (needs your export or a file) |
 | 7 Scale and Health Connect | Built, CI green (runs 20 and 22): Qingniu packet decoder (tested on hand-built frames, not real ones), Bluetooth session, Scale screen with manual entry, packet log and weekly reminder; Health Connect permissions, today's steps, sleep, resting HR and calories, weight import, optional send of weights and workouts. Not yet: nutrition and water writing, mirroring deletes, steps on Today |
 | 8 Provider for HQ | Provider built, CI green (run 23): `content://uk.woozy.fit.summary/today`, signature permission `uk.woozy.fit.permission.READ_SUMMARY`, read-only. HQ side not changed yet |
-| 9 to 11 | Not started (backups, import and export, charts, switch-over). Order and scope are in Stage 4 of the Doc |
+| 9 Backups and export | Built, CI green (run 25): encrypted backup zip (database plus recovery-wrapped key), nightly alarm around 03:30, optional folder copy, restore with the recovery key, CSV export of weights, diary and sets. Not yet: Cronometer and Everfit importers (need your files), JSON export |
+| 10 Progress | Charts built, CI green (run 26): weight against 80 kg with trend and forecast date, 14-day calories, 8-week sessions and volume, link to records. Drawn with Canvas, no chart library. Not yet: frosted style, pull to refresh, card reordering, accessibility pass |
+| 11 Switch-over | Checklist below, nothing to build until the phone checks pass |
 
 Done in milestone 1: Gradle modules, design system, five-slot navigation, Settings skeleton with appearance and colour scheme switches, component gallery, CI with signed releases, screenshots.
 
@@ -107,6 +109,11 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 27. Health Connect (Settings): Grant access; today's steps, sleep, resting HR and calories show; "Sync now" imports Feelfit weights and, with the switch on, sends weights and workouts without duplicating on a second sync.
 28. HQ provider: needs HQ changed to read it. Until then nothing can be checked on the phone.
 
+29. Backup (Settings > Backup and restore): Back up now reports success; choose a folder and run again, the file appears there. Nightly switch on; next morning the status line shows a 03:30 backup.
+30. Restore: copy a backup file, tap Restore, the app restarts and asks for the recovery key; the right key brings back your data. Try this on a spare phone or accept it replaces the current data.
+31. CSV export of weights, diary and sets opens in a spreadsheet.
+32. Progress: weight chart shows your weigh-ins and the 80 kg line; calories and training charts fill as you log.
+
 11. If the app is force-closed while the recovery key is on screen, the next launch makes a new key (the unconfirmed one held no data).
 
 ## 9. Open items
@@ -118,3 +125,14 @@ Not done and not faked: every screen shows empty values with an "arrives in mile
 6. Leftovers: workout and programme editors, custom exercises with photos, swipe actions, set types and RPE, recipes and meals, targets editor, steps on Today, Vico charts.
 7. HQ needs a small change to read the summary provider and drop its own nutrition reads once you switch over.
 5. Exercise media: no licensed animations; text from OpenGym's catalogue, stills from free-exercise-db, own clips later.
+
+## 10. Switch-over checklist (milestone 11)
+
+Do these in order, only after the phone checks above pass.
+
+1. Run both apps side by side for a week: log the same food in Cronometer and HQ Fit and compare totals.
+2. Import weight history from Health Connect (Settings > Health Connect > Sync now) before removing Feelfit.
+3. Take a backup and restore it once, so you know the recovery key works.
+4. Turn on the HQ Fit nightly backup folder.
+5. Change HQ to read `content://uk.woozy.fit.summary/today` and stop reading nutrition from Health Connect.
+6. Only then stop using Cronometer and Everfit. Nutrition and water writing to Health Connect is not built; HQ gets food totals from the provider instead.
