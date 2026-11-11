@@ -7,6 +7,9 @@ Included in this release
 Google Sans (regular, medium, semibold, bold)
   SIL Open Font License 1.1. Full text: licenses/GoogleSans-OFL.txt
 
+openScale (https://github.com/oliexdev/openScale)
+  The Qingniu scale packet layout in core/data scale/QnProtocol.kt is ported from its QNHandler. GPL-3.0, which is compatible with this project's AGPL-3.0.
+
 Planned for later milestones (credited here now, bundled when they land)
 -----------------------------------------------------------------------
 OpenGym (https://github.com/DuarteSantos8/openGym)
