@@ -188,6 +188,9 @@ interface ScheduleDao {
     @Query("SELECT * FROM scheduled_workout WHERE date >= :from AND date <= :to ORDER BY date, id")
     fun observeBetween(from: String, to: String): Flow<List<ScheduledWorkoutEntity>>
 
+    @Query("SELECT * FROM scheduled_workout WHERE date >= :from AND date <= :to ORDER BY date, id")
+    suspend fun between(from: String, to: String): List<ScheduledWorkoutEntity>
+
     @Query("SELECT * FROM scheduled_workout WHERE id = :id")
     suspend fun get(id: Long): ScheduledWorkoutEntity?
 
