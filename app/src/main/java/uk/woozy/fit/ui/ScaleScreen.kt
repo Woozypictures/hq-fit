@@ -184,7 +184,7 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
                         HqText("${formatOne(w.kg)} kg", 15.sp, FontWeight.Medium)
                         HqText(SimpleDateFormat("EEE d MMM, HH:mm", Locale.UK).format(Date(w.epochMs)) + " · " + w.source, 12.sp, color = c.muted)
                     }
-                    TextButton(onClick = { scope.launch { db.weights().delete(w.id) } }) { HqText("Delete", 13.sp, color = c.muted) }
+                    TextButton(onClick = { scope.launch { db.weights().delete(w.id); runCatching { uk.woozy.fit.health.HealthGateway(context.applicationContext).let { g -> if (g.available) g.deleteWeights(listOf(w.id)) } } } }) { HqText("Delete", 13.sp, color = c.muted) }
                 }
             }
         }

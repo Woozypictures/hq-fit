@@ -103,6 +103,11 @@ fun HqFitRoot(
     onScheme: (String) -> Unit,
 ) {
     val nav = rememberNavController()
+    val syncContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    androidx.compose.runtime.LaunchedEffect(db) {
+        // Send anything new to Health Connect each time the app opens. Failures are shown in Settings, never as crashes.
+        runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext)) }
+    }
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     var quickAdd by remember { mutableStateOf(false) }

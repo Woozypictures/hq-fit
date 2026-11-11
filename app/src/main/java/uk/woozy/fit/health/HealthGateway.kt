@@ -14,7 +14,10 @@ import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import androidx.health.connect.client.records.MealType
+import androidx.health.connect.client.units.Energy
 import androidx.health.connect.client.units.Mass
+import androidx.health.connect.client.units.Volume
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -132,6 +135,51 @@ class HealthGateway(private val context: Context) {
                 ),
             ),
         )
+    }
+
+    suspend fun writeMeal(entryId: Long, name: String, meal: String, atMs: Long, n: Map<String, Double>) {
+        val s = Instant.ofEpochMilli(atMs)
+        val e = s.plusSeconds(60)
+        val zone = ZoneId.systemDefault().rules
+        fun g(key: String): Mass? = n[key]?.takeIf { it > 0 }?.let { Mass.grams(it) }
+        client.insertRecords(
+            listOf(
+                NutritionRecord(
+                    startTime = s, startZoneOffset = zone.getOffset(s), endTime = e, endZoneOffset = zone.getOffset(e),
+                    metadata = Metadata(clientRecordId = "hqfit-meal-$entryId"),
+                    name = name,
+                    mealType = when (meal) {
+                        "breakfast" -> MealType.MEAL_TYPE_BREAKFAST
+                        "lunch" -> MealType.MEAL_TYPE_LUNCH
+                        "dinner" -> MealType.MEAL_TYPE_DINNER
+                        else -> MealType.MEAL_TYPE_SNACK
+                    },
+                    energy = n["energy"]?.takeIf { it > 0 }?.let { Energy.kilocalories(it) },
+                    protein = g("protein"), totalCarbohydrate = g("carbs"), dietaryFiber = g("fibre"),
+                    totalFat = g("fat"), saturatedFat = g("sat_fat"), sugar = g("sugars"),
+                    sodium = n["sodium"]?.takeIf { it > 0 }?.let { Mass.milligrams(it) },
+                ),
+            ),
+        )
+    }
+
+    suspend fun writeWater(rowId: Long, atMs: Long, ml: Int) {
+        val s = Instant.ofEpochMilli(atMs)
+        val e = s.plusSeconds(1)
+        val zone = ZoneId.systemDefault().rules
+        client.insertRecords(
+            listOf(
+                HydrationRecord(
+                    startTime = s, startZoneOffset = zone.getOffset(s), endTime = e, endZoneOffset = zone.getOffset(e),
+                    volume = Volume.milliliters(ml.toDouble()), metadata = Metadata(clientRecordId = "hqfit-water-$rowId"),
+                ),
+            ),
+        )
+    }
+
+    suspend fun deleteMeals(entryIds: List<Long>) {
+        if (entryIds.isEmpty()) return
+        client.deleteRecords(NutritionRecord::class, emptyList(), entryIds.map { "hqfit-meal-$it" })
     }
 
     suspend fun deleteWeights(rowIds: List<Long>) {

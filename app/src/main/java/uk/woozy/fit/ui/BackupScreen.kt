@@ -69,6 +69,20 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
     }
     val pickRestore = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> if (uri != null) restoreUri = uri }
 
+    val pickCronometer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) scope.launch {
+            message = try {
+                val text = withContext(Dispatchers.IO) { context.contentResolver.openInputStream(uri)!!.use { it.readBytes().toString(Charsets.UTF_8) } }
+                val n = uk.woozy.fit.data.imports.CronometerImport.import(db, text, System.currentTimeMillis())
+                if (n == 0) "Nothing new: those days are already imported" else "Imported $n days from Cronometer"
+            } catch (e: IllegalArgumentException) {
+                e.message
+            } catch (e: Exception) {
+                "Import failed: ${e.javaClass.simpleName}"
+            }
+        }
+    }
+
     var pendingCsv by remember { mutableStateOf<(suspend () -> String)?>(null) }
     val saveCsv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
         val make = pendingCsv
@@ -115,6 +129,14 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 HqText("Restoring replaces everything on this phone. Afterwards the app asks for the recovery key that belongs to the backup.", 13.sp, color = c.muted)
                 HqPillButton("Restore from a backup file", style = PillStyle.Outline, onClick = { pickRestore.launch(arrayOf("*/*")) })
+            }
+        }
+
+        SectionLabel("Import from Cronometer")
+        HqCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                HqText("Choose the daily summary CSV from Cronometer. Each logged day becomes one entry with that day's totals. Safe to run twice.", 13.sp, color = c.muted)
+                HqPillButton("Choose daily summary file", style = PillStyle.Outline, onClick = { pickCronometer.launch(arrayOf("*/*")) })
             }
         }
 

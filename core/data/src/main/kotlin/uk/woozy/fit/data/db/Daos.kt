@@ -99,6 +99,9 @@ interface WaterDao {
     @Insert
     suspend fun insert(row: WaterEntryEntity): Long
 
+    @Query("SELECT * FROM water_entry WHERE epochMs >= :from ORDER BY epochMs")
+    suspend fun since(from: Long): List<WaterEntryEntity>
+
     @Query("SELECT COALESCE(SUM(ml), 0) FROM water_entry WHERE epochMs >= :from AND epochMs < :to")
     suspend fun totalBetween(from: Long, to: Long): Int
 

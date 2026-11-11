@@ -238,6 +238,7 @@ private fun waterStamp(date: LocalDate): Long {
 private fun EntrySheet(db: HqFitDatabase, entry: DiaryEntryEntity, names: Map<String, Pair<String, String>>, onDone: () -> Unit) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
+    val appContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
     var grams by remember { mutableStateOf(entry.grams?.let { NumberEntry.format(it) }.orEmpty()) }
     var meal by remember { mutableStateOf(Meal.fromKey(entry.meal)) }
     val n = Nutrients.decode(entry.nutrients)
@@ -259,7 +260,7 @@ private fun EntrySheet(db: HqFitDatabase, entry: DiaryEntryEntity, names: Map<St
                     onDone()
                 }
             }, modifier = Modifier.fillMaxWidth())
-            HqPillButton("Delete", onClick = { scope.launch { db.diary().delete(entry.id); onDone() } }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
+            HqPillButton("Delete", onClick = { scope.launch { db.diary().delete(entry.id); runCatching { uk.woozy.fit.health.HealthGateway(appContext).let { g -> if (g.available) g.deleteMeals(listOf(entry.id)) } }; onDone() } }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
         }
     }
 }

@@ -2,15 +2,15 @@ package uk.woozy.fit.health
 
 import android.content.Context
 import uk.woozy.fit.data.db.HqFitDatabase
+import uk.woozy.fit.data.imports.CronometerImport
+import uk.woozy.fit.model.Nutrients
 import uk.woozy.fit.data.db.WeightEntryEntity
 import java.time.Instant
 
-/** Sends HQ Fit weights and finished workouts to Health Connect and pulls other apps' weights in. */
+/** Sends HQ Fit weights, finished workouts, food and water to Health Connect and pulls other apps' weights in. */
 object HealthSync {
     private fun prefs(c: Context) = c.getSharedPreferences("health", Context.MODE_PRIVATE)
 
-    fun writeEnabled(c: Context) = prefs(c).getBoolean("write", false)
-    fun setWriteEnabled(c: Context, on: Boolean) = prefs(c).edit().putBoolean("write", on).apply()
     fun lastStatus(c: Context): String = prefs(c).getString("status", "Not synced yet") ?: "Not synced yet"
     private fun setStatus(c: Context, s: String) = prefs(c).edit().putString("status", s).apply()
 
@@ -18,9 +18,17 @@ object HealthSync {
     suspend fun run(c: Context, db: HqFitDatabase, hc: HealthGateway, nowMs: Long = System.currentTimeMillis()): String {
         if (!hc.available) return "Health Connect is not available on this phone".also { setStatus(c, it) }
         return try {
+            if (hc.granted().intersect(HealthGateway.writePermissions).size < HealthGateway.writePermissions.size) {
+                return "Grant Health Connect access to start syncing".also { setStatus(c, it) }
+            }
             var wrote = 0
-            if (writeEnabled(c)) {
+            run {
                 val from = nowMs - 90L * 86_400_000L
+                val today = java.time.LocalDate.now()
+                db.diary().between(today.minusDays(90).toString(), today.toString())
+                    .filter { it.name != CronometerImport.ENTRY_NAME }
+                    .forEach { hc.writeMeal(it.id, it.name, it.meal, it.createdMs, Nutrients.decode(it.nutrients)); wrote++ }
+                db.water().since(from).forEach { hc.writeWater(it.id, it.epochMs, it.ml); wrote++ }
                 db.weights().ownSince(from).forEach { hc.writeWeight(it.id, it.epochMs, it.kg); wrote++ }
                 db.sessions().doneSince(from).forEach { hc.writeWorkout(it.id, it.name, it.startedMs, it.endedMs ?: it.startedMs); wrote++ }
             }

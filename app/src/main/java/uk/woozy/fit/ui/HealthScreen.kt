@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -21,7 +20,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +52,6 @@ fun HealthScreen(db: HqFitDatabase, onBack: () -> Unit) {
     var granted by remember { mutableStateOf<Set<String>>(emptySet()) }
     var snap by remember { mutableStateOf<HealthSnapshot?>(null) }
     var status by remember { mutableStateOf(HealthSync.lastStatus(context)) }
-    var write by remember { mutableStateOf(HealthSync.writeEnabled(context)) }
     var busy by remember { mutableStateOf(false) }
 
     suspend fun refresh() {
@@ -112,13 +109,7 @@ fun HealthScreen(db: HqFitDatabase, onBack: () -> Unit) {
         SectionLabel("Sync")
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        HqText("Send weights and workouts", 16.sp, FontWeight.Medium)
-                        HqText("Off until you choose. Repeats never duplicate.", 12.sp, color = c.muted)
-                    }
-                    Switch(checked = write, onCheckedChange = { write = it; HealthSync.setWriteEnabled(context, it) })
-                }
+                HqText("Weights, workouts, food and water are sent to Health Connect. Repeats never duplicate.", 13.sp, color = c.muted)
                 HqText(status, 13.sp, color = c.muted)
                 HqPillButton(if (busy) "Syncing" else "Sync now and import weights", style = PillStyle.Outline, enabled = !busy, onClick = {
                     busy = true
