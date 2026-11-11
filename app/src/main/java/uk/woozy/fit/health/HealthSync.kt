@@ -21,11 +21,11 @@ object HealthSync {
             if (hc.granted().intersect(HealthGateway.writePermissions).size < HealthGateway.writePermissions.size) {
                 return "Grant Health Connect access to start syncing".also { setStatus(c, it) }
             }
+            val full = nowMs - prefs(c).getLong("full", 0L) > 7L * 86_400_000L
             var wrote = 0
             run {
                 // A full 90-day pass at most weekly; otherwise only the last 3 days, so opening the app stays light
                 // and Health Connect's write limits are not hit.
-                val full = nowMs - prefs(c).getLong("full", 0L) > 7L * 86_400_000L
                 val days = if (full) 90L else 3L
                 val from = nowMs - days * 86_400_000L
                 val today = java.time.LocalDate.now()
