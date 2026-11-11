@@ -2,6 +2,7 @@ package uk.woozy.fit.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -820,7 +821,7 @@ private fun SectionComplete(title: String, count: Int, last: Boolean, onEdit: ()
             val w = size.width
             val h = size.height
             listOf(0.12f to 0.08f, 0.3f to 0.15f, 0.5f to 0.06f, 0.7f to 0.14f, 0.88f to 0.1f, 0.2f to 0.3f, 0.82f to 0.32f, 0.6f to 0.24f).forEachIndexed { i, (x, y) ->
-                androidx.compose.ui.graphics.drawscope.rotate(20f * i + 15f, androidx.compose.ui.geometry.Offset(w * x, h * y)) {
+                rotate(20f * i + 15f, androidx.compose.ui.geometry.Offset(w * x, h * y)) {
                     drawRect(bits[i % bits.size], androidx.compose.ui.geometry.Offset(w * x, h * y), androidx.compose.ui.geometry.Size(14f, 24f))
                 }
             }
