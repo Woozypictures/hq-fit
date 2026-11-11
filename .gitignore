@@ -1,0 +1,10 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+captures/
+*.jks
+*.keystore
+# Paparazzi output; CI records these and attaches them to each release
+core/designsystem/src/test/snapshots/

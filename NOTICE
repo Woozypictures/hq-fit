@@ -1,0 +1,25 @@
+HQ Fit
+Copyright (C) 2026 Mahesh Sharma
+Licensed under the GNU Affero General Public License v3.0 (see LICENSE).
+
+Included in this release
+------------------------
+Google Sans (regular, medium, semibold, bold)
+  SIL Open Font License 1.1. Full text: licenses/GoogleSans-OFL.txt
+
+Planned for later milestones (credited here now, bundled when they land)
+-----------------------------------------------------------------------
+OpenGym (https://github.com/DuarteSantos8/openGym)
+  Exercise catalogue text and the import-review pattern. AGPL-3.0. Its image and video media are NOT used.
+free-exercise-db (https://github.com/yuhonas/free-exercise-db)
+  Exercise data and stills. Unlicense.
+exercises-dataset by hasaneyldrm
+  Exercise text only. MIT. Its GIFs and thumbnails are not used.
+MuscleMap outlines
+  MIT.
+CoFID 2021 (UK Composition of Foods Integrated Dataset)
+  Open Government Licence v3.0.
+USDA FoodData Central
+  CC0 1.0.
+Open Food Facts
+  Open Database Licence (ODbL); attribution shown wherever its data appears.
