@@ -79,6 +79,7 @@ private fun ScheduledWorkoutEntity.localDate(): LocalDate = LocalDate.parse(date
 @Composable
 fun TrainScreen(
     calendar: List<ScheduledWorkoutEntity>,
+    doneDates: Set<String> = emptySet(),
     onOpen: (Long) -> Unit,
     onLibrary: () -> Unit,
     onRecords: () -> Unit,
@@ -118,8 +119,8 @@ fun TrainScreen(
                                 .then(if (first != null) Modifier.clickable(role = Role.Button, onClickLabel = first.templateName) { onOpen(first.id) } else Modifier),
                         ) {
                             HqText(day.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.UK), 12.sp, FontWeight.Medium, c.muted)
-                            val isDone = first?.status == "done"
-                            val isMissed = first != null && first.status == "planned" && day < today
+                            val isDone = first?.status == "done" || day.toString() in doneDates
+                            val isMissed = !isDone && first != null && first.status == "planned" && day < today
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
@@ -151,8 +152,9 @@ fun TrainScreen(
                     }
                 }
                 val weekAll = (0..6).flatMap { byDate[monday.plusDays(it.toLong()).toString()].orEmpty() }
-                if (weekAll.isNotEmpty()) {
-                    HqText("${weekAll.count { it.status == "done" }} of ${weekAll.size} workouts done this week", 14.sp, FontWeight.Medium)
+                val doneDays = (0..6).count { i -> val d = monday.plusDays(i.toLong()).toString(); d in doneDates || byDate[d].orEmpty().any { it.status == "done" } }
+                if (weekAll.isNotEmpty() || doneDays > 0) {
+                    HqText("$doneDays of ${maxOf(weekAll.size, doneDays)} workouts done this week", 14.sp, FontWeight.Medium)
                 }
                 HqText(
                     if (upcoming.isEmpty()) "No workouts scheduled" else "Next: ${upcoming.first().templateName}, ${upcoming.first().localDate().format(dayLine)}",

@@ -249,8 +249,14 @@ fun HqFitRoot(
                 )
             }
             composable(Routes.TRAIN) {
+                val doneDates by produceState(emptySet<String>(), db, calendar) {
+                    val zone = java.time.ZoneId.systemDefault()
+                    val from = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY).atStartOfDay(zone).toInstant().toEpochMilli()
+                    value = db.sessions().doneSince(from).map { java.time.Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate().toString() }.toSet()
+                }
                 TrainScreen(
                     calendar = calendar,
+                    doneDates = doneDates,
                     onOpen = { nav.navigate("${Routes.PREVIEW}/$it") },
                     onLibrary = { nav.navigate(Routes.LIBRARY) },
                     onRecords = { nav.navigate(Routes.RECORDS) },
