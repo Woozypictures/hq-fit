@@ -31,6 +31,9 @@ import java.util.Locale
 fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val c = HqTheme.colors
     val sessions by produceState(emptyList<WorkoutSessionEntity>(), db) { value = db.sessions().doneSince(0L).reversed() }
+    val counts by produceState(emptyMap<Long, Int>(), sessions) {
+        value = sessions.associate { s -> s.id to db.sessions().sets(s.id).map { it.exerciseId }.distinct().size }
+    }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Past workouts", onBack) }
         if (sessions.isEmpty()) HqText("No finished workouts yet.", 14.sp, color = c.muted, modifier = Modifier.padding(16.dp))
@@ -38,7 +41,15 @@ fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> 
             items(sessions, key = { it.id }) { s ->
                 Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onOpen(s.id) }.padding(horizontal = 16.dp, vertical = 10.dp)) {
                     HqText(s.name, 16.sp, FontWeight.Medium)
-                    HqText(SimpleDateFormat("EEE d MMM yyyy, HH:mm", Locale.UK).format(Date(s.startedMs)), 13.sp, color = c.muted)
+                    // Imported Everfit days have no real start time or length, so only live workouts show them.
+                    val imported = s.scheduledId == uk.woozy.fit.data.imports.EverfitImport.MARKER
+                    val minutes = ((s.endedMs ?: s.startedMs) - s.startedMs) / 60_000
+                    val parts = listOfNotNull(
+                        SimpleDateFormat(if (imported) "EEE d MMM yyyy" else "EEE d MMM yyyy, HH:mm", Locale.UK).format(Date(s.startedMs)),
+                        if (!imported && minutes > 0) (if (minutes >= 60) "${minutes / 60}:${"%02d".format(minutes % 60)} hr" else "$minutes min") else null,
+                        counts[s.id]?.takeIf { it > 0 }?.let { "$it exercises" },
+                    )
+                    HqText(parts.joinToString(" · "), 13.sp, color = c.muted)
                 }
             }
         }
