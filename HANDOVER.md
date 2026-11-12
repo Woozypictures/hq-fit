@@ -133,3 +133,6 @@ Debug-only demo mode: `app/src/debug/.../Demo.kt` (release has a no-op). `am sta
 
 ## 14. History feed for HQ (11 Nov 2026)
 `SummaryProvider` also serves `content://uk.woozy.fit.summary/history` and `/weights` (last 30 days; see HQ HANDOVER section 13). Built by `HqHistoryBuilder` in `HqSummary.kt`. `/today` is unchanged, version stays 1.
+
+## 15. 12 Nov 2026 (00:20): see Project doc `claude/handover-12-nov.md`
+v0.60 exercise history chart/1RM/volume; v0.61 Highlighted nutrients (Today) and macro-split calorie chart (Progress); v0.62 Fullbody A start weights (fresh installs); v0.63 Backup and restore > Recovery key > Make a new recovery key (`KeyVault.replaceRecovery`); v0.64 profile photo (Settings > Profile, `Avatar.kt`) and import messages shown at the top of Backup and restore. Calorie target stays fixed (no exercise adjustment) by decision.
