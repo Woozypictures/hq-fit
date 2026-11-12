@@ -38,6 +38,7 @@ object EverfitImport {
     /** Returns the number of workouts added. */
     suspend fun import(db: HqFitDatabase, text: String, zone: ZoneId = ZoneId.systemDefault()): Int {
         val dao = db.sessions()
+        dao.repairImportedSetIndex()
         val byDay = parse(text).groupBy { Triple(it.date, it.workout, it.occurrence) }
         var added = 0
         for ((key, lines) in byDay) {
@@ -53,7 +54,7 @@ object EverfitImport {
                     ?: ExerciseEntity(name = line.exercise, muscle = "", equipment = "", custom = true).let { it.copy(id = db.exercises().insert(it)) }
                 line.sets.forEachIndexed { i, (kg, reps) ->
                     rows += SetLogEntity(
-                        sessionId = sessionId, position = pos, setIndex = i, section = "Main", exerciseId = ex.id, exerciseName = ex.name,
+                        sessionId = sessionId, position = pos, setIndex = i + 1, section = "Main", exerciseId = ex.id, exerciseName = ex.name,
                         supersetGroup = null, durationSec = null, targetRepsMin = null, targetRepsMax = null, restSec = 0, note = "",
                         weightKg = kg, reps = reps, done = true, doneAtMs = start,
                     )

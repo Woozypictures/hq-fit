@@ -47,6 +47,7 @@ private val dateFmt = DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.UK).w
 fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val c = HqTheme.colors
     val flow = remember(db) { db.sessions().observeRecords() }
+    androidx.compose.runtime.LaunchedEffect(db) { db.sessions().repairImportedSetIndex() }
     val allRows by flow.collectAsState(initial = emptyList())
     val exercises by remember(db) { db.exercises().observeAll() }.collectAsState(initial = emptyList())
     val muscleOf = remember(exercises) { exercises.associate { it.id to it.muscle } }

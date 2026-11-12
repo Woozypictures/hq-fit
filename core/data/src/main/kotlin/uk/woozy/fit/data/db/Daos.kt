@@ -268,6 +268,13 @@ interface SessionDao {
     @Insert
     suspend fun insertSession(row: WorkoutSessionEntity): Long
 
+    /** Early Everfit imports numbered sets from 0; the app numbers from 1. Shifts only imported sessions that still contain a set 0. */
+    @Query(
+        "UPDATE set_log SET setIndex = setIndex + 1 WHERE sessionId IN (" +
+            "SELECT w.id FROM workout_session w WHERE w.scheduledId = -1 AND EXISTS (SELECT 1 FROM set_log z WHERE z.sessionId = w.id AND z.setIndex = 0))",
+    )
+    suspend fun repairImportedSetIndex()
+
     @Insert
     suspend fun insertSets(rows: List<SetLogEntity>)
 
