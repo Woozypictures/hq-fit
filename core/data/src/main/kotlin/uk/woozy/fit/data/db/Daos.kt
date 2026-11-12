@@ -245,6 +245,10 @@ interface ScheduleDao {
 
     @Query("SELECT COUNT(*) FROM scheduled_workout")
     suspend fun count(): Int
+
+    /** Upcoming planned days for these workouts; done and skipped days are never touched. */
+    @Query("DELETE FROM scheduled_workout WHERE status = 'planned' AND date >= :from AND templateId IN (:templateIds)")
+    suspend fun deletePlanned(from: String, templateIds: List<Long>)
 }
 
 /** The best a lift has done, from finished sessions. */
