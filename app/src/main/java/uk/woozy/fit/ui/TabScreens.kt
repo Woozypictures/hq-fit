@@ -146,6 +146,29 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
         val d = data
         if (d == null) { HqText("Loading", 14.sp, color = c.muted); return@TabPage }
 
+        run {
+            val doneWeeks = d.weekDone
+            var streak = 0
+            var i = doneWeeks.lastIndex
+            if (doneWeeks[i] == 0.0) i-- // this week may not have started yet
+            while (i >= 0 && doneWeeks[i] > 0.0) { streak++; i-- }
+            val tiles = listOf(
+                "${doneWeeks.last().toInt()} of ${d.weekPlanned.last()}" to "Workouts this week",
+                "$streak" to if (streak == 1) "Week streak" else "Weeks streak",
+                "${doneWeeks.sum().toInt()}" to "Workouts, 8 weeks",
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                tiles.forEach { (big, small) ->
+                    HqCard(Modifier.weight(1f)) {
+                        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            HqText(big, 22.sp, FontWeight.Bold)
+                            HqText(small, 12.sp, color = c.muted)
+                        }
+                    }
+                }
+            }
+        }
+
         val cards = rememberCardPrefs("progress", listOf("weight", "calories", "training", "strength"))
         var editing by remember { mutableStateOf(false) }
         androidx.activity.compose.BackHandler(editing) { editing = false }
