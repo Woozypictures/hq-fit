@@ -702,10 +702,9 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
                                     HqText(group.first().exerciseName, 15.sp, FontWeight.SemiBold)
                                     HqText(
                                         group.joinToString("  ·  ") { st ->
-                                            when {
-                                                st.durationSec != null -> "${st.durationSec / 60} min"
-                                                else -> "${NumberEntry.format(st.weightKg ?: 0.0)} kg x ${st.reps ?: 0}"
-                                            }
+                                            val secs = st.durationSec
+                                            if (secs != null) "${secs / 60} min"
+                                            else "${NumberEntry.format(st.weightKg ?: 0.0)} kg x ${st.reps ?: 0}"
                                         },
                                         13.sp, color = c.muted,
                                     )
