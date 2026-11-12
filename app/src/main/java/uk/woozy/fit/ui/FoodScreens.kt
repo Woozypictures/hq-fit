@@ -179,19 +179,36 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
             }
         }
 
+        var waterOpen by rememberSaveable { mutableStateOf(false) }
         HqCard(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SectionLabel("Water")
-                    Spacer(Modifier.weight(1f))
-                    HqText("${formatWhole(waterMl.toDouble())} / ${formatWhole(targets.waterMl.toDouble())} ml", 14.sp, color = c.muted)
+            Column {
+                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier.size(56.dp).clickable(role = Role.Button, onClickLabel = "Add ${targets.waterGlassMl} ml of water") {
+                            scope.launch { db.water().insert(WaterEntryEntity(epochMs = waterStamp(date), ml = targets.waterGlassMl)) }
+                        },
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(Icons.Rounded.WaterDrop, contentDescription = "Add water", tint = c.carbs, modifier = Modifier.size(22.dp)) }
+                    Row(
+                        Modifier.weight(1f).heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = if (waterOpen) "Collapse water" else "Expand water") { waterOpen = !waterOpen }.padding(end = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        HqText("Water", 16.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        HqText("${formatWhole(waterMl.toDouble())} / ${formatWhole(targets.waterMl.toDouble())} ml", 14.sp, color = c.muted)
+                        Spacer(Modifier.size(4.dp))
+                        Icon(if (waterOpen) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(22.dp))
+                    }
                 }
-                HqProgressBar((waterMl.toFloat() / targets.waterMl).coerceIn(0f, 1f), c.carbs)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    HqPillButton("+ ${targets.waterGlassMl} ml", onClick = {
-                        scope.launch { db.water().insert(WaterEntryEntity(epochMs = waterStamp(date), ml = targets.waterGlassMl)) }
-                    }, modifier = Modifier.weight(1f))
-                    HqPillButton("Undo", onClick = { scope.launch { undoWater(db, waterContext, from, to) } }, modifier = Modifier.weight(1f), style = PillStyle.Outline)
+                if (waterOpen) {
+                    Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        HqProgressBar((waterMl.toFloat() / targets.waterMl).coerceIn(0f, 1f), c.carbs)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            HqPillButton("+ ${targets.waterGlassMl} ml", onClick = {
+                                scope.launch { db.water().insert(WaterEntryEntity(epochMs = waterStamp(date), ml = targets.waterGlassMl)) }
+                            }, modifier = Modifier.weight(1f))
+                            HqPillButton("Undo", onClick = { scope.launch { undoWater(db, waterContext, from, to) } }, modifier = Modifier.weight(1f), style = PillStyle.Outline)
+                        }
+                    }
                 }
             }
         }
