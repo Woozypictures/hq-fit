@@ -145,6 +145,24 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
             }
         }
 
+        SectionLabel("Import Cronometer custom foods")
+        HqCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                HqText("Adds the 65 custom foods from your Cronometer account (shop and restaurant items) with their label figures. Where Cronometer had no weight, one serving counts as a single unit. Safe to run twice.", 13.sp, color = c.muted)
+                HqPillButton("Import custom foods", style = PillStyle.Outline, onClick = {
+                    scope.launch {
+                        message = try {
+                            val text = withContext(Dispatchers.IO) { context.assets.open("cronometer_foods.tsv").use { it.readBytes().toString(Charsets.UTF_8) } }
+                            val n = uk.woozy.fit.data.imports.CronometerFoodsImport.import(db, text)
+                            if (n == 0) "Nothing new: those foods are already here" else "Added $n custom foods"
+                        } catch (e: Exception) {
+                            "Import failed: ${e.javaClass.simpleName}"
+                        }
+                    }
+                })
+            }
+        }
+
         SectionLabel("Import from Everfit")
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -417,6 +417,9 @@ interface FoodDao {
 
     @Query("SELECT COUNT(*) FROM food")
     suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM food WHERE name = :name AND source = 'custom'")
+    suspend fun countCustom(name: String): Int
 }
 
 @Dao
