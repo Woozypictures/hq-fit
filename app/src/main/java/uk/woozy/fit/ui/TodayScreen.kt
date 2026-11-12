@@ -121,7 +121,7 @@ fun TodayScreen(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 HqText(dateLine, 12.sp, FontWeight.SemiBold, c.primary, letterSpacing = 0.08.em)
-                HqText("Hello, $name!", 28.sp, FontWeight.Bold)
+                HqText("Hello, ${name.trim().substringBefore(' ')}!", 28.sp, FontWeight.Bold)
             }
             AvatarCircle(
                 initial = name, size = 44.dp,
