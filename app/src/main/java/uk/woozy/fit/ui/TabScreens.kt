@@ -128,7 +128,7 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
         thisWeekAvg = kcal.takeLast(7).filter { it > 0 }.takeIf { it.isNotEmpty() }?.average(),
         lastWeekAvg = kcal.take(7).filter { it > 0 }.takeIf { it.isNotEmpty() }?.average(),
         weekLabels = weeks.map { it.dayOfMonth.toString() },
-        weekDone = weeks.map { w -> sched.count { it.status == "done" && LocalDate.parse(it.date) in w..w.plusDays(6) }.toDouble() },
+        weekDone = weeks.map { w -> sessions.count { Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate() in w..w.plusDays(6) }.toDouble() },
         weekPlanned = weeks.map { w -> sched.count { it.status != "skipped" && LocalDate.parse(it.date) in w..w.plusDays(6) } },
         weekVolume = weeks.map { w ->
             sets.filter { (s, _) -> Instant.ofEpochMilli(s.startedMs).atZone(zone).toLocalDate() in w..w.plusDays(6) }.sumOf { (_, l) -> l.weightKg!! * l.reps!! }
