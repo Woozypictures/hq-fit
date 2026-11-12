@@ -136,3 +136,6 @@ Debug-only demo mode: `app/src/debug/.../Demo.kt` (release has a no-op). `am sta
 
 ## 15. 12 Nov 2026 (00:20): see Project doc `claude/handover-12-nov.md`
 v0.60 exercise history chart/1RM/volume; v0.61 Highlighted nutrients (Today) and macro-split calorie chart (Progress); v0.62 Fullbody A start weights (fresh installs); v0.63 Backup and restore > Recovery key > Make a new recovery key (`KeyVault.replaceRecovery`); v0.64 profile photo (Settings > Profile, `Avatar.kt`) and import messages shown at the top of Backup and restore. Calorie target stays fixed (no exercise adjustment) by decision.
+
+## 16. 12 Nov 2026 (evening): profile picture comes from HQ
+Choose/Remove photo removed. `Avatar.syncFromHq` (ui/Avatar.kt) copies HQ's picture (the Notion DASHBOARD page icon) from `content://uk.woozy.hq.avatar/avatar` when its `stamp` changes, at most once a minute, from `AvatarCircle`. HQ not installed or without a picture: the stored picture stays. Permission `uk.woozy.hq.permission.READ_AVATAR` is declared here too (same key). NOT tested on a phone.

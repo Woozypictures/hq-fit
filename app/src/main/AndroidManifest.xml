@@ -24,6 +24,11 @@
     <permission
         android:name="uk.woozy.fit.permission.READ_SUMMARY"
         android:protectionLevel="signature" />
+    <!-- The profile picture comes from HQ (the Notion page icon). Declared here too (same signing key), so install order does not matter. -->
+    <permission
+        android:name="uk.woozy.hq.permission.READ_AVATAR"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="uk.woozy.hq.permission.READ_AVATAR" />
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
         <package android:name="com.sec.android.app.shealth" />
