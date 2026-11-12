@@ -412,6 +412,9 @@ interface FoodDao {
     @Query("SELECT f.* FROM food f JOIN diary_entry d ON d.foodId = f.id WHERE f.name LIKE '%' || :text || '%' OR f.brand LIKE '%' || :text || '%' GROUP BY f.id ORDER BY MAX(d.createdMs) DESC LIMIT 40")
     suspend fun recent(text: String): List<FoodEntity>
 
+    @Query("SELECT * FROM food WHERE id IN (:ids) AND (name LIKE '%' || :text || '%' OR brand LIKE '%' || :text || '%') ORDER BY name")
+    suspend fun byIds(ids: List<Long>, text: String): List<FoodEntity>
+
     @Query("SELECT COUNT(*) FROM food")
     suspend fun count(): Int
 }

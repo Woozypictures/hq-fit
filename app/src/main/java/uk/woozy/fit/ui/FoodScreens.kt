@@ -29,6 +29,8 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -351,10 +353,13 @@ fun AddFoodScreen(
     var tab by remember { mutableStateOf(0) }
     var selected by remember { mutableStateOf(emptyList<FoodEntity>()) }
     var review by remember { mutableStateOf(false) }
-    LaunchedEffect(text, refresh, tab) {
+    val favContext = androidx.compose.ui.platform.LocalContext.current.applicationContext
+    var favs by remember { mutableStateOf(loadFavourites(favContext)) }
+    LaunchedEffect(text, refresh, tab, favs) {
         results = when (tab) {
-            1 -> db.foods().recent(text.trim())
-            2 -> db.foods().search(text.trim()).filter { it.source == "custom" }
+            1 -> db.foods().byIds(favs.toList(), text.trim())
+            2 -> db.foods().recent(text.trim())
+            3 -> db.foods().search(text.trim()).filter { it.source == "custom" }
             else -> db.foods().search(text.trim())
         }
     }
@@ -373,7 +378,7 @@ fun AddFoodScreen(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            listOf("All", "Recent", "Custom").forEachIndexed { i, label ->
+            listOf("All", "Favourites", "Recent", "Custom").forEachIndexed { i, label ->
                 androidx.compose.material3.FilterChip(selected = tab == i, onClick = { tab = i }, label = { HqText(label, 13.sp) })
             }
         }
@@ -386,8 +391,9 @@ fun AddFoodScreen(
         if (results.isEmpty()) {
             HqText(
                 if (text.isBlank()) when (tab) {
-                    1 -> "Nothing logged yet. Foods you eat show up here."
-                    2 -> "No custom foods yet. Create one above."
+                    1 -> "No favourites yet. Tap the star on a food to keep it here."
+                    2 -> "Nothing logged yet. Foods you eat show up here."
+                    3 -> "No custom foods yet. Create one above."
                     else -> "No foods yet. Create a custom food, scan a barcode, or quick add."
                 }
                 else "Nothing matches \"$text\".",
@@ -441,10 +447,25 @@ fun AddFoodScreen(
                         HqText(f.name, 16.sp, FontWeight.Medium)
                         val kcal = Nutrients.decode(f.per100)[Nutrients.ENERGY]
                         HqText(
-                            listOf(f.brand, kcal?.let { "${formatWhole(it)} kcal per 100 g" } ?: "", if (f.incomplete) "Incomplete data" else "").filter { it.isNotBlank() }.joinToString(" · "),
+                            listOf(
+                                f.brand,
+                                f.servingG?.let { "${f.servingLabel.ifBlank { "1 serving" }} - ${NumberEntry.format(it)} g" } ?: "",
+                                kcal?.let { "${formatWhole(it)} kcal per 100 g" } ?: "",
+                                if (f.incomplete) "Incomplete data" else "",
+                            ).filter { it.isNotBlank() }.joinToString(" · "),
                             13.sp, color = c.muted,
                         )
                     }
+                    val isFav = f.id in favs
+                    Icon(
+                        if (isFav) Icons.Rounded.Star else Icons.Rounded.StarBorder,
+                        contentDescription = if (isFav) "Remove from favourites" else "Add to favourites",
+                        tint = if (isFav) c.primary else c.muted,
+                        modifier = Modifier.size(44.dp).clickable(role = Role.Button) {
+                            favs = if (isFav) favs - f.id else favs + f.id
+                            saveFavourites(favContext, favs)
+                        }.padding(10.dp),
+                    )
                     androidx.compose.material3.Checkbox(
                         checked = selected.any { it.id == f.id },
                         onCheckedChange = { on -> selected = if (on) selected + f else selected.filter { it.id != f.id } },
@@ -465,6 +486,15 @@ fun AddFoodScreen(
         AmountSheet(db, f, meal, date, names, onDone = { picked = null; refresh++ }, onLogged = { picked = null; onBack() })
     }
     if (quick) QuickAddSheet(db, meal, date, onDismiss = { quick = false }, onLogged = { quick = false; onBack() })
+}
+
+/** Favourite foods are a short list of ids kept in preferences, so no database change is needed. */
+private fun loadFavourites(context: android.content.Context): Set<Long> =
+    context.getSharedPreferences("food_favourites", android.content.Context.MODE_PRIVATE).getString("ids", "").orEmpty()
+        .split(',').mapNotNull { it.toLongOrNull() }.toSet()
+
+private fun saveFavourites(context: android.content.Context, ids: Set<Long>) {
+    context.getSharedPreferences("food_favourites", android.content.Context.MODE_PRIVATE).edit().putString("ids", ids.joinToString(",")).apply()
 }
 
 /** Cronometer-style multi-add: set an amount for each ticked food, then add them all to the meal at once. */
