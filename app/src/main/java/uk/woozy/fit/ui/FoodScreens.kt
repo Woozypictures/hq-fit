@@ -332,6 +332,8 @@ fun AddFoodScreen(
     var quick by remember { mutableStateOf(startQuick) }
     var refresh by remember { mutableStateOf(0) }
     var tab by remember { mutableStateOf(0) }
+    var selected by remember { mutableStateOf(emptyList<FoodEntity>()) }
+    var review by remember { mutableStateOf(false) }
     LaunchedEffect(text, refresh, tab) {
         results = when (tab) {
             1 -> db.foods().recent(text.trim())
@@ -414,22 +416,81 @@ fun AddFoodScreen(
                 }
             }
             items(results, key = { it.id }) { f ->
-                Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { picked = f }.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    HqText(f.name, 16.sp, FontWeight.Medium)
-                    val kcal = Nutrients.decode(f.per100)[Nutrients.ENERGY]
-                    HqText(
-                        listOf(f.brand, kcal?.let { "${formatWhole(it)} kcal per 100 g" } ?: "", if (f.incomplete) "Incomplete data" else "").filter { it.isNotBlank() }.joinToString(" · "),
-                        13.sp, color = c.muted,
+                androidx.compose.foundation.layout.Row(
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { picked = f }.padding(start = 16.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        HqText(f.name, 16.sp, FontWeight.Medium)
+                        val kcal = Nutrients.decode(f.per100)[Nutrients.ENERGY]
+                        HqText(
+                            listOf(f.brand, kcal?.let { "${formatWhole(it)} kcal per 100 g" } ?: "", if (f.incomplete) "Incomplete data" else "").filter { it.isNotBlank() }.joinToString(" · "),
+                            13.sp, color = c.muted,
+                        )
+                    }
+                    androidx.compose.material3.Checkbox(
+                        checked = selected.any { it.id == f.id },
+                        onCheckedChange = { on -> selected = if (on) selected + f else selected.filter { it.id != f.id } },
                     )
                 }
             }
         }
+        if (selected.isNotEmpty()) {
+            HqPillButton("Review ${selected.size} item${if (selected.size == 1) "" else "s"}", onClick = { review = true }, modifier = Modifier.fillMaxWidth().padding(16.dp))
+        }
+    }
+
+    if (review && selected.isNotEmpty()) {
+        ReviewSheet(db, selected, meal, date, onRemove = { id -> selected = selected.filter { it.id != id }; if (selected.isEmpty()) review = false }, onDismiss = { review = false }, onLogged = { review = false; selected = emptyList(); onBack() })
     }
 
     picked?.let { f ->
         AmountSheet(db, f, meal, date, names, onDone = { picked = null; refresh++ }, onLogged = { picked = null; onBack() })
     }
     if (quick) QuickAddSheet(db, meal, date, onDismiss = { quick = false }, onLogged = { quick = false; onBack() })
+}
+
+/** Cronometer-style multi-add: set an amount for each ticked food, then add them all to the meal at once. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReviewSheet(
+    db: HqFitDatabase,
+    foods: List<FoodEntity>,
+    meal: Meal,
+    date: String,
+    onRemove: (Long) -> Unit,
+    onDismiss: () -> Unit,
+    onLogged: () -> Unit,
+) {
+    val c = HqTheme.colors
+    val scope = rememberCoroutineScope()
+    val grams = remember { androidx.compose.runtime.mutableStateMapOf<Long, String>() }
+    fun gramsFor(f: FoodEntity): Double = (grams[f.id] ?: NumberEntry.format(f.servingG ?: 100.0)).toDoubleOrNull() ?: 0.0
+    val total = foods.sumOf { (Nutrients.decode(it.per100)[Nutrients.ENERGY] ?: 0.0) * gramsFor(it) / 100.0 }
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.card) {
+        Column(Modifier.navigationBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HqText("Add to ${meal.title}", 20.sp, FontWeight.Bold)
+            foods.forEach { f ->
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        HqText(f.name, 15.sp, FontWeight.Medium, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onRemove(f.id) }) { HqText("Remove", 13.sp, color = c.muted) }
+                    }
+                    NumberField("Amount (g)", grams[f.id] ?: NumberEntry.format(f.servingG ?: 100.0)) { grams[f.id] = it }
+                    val kcal = (Nutrients.decode(f.per100)[Nutrients.ENERGY] ?: 0.0) * gramsFor(f) / 100.0
+                    HqText("${formatWhole(kcal)} kcal", 12.sp, color = c.muted)
+                }
+            }
+            HqText("Total ${formatWhole(total)} kcal", 15.sp, FontWeight.SemiBold)
+            HqPillButton("Add ${foods.size} to ${meal.title}", onClick = {
+                scope.launch {
+                    val now = System.currentTimeMillis()
+                    foods.forEach { f -> val g = gramsFor(f); if (g > 0) Diary.log(db, f, g, date, meal, now) }
+                    onLogged()
+                }
+            }, modifier = Modifier.fillMaxWidth())
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
