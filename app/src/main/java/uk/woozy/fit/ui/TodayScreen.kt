@@ -118,16 +118,10 @@ fun TodayScreen(
                 HqText(dateLine, 12.sp, FontWeight.SemiBold, c.primary, letterSpacing = 0.08.em)
                 HqText("Hello, $name!", 28.sp, FontWeight.Bold)
             }
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(c.primary)
-                    .clickable(role = Role.Button, onClickLabel = "Settings", onClick = onSettings),
-                contentAlignment = Alignment.Center,
-            ) {
-                HqText(name.take(1).uppercase(), 18.sp, FontWeight.Bold, c.onPrimary)
-            }
+            AvatarCircle(
+                initial = name, size = 44.dp,
+                modifier = Modifier.clickable(role = Role.Button, onClickLabel = "Settings", onClick = onSettings),
+            )
         }
 
         if (problem != null) {

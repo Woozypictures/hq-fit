@@ -33,6 +33,8 @@ import uk.woozy.fit.designsystem.HqCard
 import uk.woozy.fit.designsystem.HqText
 import uk.woozy.fit.designsystem.HqTheme
 import uk.woozy.fit.designsystem.SectionLabel
+import uk.woozy.fit.designsystem.HqPillButton
+import uk.woozy.fit.designsystem.PillStyle
 import uk.woozy.fit.designsystem.SegmentedChoice
 import uk.woozy.fit.model.NumberEntry
 
@@ -62,7 +64,20 @@ fun ProfileScreen(onBack: () -> Unit) {
     val c = HqTheme.colors
     var name by remember { mutableStateOf(ProfilePrefs.name(context)) }
     var height by remember { mutableStateOf(ProfilePrefs.heightCm(context)?.let { NumberEntry.format(it) }.orEmpty()) }
+    var photoTick by remember { mutableStateOf(0) }
+    val pick = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) { Avatar.save(context, uri); photoTick++ }
+    }
     SettingsPage("Profile", onBack) {
+        androidx.compose.runtime.key(photoTick) {
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                AvatarCircle(name, 72.dp)
+                androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HqPillButton("Choose photo", style = PillStyle.Outline, onClick = { pick.launch(androidx.activity.result.PickVisualMediaRequest(androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) })
+                    if (Avatar.stamp(context) != 0L) HqPillButton("Remove photo", style = PillStyle.Outline, onClick = { Avatar.clear(context); photoTick++ })
+                }
+            }
+        }
         androidx.compose.material3.OutlinedTextField(
             value = name, onValueChange = { name = it; ProfilePrefs.setName(context, it) },
             label = { HqText("Name", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth(),

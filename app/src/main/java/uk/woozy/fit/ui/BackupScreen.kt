@@ -59,6 +59,8 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
     var busy by remember { mutableStateOf(false) }
     var restoreUri by remember { mutableStateOf<Uri?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    val scrollState = rememberScrollState()
+    androidx.compose.runtime.LaunchedEffect(message) { if (message != null) scrollState.animateScrollTo(0) }
 
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) {
@@ -94,8 +96,9 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
     }
     fun export(name: String, make: suspend () -> String) { pendingCsv = make; saveCsv.launch(name) }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(scrollState).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         BackBar("Backup and restore", onBack)
+        message?.let { HqCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { HqText(it, 14.sp, FontWeight.Medium) } } }
 
         RecoveryKeyCard(container)
 
@@ -174,7 +177,6 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
                 })
             }
         }
-        message?.let { HqText(it, 13.sp, color = c.muted) }
         Spacer(Modifier.height(8.dp))
     }
 
