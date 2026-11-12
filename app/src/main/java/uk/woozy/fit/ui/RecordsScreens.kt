@@ -47,12 +47,21 @@ private val dateFmt = DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.UK).w
 fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit) {
     val c = HqTheme.colors
     val flow = remember(db) { db.sessions().observeRecords() }
-    val rows by flow.collectAsState(initial = emptyList())
+    val allRows by flow.collectAsState(initial = emptyList())
+    val exercises by remember(db) { db.exercises().observeAll() }.collectAsState(initial = emptyList())
+    val muscleOf = remember(exercises) { exercises.associate { it.id to it.muscle } }
+    var query by remember { mutableStateOf("") }
+    val rows = remember(allRows, query) { allRows.filter { query.isBlank() || it.exerciseName.contains(query.trim(), ignoreCase = true) } }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Personal records", onBack) }
+        androidx.compose.material3.OutlinedTextField(
+            value = query, onValueChange = { query = it }, singleLine = true,
+            label = { HqText("Search exercise", 13.sp, color = c.muted) },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        )
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (rows.isEmpty()) {
-                EmptyCard("No records yet", "Finish a workout and your best lifts appear here.")
+                EmptyCard(if (allRows.isEmpty()) "No records yet" else "Nothing matches", if (allRows.isEmpty()) "Finish a workout and your best lifts appear here." else "Try a different name.")
             } else {
                 HqCard(Modifier.fillMaxWidth()) {
                     rows.forEach { r ->
@@ -62,8 +71,9 @@ fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
+                                muscleOf[r.exerciseId]?.takeIf { it.isNotBlank() }?.let { HqText(it.uppercase(), 11.sp, FontWeight.SemiBold, c.muted) }
                                 HqText(r.exerciseName, 16.sp, FontWeight.Medium)
-                                HqText("${r.sessions} session${if (r.sessions == 1) "" else "s"}", 13.sp, color = c.muted)
+                                HqText("${r.sessions} time${if (r.sessions == 1) "" else "s"}", 13.sp, color = c.muted)
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 HqText("${NumberEntry.format(r.bestKg)} kg", 16.sp, FontWeight.SemiBold)
