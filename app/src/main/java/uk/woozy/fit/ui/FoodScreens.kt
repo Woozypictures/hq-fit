@@ -25,6 +25,8 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.QrCodeScanner
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Remove
@@ -196,18 +198,28 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
 
         Meal.entries.forEach { meal ->
             val rows = entries.filter { it.meal == meal.key }
+            var open by rememberSaveable(meal.key) { mutableStateOf(true) }
             HqCard(Modifier.fillMaxWidth()) {
                 Column {
                     Row(
-                        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = "Add to ${meal.title}") { onAdd(meal, dateText) }.padding(horizontal = 16.dp),
+                        Modifier.fillMaxWidth().heightIn(min = 56.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, tint = c.primary, modifier = Modifier.size(22.dp))
-                        Spacer(Modifier.size(12.dp))
-                        HqText(meal.title, 16.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        HqText("${formatWhole(rows.sumOf { Nutrients.decode(it.nutrients)[Nutrients.ENERGY] ?: 0.0 })} kcal", 14.sp, color = c.muted)
+                        Box(
+                            Modifier.size(56.dp).clickable(role = Role.Button, onClickLabel = "Add to ${meal.title}") { onAdd(meal, dateText) },
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(Icons.Rounded.Add, contentDescription = "Add to ${meal.title}", tint = c.primary, modifier = Modifier.size(22.dp)) }
+                        Row(
+                            Modifier.weight(1f).heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = if (open) "Collapse ${meal.title}" else "Expand ${meal.title}") { open = !open }.padding(end = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            HqText(meal.title, 16.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                            HqText("${formatWhole(rows.sumOf { Nutrients.decode(it.nutrients)[Nutrients.ENERGY] ?: 0.0 })} kcal", 14.sp, color = c.muted)
+                            Spacer(Modifier.size(4.dp))
+                            Icon(if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(22.dp))
+                        }
                     }
-                    rows.forEach { e ->
+                    if (open) rows.forEach { e ->
                         Row(
                             Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) { editing = e }.padding(horizontal = 16.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
