@@ -93,13 +93,18 @@ fun TodayScreen(
     dayTotals: Map<String, Double> = emptyMap(),
     nutrientTargets: Map<String, Pair<Double, String>> = emptyMap(),
     onNutrients: () -> Unit = {},
+    /** Planned workouts from the last week that were not done, shown as a banner like Everfit's. */
+    missedCount: Int = 0,
+    onMissed: () -> Unit = {},
+    weighedToday: Boolean = false,
+    onScale: () -> Unit = {},
 ) {
     val c = HqTheme.colors
     val dateLine = remember(today) {
         "TODAY, " + today.format(DateTimeFormatter.ofPattern("MMM d", Locale.UK)).uppercase(Locale.UK)
     }
-    val defaultOrder = listOf("workout", "energy", "nutrients", "water", "steps", "checkin")
-    val names = mapOf("workout" to "Today's workout", "energy" to "Energy and macros", "nutrients" to "Highlighted nutrients", "water" to "Water", "steps" to "Steps", "checkin" to "Sunday check-in")
+    val defaultOrder = listOf("workout", "energy", "nutrients", "water", "steps", "tasks", "checkin")
+    val names = mapOf("workout" to "Today's workout", "energy" to "Energy and macros", "nutrients" to "Highlighted nutrients", "water" to "Water", "steps" to "Steps", "tasks" to "Tasks", "checkin" to "Sunday check-in")
     val cards = rememberCardPrefs("today", defaultOrder)
     var editing by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(editing) { editing = false }
@@ -132,6 +137,17 @@ fun TodayScreen(
             ) {
                 HqText(problem, 13.sp, FontWeight.SemiBold)
                 HqText("TAP TO FIX", 11.sp, color = c.muted, letterSpacing = 0.08.em)
+            }
+        }
+
+        if (missedCount > 0) {
+            Column(
+                Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE5484D).copy(alpha = 0.14f)).clickable(role = Role.Button, onClick = onMissed)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                HqText("You missed $missedCount workout${if (missedCount == 1) "" else "s"}", 14.sp, FontWeight.SemiBold)
+                HqText("TAP TO CATCH UP OR MOVE ${if (missedCount == 1) "IT" else "THEM"}", 11.sp, color = c.muted, letterSpacing = 0.08.em)
             }
         }
 
@@ -215,6 +231,30 @@ fun TodayScreen(
                                 SectionLabel("Steps")
                                 HqText("${steps?.let { formatWhole(it.toDouble()) } ?: "-"} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
                                 Segments(((steps ?: 0L).toFloat() / targets.steps.coerceAtLeast(1)).coerceIn(0f, 1f), c.primary)
+                            }
+                        }
+                        "tasks" -> HqCard(Modifier.fillMaxWidth()) {
+                            val rows = listOf(
+                                Triple("Log your meals", eaten > 0, onDiary),
+                                Triple("Drink your water", waterMl >= targets.waterMl, {}),
+                                Triple("Weigh in", weighedToday, onScale),
+                            )
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    SectionLabel("Tasks")
+                                    Spacer(Modifier.weight(1f))
+                                    HqText("${rows.count { it.second }} of ${rows.size} done", 13.sp, color = c.muted)
+                                }
+                                rows.forEach { (label, done, go) ->
+                                    Row(
+                                        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = go).padding(vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        androidx.compose.material3.Checkbox(checked = done, onCheckedChange = null)
+                                        HqText(label, 16.sp, color = if (done) c.muted else c.ink)
+                                    }
+                                }
                             }
                         }
                         "checkin" -> if (checkIn != null) HqCard(Modifier.fillMaxWidth()) {

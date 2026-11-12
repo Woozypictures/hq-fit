@@ -178,6 +178,10 @@ fun HqFitRoot(
     val waterFlow = remember(db, dayFrom) { db.water().observeTotal(dayFrom, dayTo) }
     val waterToday by waterFlow.collectAsState(initial = 0)
     val todays = calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
+    val missed = calendar.count { it.status == "planned" && it.date < today.toString() && it.date >= today.minusDays(7).toString() }
+    val weighedToday by produceState(false, route, dayFrom) {
+        value = db.weights().observeAllOnce().any { it.epochMs in dayFrom until dayTo }
+    }
     val next = calendar.firstOrNull { it.date > today.toString() && it.status == "planned" }
 
     Scaffold(
@@ -227,6 +231,10 @@ fun HqFitRoot(
                     fatG = dayTotals[Nutrients.FAT] ?: 0.0,
                     problem = problem,
                     onProblem = { nav.navigate(Routes.HEALTH) },
+                    missedCount = missed,
+                    onMissed = { nav.navigateTab(Routes.TRAIN) },
+                    weighedToday = weighedToday,
+                    onScale = { nav.navigate(Routes.SCALE) },
                     onSteps = { if (!openSamsungHealth(syncContext)) nav.navigate(Routes.HEALTH) },
                     onDiary = { nav.navigateTab(Routes.DIARY) },
                     today = today,
