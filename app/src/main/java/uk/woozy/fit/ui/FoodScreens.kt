@@ -319,7 +319,14 @@ fun AddFoodScreen(
     var picked by remember { mutableStateOf<FoodEntity?>(null) }
     var quick by remember { mutableStateOf(startQuick) }
     var refresh by remember { mutableStateOf(0) }
-    LaunchedEffect(text, refresh) { results = db.foods().search(text.trim()) }
+    var tab by remember { mutableStateOf(0) }
+    LaunchedEffect(text, refresh, tab) {
+        results = when (tab) {
+            1 -> db.foods().recent(text.trim())
+            2 -> db.foods().search(text.trim()).filter { it.source == "custom" }
+            else -> db.foods().search(text.trim())
+        }
+    }
     val names by produceState(emptyMap<String, Pair<String, String>>(), db) {
         value = db.nutrients().all().associate { it.key to (it.name to it.unit) }
     }
@@ -331,6 +338,14 @@ fun AddFoodScreen(
             label = { HqText("Search foods", 13.sp, color = c.muted) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
+        androidx.compose.foundation.layout.Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf("All", "Recent", "Custom").forEachIndexed { i, label ->
+                androidx.compose.material3.FilterChip(selected = tab == i, onClick = { tab = i }, label = { HqText(label, 13.sp) })
+            }
+        }
         HqCard(Modifier.fillMaxWidth().padding(16.dp)) {
             ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Look a product up in Open Food Facts", onClick = onScan)
             ListRow(Icons.Rounded.Add, "Create a custom food", "Your own figures per 100 g", onClick = onCustom)
@@ -339,7 +354,11 @@ fun AddFoodScreen(
         }
         if (results.isEmpty()) {
             HqText(
-                if (text.isBlank()) "No foods yet. Create a custom food, or quick add. Barcode scanning and Open Food Facts search arrive in milestone 6."
+                if (text.isBlank()) when (tab) {
+                    1 -> "Nothing logged yet. Foods you eat show up here."
+                    2 -> "No custom foods yet. Create one above."
+                    else -> "No foods yet. Create a custom food, scan a barcode, or quick add."
+                }
                 else "Nothing matches \"$text\".",
                 14.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp),
             )

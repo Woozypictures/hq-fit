@@ -1,6 +1,14 @@
 package uk.woozy.fit.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -79,18 +87,21 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         HqText(t.name, 17.sp, FontWeight.SemiBold)
                         if (t.focus.isNotBlank()) HqText(t.focus, 13.sp, color = c.muted)
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             DayOfWeek.entries.forEach { d ->
                                 val on = days[t.id].orEmpty().contains(d)
-                                FilterChip(
-                                    selected = on,
-                                    onClick = {
-                                        val now = days[t.id].orEmpty()
-                                        days[t.id] = if (on) now - d else now + d
-                                        changed[t.id] = true
-                                    },
-                                    label = { HqText(d.getDisplayName(TextStyle.NARROW, Locale.UK), 12.sp) },
-                                )
+                                Box(
+                                    Modifier.weight(1f).height(40.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (on) c.primary.copy(alpha = 0.30f) else Color.Transparent)
+                                        .border(1.dp, if (on) c.primary else c.muted.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            val now = days[t.id].orEmpty()
+                                            days[t.id] = if (on) now - d else now + d
+                                            changed[t.id] = true
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) { HqText(d.getDisplayName(TextStyle.NARROW, Locale.UK), 13.sp, if (on) FontWeight.Bold else FontWeight.Normal) }
                             }
                         }
                         HqPillButton("Edit exercises", onClick = { onEdit(t.id) }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)

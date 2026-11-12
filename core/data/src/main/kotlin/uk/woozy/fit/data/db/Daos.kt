@@ -401,6 +401,10 @@ interface FoodDao {
     @Query("SELECT * FROM food WHERE name LIKE '%' || :text || '%' OR brand LIKE '%' || :text || '%' ORDER BY (source = 'custom') DESC, name LIMIT 60")
     suspend fun search(text: String): List<FoodEntity>
 
+    /** Foods eaten before, most recently logged first. */
+    @Query("SELECT f.* FROM food f JOIN diary_entry d ON d.foodId = f.id WHERE f.name LIKE '%' || :text || '%' OR f.brand LIKE '%' || :text || '%' GROUP BY f.id ORDER BY MAX(d.createdMs) DESC LIMIT 40")
+    suspend fun recent(text: String): List<FoodEntity>
+
     @Query("SELECT COUNT(*) FROM food")
     suspend fun count(): Int
 }
