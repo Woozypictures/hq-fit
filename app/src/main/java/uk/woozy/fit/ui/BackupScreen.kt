@@ -145,6 +145,24 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
             }
         }
 
+        SectionLabel("Import Feelfit weights")
+        HqCard(Modifier.fillMaxWidth()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                HqText("Adds weigh-ins from Feelfit, Sept 2020 to July 2026. Feelfit cannot export, so this is a sample of days (about 200), enough for the weight chart and trend. Days that already have a weight are skipped. Safe to run twice.", 13.sp, color = c.muted)
+                HqPillButton("Import Feelfit weights", style = PillStyle.Outline, onClick = {
+                    scope.launch {
+                        message = try {
+                            val text = withContext(Dispatchers.IO) { context.assets.open("feelfit_weights.tsv").use { it.readBytes().toString(Charsets.UTF_8) } }
+                            val n = uk.woozy.fit.data.imports.FeelfitWeightsImport.import(db, text)
+                            if (n == 0) "Nothing new: those weights are already here" else "Added $n weigh-ins"
+                        } catch (e: Exception) {
+                            "Import failed: ${e.javaClass.simpleName}"
+                        }
+                    }
+                })
+            }
+        }
+
         SectionLabel("Import Cronometer custom foods")
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
