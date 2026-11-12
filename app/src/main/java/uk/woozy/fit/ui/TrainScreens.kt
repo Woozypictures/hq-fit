@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -117,28 +118,41 @@ fun TrainScreen(
                                 .then(if (first != null) Modifier.clickable(role = Role.Button, onClickLabel = first.templateName) { onOpen(first.id) } else Modifier),
                         ) {
                             HqText(day.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.UK), 12.sp, FontWeight.Medium, c.muted)
+                            val isDone = first?.status == "done"
+                            val isMissed = first != null && first.status == "planned" && day < today
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
                                     .clip(CircleShape)
-                                    .then(if (isToday) Modifier.border(2.dp, c.primary, CircleShape) else Modifier),
+                                    .then(
+                                        when {
+                                            isDone -> Modifier.background(c.protein)
+                                            isToday -> Modifier.border(2.dp, c.primary, CircleShape)
+                                            isMissed -> Modifier.border(2.dp, Color(0xFFE5484D), CircleShape)
+                                            first != null -> Modifier.border(1.5.dp, c.primary.copy(alpha = 0.6f), CircleShape)
+                                            else -> Modifier
+                                        },
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 HqText(
-                                    day.dayOfMonth.toString(), 14.sp,
-                                    if (isToday) FontWeight.Bold else FontWeight.Normal,
-                                    if (isToday) c.primary else c.ink,
+                                    if (isDone) "\u2713" else day.dayOfMonth.toString(), 14.sp,
+                                    if (isToday || isDone) FontWeight.Bold else FontWeight.Normal,
+                                    when {
+                                        isDone -> Color.White
+                                        isToday -> c.primary
+                                        isMissed -> Color(0xFFE5484D)
+                                        else -> c.ink
+                                    },
                                     textAlign = TextAlign.Center,
                                 )
                             }
-                            val dot = when {
-                                first == null -> null
-                                first.status == "done" -> c.protein
-                                else -> c.primary
-                            }
-                            Box(Modifier.size(6.dp).clip(CircleShape).then(if (dot != null) Modifier.background(dot) else Modifier))
                         }
                     }
+                }
+                val weekAll = (0..6).flatMap { byDate[monday.plusDays(it.toLong()).toString()].orEmpty() }
+                if (weekAll.isNotEmpty()) {
+                    HqText("${weekAll.count { it.status == "done" }} of ${weekAll.size} workouts done this week", 14.sp, FontWeight.Medium)
                 }
                 HqText(
                     if (upcoming.isEmpty()) "No workouts scheduled" else "Next: ${upcoming.first().templateName}, ${upcoming.first().localDate().format(dayLine)}",
