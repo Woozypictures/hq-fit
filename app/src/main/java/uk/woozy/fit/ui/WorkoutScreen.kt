@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
 import android.Manifest
@@ -651,6 +652,7 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
     val scope = rememberCoroutineScope()
     val summary by produceState<SessionSummary?>(null, sessionId) { value = Sessions.summary(db, sessionId, System.currentTimeMillis()) }
     var feeling by remember { mutableStateOf<Int?>(null) }
+    val sets by produceState(emptyList<SetLogEntity>(), sessionId) { value = db.sessions().sets(sessionId).filter { it.done } }
     BackHandler(onBack = onDone)
 
     Column(Modifier.fillMaxSize()) {
@@ -663,7 +665,7 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
         }
         val s = summary
         Column(
-            Modifier.weight(1f).padding(16.dp).then(Modifier),
+            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (s != null) {
@@ -690,6 +692,27 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
                     }
                 } else {
                     HqText("No new records this time. The first session of a lift sets the baseline.", 14.sp, color = c.muted)
+                }
+                if (sets.isNotEmpty()) {
+                    SectionLabel("Workout details")
+                    HqCard(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                            sets.groupBy { it.position }.toSortedMap().values.forEach { group ->
+                                Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    HqText(group.first().exerciseName, 15.sp, FontWeight.SemiBold)
+                                    HqText(
+                                        group.joinToString("  ·  ") { st ->
+                                            when {
+                                                st.durationSec != null -> "${st.durationSec / 60} min"
+                                                else -> "${NumberEntry.format(st.weightKg ?: 0.0)} kg x ${st.reps ?: 0}"
+                                            }
+                                        },
+                                        13.sp, color = c.muted,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
                 SectionLabel("How was it?")
                 SegmentedChoice(
