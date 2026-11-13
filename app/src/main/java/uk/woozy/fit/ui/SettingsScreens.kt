@@ -143,7 +143,7 @@ fun SettingsScreen(
 
         SectionLabel("About")
         HqCard(Modifier.fillMaxWidth()) {
-            AboutBlock("HQ Fit")
+            AboutBlock("Woozy Fit")
             Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 HqText("Licence AGPL-3.0 · source at github.com/Woozypictures/hq-fit", 13.sp, color = c.muted)
                 HqText("Your data stays on this phone.", 13.sp, color = c.muted)

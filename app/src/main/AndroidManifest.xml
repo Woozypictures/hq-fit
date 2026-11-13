@@ -41,7 +41,7 @@
         android:name=".HqFitApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="HQ Fit"
+        android:label="Woozy Fit"
         android:supportsRtl="true"
         android:theme="@style/Theme.HQFit">
 

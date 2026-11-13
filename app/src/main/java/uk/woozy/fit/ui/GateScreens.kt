@@ -45,7 +45,7 @@ private fun GateFrame(content: @Composable () -> Unit) {
 @Composable
 fun LoadingScreen() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        HqText("HQ Fit", 20.sp, FontWeight.SemiBold, color = HqTheme.colors.muted)
+        HqText("Woozy Fit", 20.sp, FontWeight.SemiBold, color = HqTheme.colors.muted)
     }
 }
 
