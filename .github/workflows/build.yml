@@ -1,7 +1,7 @@
 name: build
 on:
   push:
-    branches: [main]
+    branches: [main, design-glass-nav]
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -46,7 +46,7 @@ jobs:
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort | tail -1)
           "$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk | tee sign.txt
       - name: Release
-        if: success()
+        if: success() && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.${{ github.run_number }}
@@ -66,7 +66,7 @@ jobs:
           echo "${{ job.status }} run ${{ github.run_number }} sha ${{ github.sha }}" > /tmp/l/status.txt
           git config user.name hq-fit-bot
           git config user.email hq-fit-bot@users.noreply.github.com
-          git checkout --orphan build-log
+          git checkout --orphan ${{ github.ref_name == 'main' && 'build-log' || 'build-log-design' }}
           git rm -rf -q . || true
           cp /tmp/l/tail.log build.log
           cp /tmp/l/status.txt status.txt
@@ -75,4 +75,4 @@ jobs:
           rm -rf shots && cp -r /tmp/l/shots shots
           git add build.log status.txt sign.txt lint-report.txt shots 2>/dev/null || git add -A
           git commit -q -m "log ${{ github.run_number }}"
-          git push -f origin build-log
+          git push -f origin HEAD:${{ github.ref_name == 'main' && 'build-log' || 'build-log-design' }}

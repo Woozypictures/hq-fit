@@ -29,6 +29,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.material.icons.rounded.Add
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -51,7 +54,15 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import uk.woozy.fit.designsystem.BarItem
-import uk.woozy.fit.designsystem.HqBottomBar
+import uk.woozy.fit.designsystem.GlassItem
+import uk.woozy.fit.designsystem.GlassNavHeight
+import uk.woozy.fit.designsystem.GlassNavLift
+import uk.woozy.fit.designsystem.GlassPillNav
+import uk.woozy.fit.designsystem.GlassRoundButton
+import uk.woozy.fit.designsystem.LocalGlassInset
+import uk.woozy.fit.designsystem.glassSource
+import uk.woozy.fit.designsystem.glassStyle
+import uk.woozy.fit.designsystem.rememberGlassBackdrop
 import uk.woozy.fit.designsystem.HqTheme
 import uk.woozy.fit.designsystem.SectionLabel
 import uk.woozy.fit.model.ThemeMode
@@ -187,19 +198,15 @@ fun HqFitRoot(
     Scaffold(
         containerColor = HqTheme.colors.page,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            if (route in tabRoutes) {
-                HqBottomBar(
-                    items = barItems,
-                    selected = tabRoutes.indexOf(route),
-                    onSelect = { nav.navigateTab(tabRoutes[it]) },
-                    onCentre = { quickAdd = true },
-                )
-            }
-        },
     ) { padding ->
+        val backdrop = rememberGlassBackdrop()
+        val gc = HqTheme.colors
+        val gStyle = remember(gc) { glassStyle(gc.dark, gc.ink, gc.muted) }
+        val navInset = androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + GlassNavHeight + GlassNavLift
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         // Tab pages may go wide (two columns of cards); every other page is capped so it reads well on a tablet.
-        androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+        androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize().glassSource(backdrop), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset else 0.dp)) {
         NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize()) {
             composable(Routes.TODAY) {
                 TodayScreen(
@@ -414,6 +421,22 @@ fun HqFitRoot(
                     onEdit = { nav.navigate("${Routes.WORKOUT}/${backStack.arguments?.getLong("id") ?: 0L}") },
                 )
             }
+        }
+        }
+        }
+        if (route in tabRoutes) {
+            GlassPillNav(
+                items = barItems.map { GlassItem(it.label, it.icon) },
+                selected = tabRoutes.indexOf(route),
+                onSelect = { nav.navigateTab(tabRoutes[it]) },
+                backdrop = backdrop, style = gStyle,
+                modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
+                trailing = {
+                    GlassRoundButton(backdrop, gStyle, onClick = { quickAdd = true }) {
+                        androidx.compose.material3.Icon(Icons.Rounded.Add, contentDescription = "Quick add", tint = gStyle.ink, modifier = Modifier.size(28.dp))
+                    }
+                },
+            )
         }
         }
     }
