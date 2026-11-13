@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -94,6 +95,9 @@ import uk.woozy.fit.designsystem.PillStyle
 import uk.woozy.fit.designsystem.SectionLabel
 import uk.woozy.fit.designsystem.SegmentedChoice
 import uk.woozy.fit.designsystem.SetRow
+import uk.woozy.fit.designsystem.glass
+import uk.woozy.fit.designsystem.glassSource
+import androidx.compose.foundation.layout.windowInsetsPadding
 import uk.woozy.fit.designsystem.SetTableHeader
 import uk.woozy.fit.designsystem.SpacedTitle
 import uk.woozy.fit.designsystem.formatWhole
@@ -302,6 +306,8 @@ fun ActiveWorkoutScreen(
         }
     }
 
+    val backdrop = uk.woozy.fit.designsystem.rememberGlassBackdrop()
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         GradientHeader {
             Column(Modifier.statusBarsPadding().padding(horizontal = 8.dp, vertical = 8.dp)) {
@@ -336,7 +342,7 @@ fun ActiveWorkoutScreen(
                         }
                     }
                 }
-                if (restLeft > 0) {
+                if (restLeft > 0 && !c.flat) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         HqText("Rest ${clock(restLeft + 999)}", if (c.flat) 24.sp else 15.sp, FontWeight.Bold, c.onGradient, Modifier.weight(1f), letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                         HqText(
@@ -358,7 +364,7 @@ fun ActiveWorkoutScreen(
 
         androidx.compose.foundation.pager.HorizontalPager(
             state = pager,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).glassSource(backdrop),
             userScrollEnabled = phases[sectionKeys.getOrNull(pager.currentPage)] != SectionPhase.ACTIVE,
             beyondViewportPageCount = 1,
         ) { page ->
@@ -458,6 +464,26 @@ fun ActiveWorkoutScreen(
             NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "${NumberEntry.format(weightStep)} kg" else "1 rep")
         } else {
             Spacer(Modifier.navigationBarsPadding())
+        }
+    }
+        if (c.flat && restLeft > 0 && editing == null) {
+            val gStyle = remember(c) { uk.woozy.fit.designsystem.glassStyle(c.dark, c.ink, c.muted) }
+            Row(
+                Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
+                    .padding(bottom = 16.dp).height(60.dp)
+                    .glass(backdrop, gStyle, androidx.compose.foundation.shape.RoundedCornerShape(30.dp))
+                    .padding(start = 24.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                HqText("Rest", 14.sp, FontWeight.Medium, c.muted)
+                Spacer(Modifier.width(12.dp))
+                HqText(clock(restLeft + 999), 26.sp, FontWeight.Bold, c.ink, letterSpacing = (-0.5).sp)
+                Spacer(Modifier.width(20.dp))
+                HqText(
+                    "Skip", 14.sp, FontWeight.SemiBold, c.primary,
+                    Modifier.clip(CircleShape).clickable(role = Role.Button) { restEnd = 0; RestTimer.cancel(context) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
         }
     }
 
