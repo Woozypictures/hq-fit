@@ -76,7 +76,7 @@ val DarkHqColors = HqColors(
     warn = Color(0xFFFF8A7A),
 )
 
-val LocalHqColors = staticCompositionLocalOf { LightHqColors }
+val LocalHqColors = staticCompositionLocalOf { WoozyLight }
 
 /** True for the frosted glass style: dark page, translucent gradient cards. */
 val LocalFrosted = staticCompositionLocalOf { false }

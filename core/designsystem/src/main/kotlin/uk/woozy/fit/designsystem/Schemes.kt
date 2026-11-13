@@ -5,8 +5,9 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import uk.woozy.fit.model.DEFAULT_SCHEME_KEY
+import uk.woozy.fit.model.EVERFIT_SCHEME_KEY
 
-/** The default scheme: Everfit's look. */
+/** The default scheme: Woozy, the shared HQ and Fit look (near-black or warm off-white, one green accent). */
 const val DEFAULT_SCHEME = DEFAULT_SCHEME_KEY
 
 class HqScheme(val key: String, val label: String)
@@ -44,10 +45,11 @@ private val hqSchemes = listOf(
  * scheme into a dark one the way HQ does; the four schemes that are dark by nature stay dark.
  */
 object HqSchemes {
-    val all: List<HqScheme> = listOf(HqScheme(DEFAULT_SCHEME, "Everfit")) + hqSchemes.map { HqScheme(it.key, it.label) }
+    val all: List<HqScheme> = listOf(HqScheme(DEFAULT_SCHEME, "Woozy"), HqScheme(EVERFIT_SCHEME_KEY, "Everfit")) + hqSchemes.map { HqScheme(it.key, it.label) }
 
     fun colors(key: String, wantDark: Boolean): HqColors {
-        if (key == DEFAULT_SCHEME) return if (wantDark) DarkHqColors else LightHqColors
+        if (key == DEFAULT_SCHEME) return if (wantDark) WoozyDark else WoozyLight
+        if (key == EVERFIT_SCHEME_KEY) return if (wantDark) DarkHqColors else LightHqColors
         val raw = hqSchemes.firstOrNull { it.key == key } ?: return colors(DEFAULT_SCHEME, wantDark)
         return if (!raw.dark && wantDark) darkOf(raw) else build(raw)
     }
@@ -93,3 +95,19 @@ object HqSchemes {
         )
     }
 }
+
+/** Woozy light: warm off-white page, white surfaces, deep green accent. Same values as HQ's Woozy theme. */
+val WoozyLight = HqColors(
+    dark = false, page = Color(0xFFF4F1EA), card = Color(0xFFFFFFFF), primary = Color(0xFF2D5A34), onPrimary = Color(0xFFFFFFFF),
+    gradientStart = Color(0xFF2D5A34), gradientEnd = Color(0xFF1F4526), onGradient = Color(0xFFFFFFFF),
+    ink = Color(0xFF141414), muted = Color(0xFF6B675F), hairline = Color(0x1A141414), track = Color(0xFFE6E2D8),
+    protein = Color(0xFF4C8A4A), carbs = Color(0xFFB08A3E), fat = Color(0xFFA8645A), ok = Color(0xFF2D6A3A), warn = Color(0xFFB3401A),
+)
+
+/** Woozy dark: near-black, electric lime accent. */
+val WoozyDark = HqColors(
+    dark = true, page = Color(0xFF0E0F0E), card = Color(0xFF181A18), primary = Color(0xFFC8F25A), onPrimary = Color(0xFF10140A),
+    gradientStart = Color(0xFF2E3D14), gradientEnd = Color(0xFF1B260B), onGradient = Color(0xFFFFFFFF),
+    ink = Color(0xFFF2F1EC), muted = Color(0xFF9A9A92), hairline = Color(0x1FFFFFFF), track = Color(0xFF282B28),
+    protein = Color(0xFF9BD670), carbs = Color(0xFFD9B36A), fat = Color(0xFFCF9484), ok = Color(0xFF8FD18F), warn = Color(0xFFFF8A7A),
+)

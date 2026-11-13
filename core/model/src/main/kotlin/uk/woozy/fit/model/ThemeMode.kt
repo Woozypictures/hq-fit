@@ -11,5 +11,8 @@ enum class ThemeMode(val key: String) {
     }
 }
 
-/** Key of the default colour scheme (Everfit's look). The schemes themselves live in the design system. */
-const val DEFAULT_SCHEME_KEY = "everfit"
+/** Key of the default colour scheme (the Woozy look). The schemes themselves live in the design system. */
+const val DEFAULT_SCHEME_KEY = "woozy"
+
+/** The original Everfit-style look, still selectable. */
+const val EVERFIT_SCHEME_KEY = "everfit"
