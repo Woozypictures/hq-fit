@@ -118,7 +118,12 @@ fun HqFitTheme(darkTheme: Boolean, scheme: String = DEFAULT_SCHEME, frosted: Boo
             outline = c.hairline, outlineVariant = c.hairline,
         )
     }
-    CompositionLocalProvider(LocalHqColors provides c, LocalFrosted provides frosted) {
+    @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+    CompositionLocalProvider(
+        LocalHqColors provides c, LocalFrosted provides frosted,
+        androidx.compose.foundation.LocalIndication provides NoIndication,
+        androidx.compose.material3.LocalRippleConfiguration provides null,
+    ) {
         MaterialTheme(colorScheme = materialScheme, typography = HqTypography, content = content)
     }
 }
