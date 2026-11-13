@@ -1,0 +1,442 @@
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/CheckInReminder.kt:60: Error: Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with checkPermission) or explicitly handle a potential SecurityException [MissingPermission]
+        runCatching { NotificationManagerCompat.from(c).notify(ID, n) }
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/RestTimer.kt:55: Error: Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with checkPermission) or explicitly handle a potential SecurityException [MissingPermission]
+        runCatching { nm.notify(ID_COUNT, n) } // no permission means no notification; the in-app timer still works
+                      ~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/RestTimer.kt:86: Error: Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with checkPermission) or explicitly handle a potential SecurityException [MissingPermission]
+        runCatching { nm.notify(ID_DONE, n) }
+                      ~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/WeighInReminder.kt:66: Error: Call requires permission which may be rejected by user: code should explicitly check to see if permission is available (with checkPermission) or explicitly handle a potential SecurityException [MissingPermission]
+        runCatching { NotificationManagerCompat.from(c).notify(ID, n) }
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "MissingPermission":
+   This check scans through your code and libraries and looks at the APIs
+   being used, and checks this against the set of permissions required to
+   access those APIs. If the code using those APIs is called at runtime, then
+   the program will crash.
+
+   Furthermore, for permissions that are revocable (with targetSdkVersion 23),
+   client code must also be prepared to handle the calls throwing an exception
+   if the user rejects the request for permission at runtime.
+
+/home/runner/work/hq-fit/hq-fit/app/build.gradle.kts:18: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
+        targetSdk = 35
+        ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "OldTargetApi":
+   When your application runs on a version of Android that is more recent than
+   your targetSdkVersion specifies that it has been tested with, various
+   compatibility modes kick in. This ensures that your application continues
+   to work, but it may look out of place. For example, if the targetSdkVersion
+   is less than 14, your app may get an option button in the UI.
+
+   To fix this issue, set the targetSdkVersion to the highest available value.
+   Then test your app to make sure everything works correctly. You may want to
+   consult the compatibility notes to see what changes apply to each version
+   you are adding support for:
+   https://developer.android.com/reference/android/os/Build.VERSION_CODES.html
+   as well as follow this guide:
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.
+   html
+
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.html
+
+/home/runner/work/hq-fit/hq-fit/app/src/main/AndroidManifest.xml:9: Warning: Attribute usesPermissionFlags is only used in API level 31 and higher (current min is 28) [UnusedAttribute]
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+                                                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedAttribute":
+   This check finds attributes set in XML files that were introduced in a
+   version newer than the oldest version targeted by your application (with
+   the minSdkVersion attribute).
+
+   This is not an error; the application will simply ignore the attribute.
+   However, if the attribute is important to the appearance or functionality
+   of your application, you should consider finding an alternative way to
+   achieve the same result with only available attributes, and then you can
+   optionally create a copy of the layout in a layout-vNN folder which will be
+   used on API NN or higher where you can take advantage of the newer
+   attribute.
+
+   Note: This check does not only apply to attributes. For example, some tags
+   can be unused too, such as the new <tag> element in layouts introduced in
+   API 21.
+
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:2: Warning: A newer version of com.android.application than 8.7.3 is available: 9.5.1 [AndroidGradlePluginVersion]
+agp = "8.7.3"
+      ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:2: Warning: A newer version of com.android.application than 8.7.3 is available: 9.5.1 [AndroidGradlePluginVersion]
+agp = "8.7.3"
+      ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:2: Warning: A newer version of com.android.application than 8.7.3 is available: 9.5.1 [AndroidGradlePluginVersion]
+agp = "8.7.3"
+      ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:2: Warning: A newer version of com.android.library than 8.7.3 is available: 9.5.1 [AndroidGradlePluginVersion]
+agp = "8.7.3"
+      ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:2: Warning: A newer version of com.android.library than 8.7.3 is available: 9.5.1 [AndroidGradlePluginVersion]
+agp = "8.7.3"
+      ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:2: Warning: A newer version of com.android.library than 8.7.3 is available: 9.5.1 [AndroidGradlePluginVersion]
+agp = "8.7.3"
+      ~~~~~~~
+
+   Explanation for issues of type "AndroidGradlePluginVersion":
+   This detector looks for usage of the Android Gradle Plugin where the
+   version you are using is not the current stable release. Using older
+   versions is fine, and there are cases where you deliberately want to stick
+   with an older version. However, you may simply not be aware that a more
+   recent version is available, and that is what this lint check helps find.
+
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:4: Warning: A newer version of androidx.compose:compose-bom than 2024.12.01 is available: 2026.09.00 [GradleDependency]
+composeBom = "2024.12.01"
+             ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:4: Warning: A newer version of androidx.compose:compose-bom than 2024.12.01 is available: 2026.09.00 [GradleDependency]
+composeBom = "2024.12.01"
+             ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:4: Warning: A newer version of androidx.compose:compose-bom than 2024.12.01 is available: 2026.09.00 [GradleDependency]
+composeBom = "2024.12.01"
+             ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:5: Warning: A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.13.0 [GradleDependency]
+activityCompose = "1.9.3"
+                  ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:5: Warning: A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.13.0 [GradleDependency]
+activityCompose = "1.9.3"
+                  ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:5: Warning: A newer version of androidx.activity:activity-compose than 1.9.3 is available: 1.13.0 [GradleDependency]
+activityCompose = "1.9.3"
+                  ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:6: Warning: A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.19.1 [GradleDependency]
+coreKtx = "1.15.0"
+          ~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:6: Warning: A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.19.1 [GradleDependency]
+coreKtx = "1.15.0"
+          ~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:6: Warning: A newer version of androidx.core:core-ktx than 1.15.0 is available: 1.19.1 [GradleDependency]
+coreKtx = "1.15.0"
+          ~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:7: Warning: A newer version of androidx.navigation:navigation-compose than 2.8.5 is available: 2.10.2 [GradleDependency]
+navigation = "2.8.5"
+             ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:7: Warning: A newer version of androidx.navigation:navigation-compose than 2.8.5 is available: 2.10.2 [GradleDependency]
+navigation = "2.8.5"
+             ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:7: Warning: A newer version of androidx.navigation:navigation-compose than 2.8.5 is available: 2.10.2 [GradleDependency]
+navigation = "2.8.5"
+             ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-compiler than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-ktx than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:11: Warning: A newer version of androidx.room:room-runtime than 2.6.1 is available: 2.8.5 [GradleDependency]
+room = "2.6.1"
+       ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:13: Warning: A newer version of androidx.sqlite:sqlite than 2.4.0 is available: 2.7.1 [GradleDependency]
+sqlite = "2.4.0"
+         ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:13: Warning: A newer version of androidx.sqlite:sqlite than 2.4.0 is available: 2.7.1 [GradleDependency]
+sqlite = "2.4.0"
+         ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:13: Warning: A newer version of androidx.sqlite:sqlite than 2.4.0 is available: 2.7.1 [GradleDependency]
+sqlite = "2.4.0"
+         ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:16: Warning: A newer version of androidx.test:core than 1.6.1 is available: 1.7.0 [GradleDependency]
+testCore = "1.6.1"
+           ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:16: Warning: A newer version of androidx.test:core than 1.6.1 is available: 1.7.0 [GradleDependency]
+testCore = "1.6.1"
+           ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:16: Warning: A newer version of androidx.test:core than 1.6.1 is available: 1.7.0 [GradleDependency]
+testCore = "1.6.1"
+           ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-camera2 than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-camera2 than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-camera2 than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-core than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-core than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-core than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-lifecycle than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-lifecycle than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-lifecycle than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-view than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-view than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:17: Warning: A newer version of androidx.camera:camera-view than 1.4.1 is available: 1.6.2 [GradleDependency]
+camerax = "1.4.1"
+          ~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:19: Warning: A newer version of androidx.health.connect:connect-client than 1.1.0-alpha10 is available: 1.1.0 [GradleDependency]
+healthConnect = "1.1.0-alpha10"
+                ~~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:19: Warning: A newer version of androidx.health.connect:connect-client than 1.1.0-alpha10 is available: 1.1.0 [GradleDependency]
+healthConnect = "1.1.0-alpha10"
+                ~~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/gradle/libs.versions.toml:19: Warning: A newer version of androidx.health.connect:connect-client than 1.1.0-alpha10 is available: 1.1.0 [GradleDependency]
+healthConnect = "1.1.0-alpha10"
+                ~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ScanScreen.kt:170: Error: This declaration is opt-in and its usage should be marked with @androidx.camera.core.ExperimentalGetImage or @OptIn(markerClass = androidx.camera.core.ExperimentalGetImage.class) [UnsafeOptInUsageError from androidx.annotation.experimental]
+                    val media = proxy.image
+                                      ~~~~~
+
+   Explanation for issues of type "UnsafeOptInUsageError":
+   This API has been flagged as opt-in with error-level severity.
+
+   Any declaration annotated with this marker is considered part of an
+   unstable or
+   otherwise non-standard API surface and its call sites should accept the
+   opt-in
+   aspect of it by using the @OptIn annotation, using the marker annotation
+   --
+   effectively causing further propagation of the opt-in aspect -- or
+   configuring
+   the UnsafeOptInUsageError check's options for project-wide opt-in.
+
+   To configure project-wide opt-in, specify the opt-in option value in
+   lint.xml
+   as a comma-delimited list of opted-in annotations:
+
+   <lint>
+       <issue id="UnsafeOptInUsageError">
+           <option name="opt-in" value="com.foo.ExperimentalBarAnnotation" />
+       </issue>
+   </lint>
+
+   Vendor: Android Open Source Project
+   Identifier: androidx.annotation.experimental
+   Feedback: https://issuetracker.google.com/issues/new?component=459778
+
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/Charts.kt:60: Warning: Modifier parameter should be the first optional parameter [ModifierParameter from androidx.compose.ui]
+fun BarChart(values: List<Double>, labels: List<String>, target: Double? = null, modifier: Modifier = Modifier) {
+                                                                                 ~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/Charts.kt:93: Warning: Modifier parameter should be the first optional parameter [ModifierParameter from androidx.compose.ui]
+fun StackedMacroChart(days: List<MacroDay>, labels: List<String>, target: Double? = null, modifier: Modifier = Modifier) {
+                                                                                          ~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/FoodScreens.kt:623: Warning: Optional Modifier parameter should have a default value of Modifier [ModifierParameter from androidx.compose.ui]
+fun NumberField(label: String, value: String, modifier: Modifier = Modifier.fillMaxWidth(), onChange: (String) -> Unit) {
+                                              ~~~~~~~~
+
+   Explanation for issues of type "ModifierParameter":
+   The first (or only) Modifier parameter in a Composable function should
+   follow the following rules:
+   - Be named modifier
+   - Have a type of Modifier
+   - Either have no default value, or have a default value of Modifier
+   - If optional, be the first optional parameter in the parameter list
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.ui
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/EditorScreens.kt:65: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val template by produceState<WorkoutTemplateEntity?>(null, templateId) { value = db.templates().get(templateId) }
+                    ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ExerciseMedia.kt:66: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val id by produceState<String?>(null, name) { value = withContext(Dispatchers.IO) { ExerciseMedia.idFor(context, name) } }
+              ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ExerciseMedia.kt:103: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val entity by produceState<uk.woozy.fit.data.db.ExerciseEntity?>(null, name) { value = db.exercises().findByName(name) }
+                  ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/FoodExtras.kt:142: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val data by produceState<Triple<List<NutrientEntity>, Map<String, Double>, Map<String, TargetEntity>>?>(null, date) {
+                ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/FoodScreens.kt:89: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val t by produceState(Targets(), db, key) {
+             ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/FoodScreens.kt:135: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val names by produceState(emptyMap<String, Pair<String, String>>(), db) {
+                 ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/FoodScreens.kt:367: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val names by produceState(emptyMap<String, Pair<String, String>>(), db) {
+                 ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/HqFitRoot.kt:138: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db, refreshTick) {
+                                           ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/HqFitRoot.kt:147: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val problem by androidx.compose.runtime.produceState<String?>(null, db, refreshTick) {
+                                            ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/HqFitRoot.kt:186: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val nutrientTargets by produceState(emptyMap<String, Pair<Double, String>>(), route) {
+                           ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/HqFitRoot.kt:194: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val weighedToday by produceState(false, route, dayFrom) {
+                        ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/HqFitRoot.kt:268: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+                val doneDates by produceState(emptySet<String>(), db, calendar) {
+                                 ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/PastWorkouts.kt:33: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val sessions by produceState(emptyList<WorkoutSessionEntity>(), db) { value = db.sessions().doneSince(0L).reversed() }
+                    ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/PastWorkouts.kt:34: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val counts by produceState(emptyMap<Long, Int>(), sessions) {
+                  ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ProgrammesScreen.kt:68: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    produceState(Unit, templates) {
+    ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/RecordsScreens.kt:96: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val history by produceState(emptyList<HistoryRow>(), exerciseId) { value = db.sessions().exerciseHistory(exerciseId) }
+                   ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ScanScreen.kt:82: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val names by produceState(emptyMap<String, Pair<String, String>>(), db) {
+                 ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/TabScreens.kt:149: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val data by produceState<ProgressData?>(null, db) { value = loadProgress(db) }
+                ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/TrainScreens.kt:210: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val scheduled by produceState<ScheduledWorkoutEntity?>(null, scheduledId, reload) { value = db.schedule().get(scheduledId) }
+                     ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/WorkoutScreen.kt:141: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val session by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, sessionId) { value = db.sessions().get(sessionId) }
+                   ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/WorkoutScreen.kt:144: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val previous by produceState(emptyMap<Pair<Long, Int>, String>(), sessionId, sets.size) {
+                    ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/WorkoutScreen.kt:653: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val summary by produceState<SessionSummary?>(null, sessionId) { value = Sessions.summary(db, sessionId, System.currentTimeMillis()) }
+                   ~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/WorkoutScreen.kt:655: Error: produceState calls should assign value inside the producer lambda [ProduceStateDoesNotAssignValue from androidx.compose.runtime]
+    val sets by produceState(emptyList<SetLogEntity>(), sessionId) { value = db.sessions().sets(sessionId).filter { it.done } }
+                ~~~~~~~~~~~~
+
+   Explanation for issues of type "ProduceStateDoesNotAssignValue":
+   produceState returns an observable State using values assigned inside the
+   producer lambda. If the lambda never assigns (i.e value = foo), then the
+   State will never change. Make sure to assign a value when the source you
+   are producing values from changes / emits a new value. For sample usage see
+   the produceState documentation.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/runner/work/hq-fit/hq-fit/app/src/main/AndroidManifest.xml:42: Warning: The attribute android:allowBackup is deprecated from Android 12 and higher and may be removed in future versions. Consider adding the attribute android:dataExtractionRules specifying an @xml resource which configures cloud backups and device transfers on Android 12 and higher. [DataExtractionRules]
+        android:allowBackup="false"
+                             ~~~~~
+
+   Explanation for issues of type "DataExtractionRules":
+   Before Android 12, the attributes android:allowBackup and
+   android:fullBackupContent were used to configure all forms of backup,
+   including cloud backups, device-to-device transfers and adb backup.
+
+   In Android 12 and higher, these attributes have been deprecated and will
+   only apply to cloud backups. You should instead use the attribute
+   android:dataExtractionRules, specifying an @xml resource that configures
+   which files to back up, for cloud backups and for device-to-device
+   transfers, separately. If your minSdkVersion supports older versions,
+   you'll still want to specify an android:fullBackupContent resource if the
+   default behavior is not right for your app.
+
+   https://developer.android.com/about/versions/12/backup-restore#xml-changes
+   https://goo.gle/DataExtractionRules
+
+/home/runner/work/hq-fit/hq-fit/app/src/main/res/mipmap-anydpi-v26: Warning: This folder configuration (v26) is unnecessary; minSdkVersion is 28. Merge all the resources in this folder into mipmap-anydpi. [ObsoleteSdkInt]
+
+   Explanation for issues of type "ObsoleteSdkInt":
+   This check flags version checks that are not necessary, because the
+   minSdkVersion (or surrounding known API level) is already at least as high
+   as the version checked for.
+
+   Similarly, it also looks for resources in -vNN folders, such as values-v14
+   where the version qualifier is less than or equal to the minSdkVersion,
+   where the contents should be merged into the best folder.
+
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/Adaptive.kt:176: Information: Prefer mutableFloatStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var offset by remember { mutableStateOf(0f) }
+                             ~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/Avatar.kt:73: Information: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    val synced = remember { mutableStateOf(0) }
+                            ~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/FoodScreens.kt:353: Information: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var refresh by remember { mutableStateOf(0) }
+                              ~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/FoodScreens.kt:354: Information: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var tab by remember { mutableStateOf(0) }
+                          ~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/HqFitRoot.kt:136: Information: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var refreshTick by remember { mutableStateOf(0) }
+                                  ~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ProgrammesScreen.kt:64: Information: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var weeks by remember { mutableStateOf(10) }
+                            ~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/SettingsExtras.kt:84: Information: Prefer mutableDoubleStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var step by remember { mutableStateOf(WorkoutPrefs.weightStep(context)) }
+                           ~~~~~~~~~~~~~~
+/home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/TrainScreens.kt:209: Information: Prefer mutableIntStateOf instead of mutableStateOf [AutoboxingStateCreation from androidx.compose.runtime]
+    var reload by remember { mutableStateOf(0) }
+                             ~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AutoboxingStateCreation":
+   Calling mutableStateOf<T>() when T is either backed by a primitive type on
+   the JVM or is a value class results in a state implementation that requires
+   all state values to be boxed. This usually causes an additional allocation
+   for each state write, and adds some additional work to auto-unbox values
+   when reading the value of the state. Instead, prefer to use a specialized
+   primitive state implementation for Int, Long, Float, and Double when the
+   state does not need to track null values and does not override the default
+   SnapshotMutationPolicy. See mutableIntStateOf(), mutableLongStateOf(),
+   mutableFloatStateOf(), and mutableDoubleStateOf() for more information.
+
+   Vendor: Jetpack Compose
+   Identifier: androidx.compose.runtime
+   Feedback: https://issuetracker.google.com/issues/new?component=612128
+
+/home/runner/work/hq-fit/hq-fit/app/build.gradle.kts:67: Warning: Use version catalog instead [UseTomlInstead]
+    implementation("com.google.guava:guava:33.3.1-android")
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UseTomlInstead":
+   If your project is using a libs.versions.toml file, you should place all
+   Gradle dependencies in the TOML file. This lint check looks for version
+   declarations outside of the TOML file and suggests moving them (and in the
+   IDE, provides a quickfix to performing the operation automatically).
+
+28 errors, 56 warnings

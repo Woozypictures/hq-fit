@@ -1,0 +1,305 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :core:model:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:model:processResources NO-SOURCE
+> Task :core:model:processTestResources NO-SOURCE
+> Task :core:data:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:data:preBuild UP-TO-DATE
+> Task :core:data:preDebugBuild UP-TO-DATE
+> Task :core:data:generateDebugResValues
+> Task :core:data:generateDebugResources
+> Task :core:data:packageDebugResources
+> Task :core:data:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:data:javaPreCompileDebug
+> Task :core:data:parseDebugLocalResources
+> Task :core:data:writeDebugAarMetadata
+> Task :core:data:compileDebugLibraryResources
+> Task :core:data:generateDebugRFile
+> Task :core:data:generateDebugUnitTestResValues
+> Task :core:data:checkDebugUnitTestAarMetadata
+> Task :core:data:mapDebugUnitTestSourceSetPaths
+> Task :core:data:generateDebugUnitTestResources
+> Task :core:data:extractDeepLinksDebug
+> Task :core:data:javaPreCompileDebugUnitTest
+> Task :core:data:mergeDebugUnitTestResources
+> Task :core:data:mergeDebugShaders
+> Task :core:data:compileDebugShaders NO-SOURCE
+> Task :core:data:generateDebugAssets UP-TO-DATE
+> Task :core:data:processDebugManifest
+> Task :core:data:mergeDebugAssets
+> Task :core:data:processDebugUnitTestManifest
+> Task :core:data:generateDebugUnitTestAssets UP-TO-DATE
+> Task :core:data:packageDebugAssets
+> Task :core:data:mergeDebugUnitTestAssets
+> Task :core:designsystem:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :core:designsystem:preBuild UP-TO-DATE
+> Task :core:designsystem:preDebugBuild UP-TO-DATE
+> Task :core:designsystem:generateDebugResValues
+> Task :core:designsystem:generateDebugResources
+> Task :core:designsystem:packageDebugResources
+> Task :core:designsystem:javaPreCompileDebug
+> Task :core:designsystem:mergeDebugShaders
+> Task :core:designsystem:compileDebugShaders NO-SOURCE
+> Task :core:designsystem:generateDebugAssets UP-TO-DATE
+> Task :core:designsystem:parseDebugLocalResources
+> Task :core:designsystem:mergeDebugAssets
+> Task :core:designsystem:generateDebugUnitTestAssets UP-TO-DATE
+> Task :core:designsystem:generateDebugRFile
+> Task :core:data:processDebugUnitTestResources
+> Task :core:designsystem:packageDebugAssets
+> Task :core:data:packageDebugUnitTestForUnitTest
+> Task :core:designsystem:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:data:generateDebugUnitTestConfig
+> Task :core:designsystem:mergeDebugUnitTestAssets
+> Task :core:designsystem:writeDebugAarMetadata
+> Task :core:designsystem:compileDebugLibraryResources
+> Task :core:designsystem:generateDebugUnitTestResValues
+> Task :core:designsystem:checkDebugUnitTestAarMetadata
+> Task :core:designsystem:mapDebugUnitTestSourceSetPaths
+> Task :core:designsystem:generateDebugUnitTestResources
+> Task :core:designsystem:extractDeepLinksDebug
+> Task :core:designsystem:processDebugManifest
+> Task :core:designsystem:preparePaparazziDebugResources
+> Task :core:designsystem:mergeDebugUnitTestResources
+> Task :core:designsystem:processDebugUnitTestManifest
+> Task :core:designsystem:javaPreCompileDebugUnitTest
+> Task :core:data:mergeDebugJniLibFolders
+> Task :core:data:mergeDebugNativeLibs NO-SOURCE
+> Task :core:data:stripDebugDebugSymbols NO-SOURCE
+> Task :core:data:copyDebugJniLibsProjectAndLocalJars
+> Task :core:data:extractDeepLinksForAarDebug
+> Task :core:data:prepareDebugArtProfile
+> Task :core:data:prepareLintJarForPublish
+> Task :core:designsystem:mergeDebugJniLibFolders
+> Task :core:designsystem:mergeDebugNativeLibs NO-SOURCE
+> Task :core:designsystem:stripDebugDebugSymbols NO-SOURCE
+> Task :core:designsystem:copyDebugJniLibsProjectAndLocalJars
+> Task :core:designsystem:extractDeepLinksForAarDebug
+> Task :core:designsystem:prepareDebugArtProfile
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :core:designsystem:prepareLintJarForPublish
+> Task :core:designsystem:processDebugUnitTestResources
+> Task :app:checkDebugAarMetadata
+> Task :core:designsystem:packageDebugUnitTestForUnitTest
+> Task :app:generateDebugResValues
+> Task :core:designsystem:generateDebugUnitTestConfig
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:javaPreCompileDebug
+> Task :app:generateDebugAndroidTestResValues
+> Task :core:data:writeDebugLintModelMetadata
+> Task :core:designsystem:writeDebugLintModelMetadata
+> Task :app:extractProguardFiles
+> Task :app:processDebugManifestForPackage
+> Task :core:data:extractProguardFiles
+> Task :core:designsystem:extractProguardFiles
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :core:data:preDebugAndroidTestBuild UP-TO-DATE
+> Task :core:data:generateDebugAndroidTestResValues
+> Task :core:designsystem:preDebugAndroidTestBuild UP-TO-DATE
+> Task :core:designsystem:generateDebugAndroidTestResValues
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :core:data:preReleaseBuild UP-TO-DATE
+> Task :core:data:mergeReleaseJniLibFolders
+> Task :core:data:mergeReleaseNativeLibs NO-SOURCE
+> Task :core:designsystem:preReleaseBuild UP-TO-DATE
+> Task :core:data:copyReleaseJniLibsProjectOnly
+> Task :core:designsystem:mergeReleaseJniLibFolders
+> Task :core:designsystem:mergeReleaseNativeLibs NO-SOURCE
+> Task :core:designsystem:copyReleaseJniLibsProjectOnly
+> Task :core:data:generateReleaseResValues
+> Task :core:data:generateReleaseResources
+> Task :core:data:packageReleaseResources
+> Task :core:data:parseReleaseLocalResources
+> Task :core:data:javaPreCompileRelease
+> Task :core:designsystem:generateReleaseResValues
+> Task :core:data:generateReleaseRFile
+> Task :core:designsystem:generateReleaseResources
+> Task :core:designsystem:packageReleaseResources
+> Task :core:designsystem:parseReleaseLocalResources
+> Task :core:designsystem:javaPreCompileRelease
+> Task :core:designsystem:generateReleaseRFile
+> Task :app:buildKotlinToolingMetadata
+> Task :app:processDebugResources
+> Task :core:data:writeReleaseAarMetadata
+> Task :core:designsystem:writeReleaseAarMetadata
+> Task :app:generateReleaseResValues
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:packageReleaseResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :app:parseReleaseLocalResources
+> Task :core:data:extractDeepLinksRelease
+> Task :core:designsystem:extractDeepLinksRelease
+> Task :core:data:processReleaseManifest
+> Task :core:designsystem:processReleaseManifest
+> Task :app:javaPreCompileRelease
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :core:data:prepareReleaseArtProfile
+> Task :app:processReleaseManifestForPackage
+> Task :app:mergeReleaseResources
+> Task :core:designsystem:prepareReleaseArtProfile
+> Task :app:mergeReleaseStartupProfile
+> Task :app:mergeReleaseShaders
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseArtProfile
+> Task :core:data:mergeReleaseShaders
+> Task :core:data:compileReleaseShaders NO-SOURCE
+> Task :core:data:generateReleaseAssets UP-TO-DATE
+> Task :core:data:packageReleaseAssets
+> Task :core:designsystem:mergeReleaseShaders
+> Task :core:designsystem:compileReleaseShaders NO-SOURCE
+> Task :core:designsystem:generateReleaseAssets UP-TO-DATE
+> Task :core:designsystem:packageReleaseAssets
+> Task :app:mergeReleaseAssets
+> Task :app:extractReleaseVersionControlInfo
+> Task :app:compressReleaseAssets
+> Task :app:processReleaseResources
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+> Task :app:convertLinkedResourcesToProtoRelease
+> Task :core:model:compileKotlin
+> Task :core:model:compileJava NO-SOURCE
+> Task :core:model:classes UP-TO-DATE
+> Task :core:model:jar
+> Task :app:mergeReleaseNativeLibs
+
+> Task :app:stripReleaseDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libandroidx.graphics.path.so, libbarhopper_v3.so, libimage_processing_util_jni.so, libsqlcipher.so, libsurface_util_jni.so.
+
+> Task :app:extractReleaseNativeSymbolTables
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :core:model:compileTestKotlin
+> Task :core:model:compileTestJava NO-SOURCE
+> Task :core:model:testClasses UP-TO-DATE
+> Task :core:model:test
+> Task :core:designsystem:compileDebugKotlin
+> Task :core:designsystem:compileDebugJavaWithJavac NO-SOURCE
+> Task :core:designsystem:compileReleaseKotlin
+> Task :core:designsystem:processDebugJavaRes
+> Task :core:designsystem:bundleLibRuntimeToJarDebug
+> Task :core:designsystem:bundleLibCompileToJarDebug
+> Task :core:designsystem:extractDebugAnnotations
+> Task :core:designsystem:mergeDebugGeneratedProguardFiles
+> Task :core:designsystem:mergeDebugConsumerProguardFiles
+> Task :core:designsystem:createFullJarDebug
+> Task :core:designsystem:mergeDebugJavaResource
+> Task :core:designsystem:generateDebugLintModel
+> Task :core:designsystem:syncDebugLibJars
+> Task :core:designsystem:bundleDebugLocalLintAar
+> Task :core:designsystem:generateDebugAndroidTestLintModel
+> Task :core:designsystem:generateDebugUnitTestLintModel
+> Task :core:data:kspDebugKotlin
+> Task :core:designsystem:compileDebugUnitTestKotlin
+> Task :core:designsystem:processDebugUnitTestJavaRes
+> Task :core:designsystem:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core:designsystem:transformDebugUnitTestClassesWithAsm
+> Task :core:data:compileDebugKotlin
+> Task :core:designsystem:lintAnalyzeDebugAndroidTest
+
+> Task :core:designsystem:testDebugUnitTest
+See the Paparazzi report at: file:///home/runner/work/hq-fit/hq-fit/core/designsystem/build/reports/paparazzi/debug/index.html
+
+> Task :core:data:compileDebugJavaWithJavac
+> Task :core:data:bundleLibCompileToJarDebug
+> Task :core:data:processDebugJavaRes
+> Task :core:designsystem:recordPaparazziDebug
+> Task :core:data:bundleLibRuntimeToJarDebug
+> Task :core:data:extractDebugAnnotations
+> Task :core:data:mergeDebugGeneratedProguardFiles
+> Task :core:data:mergeDebugConsumerProguardFiles
+> Task :core:data:mergeDebugJavaResource
+> Task :core:data:syncDebugLibJars
+> Task :core:data:bundleDebugLocalLintAar
+> Task :core:data:createFullJarDebug
+> Task :core:data:generateDebugLintModel
+> Task :core:data:kspDebugUnitTestKotlin
+> Task :core:designsystem:lintAnalyzeDebug
+> Task :core:data:compileDebugUnitTestKotlin
+> Task :core:data:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :core:data:processDebugUnitTestJavaRes
+> Task :core:data:lintAnalyzeDebug
+> Task :app:compileDebugKotlin
+> Task :core:data:testDebugUnitTest
+> Task :core:data:generateDebugAndroidTestLintModel
+> Task :core:data:generateDebugUnitTestLintModel
+> Task :core:data:lintAnalyzeDebugAndroidTest
+> Task :core:designsystem:lintAnalyzeDebugUnitTest
+> Task :core:designsystem:compileReleaseJavaWithJavac NO-SOURCE
+> Task :core:designsystem:mergeReleaseGeneratedProguardFiles
+> Task :core:designsystem:exportReleaseConsumerProguardFiles
+> Task :core:designsystem:bundleLibCompileToJarRelease
+> Task :core:designsystem:bundleLibRuntimeToJarRelease
+> Task :core:designsystem:processReleaseJavaRes
+
+> Task :app:compileDebugKotlin
+w: file:///home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ScanScreen.kt:65:1 Annotation 'androidx.camera.core.ExperimentalGetImage' is not annotated with '@RequiresOptIn'. '@OptIn' has no effect.
+w: file:///home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ScanScreen.kt:138:1 Annotation 'androidx.camera.core.ExperimentalGetImage' is not annotated with '@RequiresOptIn'. '@OptIn' has no effect.
+
+> Task :app:compileDebugJavaWithJavac NO-SOURCE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:generateDebugLintReportModel
+> Task :app:generateDebugAndroidTestLintModel
+> Task :app:generateDebugUnitTestLintModel
+> Task :core:data:kspReleaseKotlin
+> Task :core:data:lintAnalyzeDebugUnitTest
+> Task :app:lintAnalyzeDebugAndroidTest
+> Task :app:lintAnalyzeDebugUnitTest
+> Task :core:data:compileReleaseKotlin
+> Task :core:data:compileReleaseJavaWithJavac
+> Task :core:data:mergeReleaseGeneratedProguardFiles
+> Task :core:data:exportReleaseConsumerProguardFiles
+> Task :core:data:bundleLibCompileToJarRelease
+> Task :core:data:bundleLibRuntimeToJarRelease
+> Task :core:data:processReleaseJavaRes
+> Task :app:lintAnalyzeDebug
+
+> Task :app:compileReleaseKotlin
+w: file:///home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ScanScreen.kt:65:1 Annotation 'androidx.camera.core.ExperimentalGetImage' is not annotated with '@RequiresOptIn'. '@OptIn' has no effect.
+w: file:///home/runner/work/hq-fit/hq-fit/app/src/main/java/uk/woozy/fit/ui/ScanScreen.kt:138:1 Annotation 'androidx.camera.core.ExperimentalGetImage' is not annotated with '@RequiresOptIn'. '@OptIn' has no effect.
+
+> Task :app:compileReleaseJavaWithJavac NO-SOURCE
+> Task :app:mergeReleaseGeneratedProguardFiles
+> Task :app:processReleaseJavaRes
+> Task :app:expandReleaseArtProfileWildcards
+> Task :app:mergeReleaseJavaResource
+
+> Task :app:lintReportDebug
+Wrote HTML report to file:///home/runner/work/hq-fit/hq-fit/app/build/reports/lint-results-debug.html
+
+> Task :app:lintDebug
+
+> Task :app:copyDebugLintReports
+Copying lint text report to /home/runner/work/hq-fit/hq-fit/app/build/lint-report.txt
+
+> Task :app:minifyReleaseWithR8
+> Task :app:compileReleaseArtProfile
+> Task :app:shrinkReleaseRes
+> Task :app:convertShrunkResourcesToBinaryRelease
+> Task :app:optimizeReleaseResources
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run-1794581775197.json
+
+BUILD SUCCESSFUL in 4m
+226 actionable tasks: 226 executed
