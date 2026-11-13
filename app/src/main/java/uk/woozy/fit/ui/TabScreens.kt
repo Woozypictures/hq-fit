@@ -129,7 +129,12 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
         lastWeekAvg = kcal.take(7).filter { it > 0 }.takeIf { it.isNotEmpty() }?.average(),
         weekLabels = weeks.map { it.dayOfMonth.toString() },
         weekDone = weeks.map { w -> sessions.count { Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate() in w..w.plusDays(6) }.toDouble() },
-        weekPlanned = weeks.map { w -> sched.count { it.status != "skipped" && LocalDate.parse(it.date) in w..w.plusDays(6) } },
+        // Planned days plus any workout logged on an unplanned day, so done never reaches the total while today is still to do.
+        weekPlanned = weeks.map { w ->
+            val planned = sched.filter { it.status != "skipped" && LocalDate.parse(it.date) in w..w.plusDays(6) }.map { it.date }
+            val logged = sessions.map { Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate() }.filter { it in w..w.plusDays(6) }.map { it.toString() }
+            (planned + logged).toSet().size
+        },
         weekVolume = weeks.map { w ->
             sets.filter { (s, _) -> Instant.ofEpochMilli(s.startedMs).atZone(zone).toLocalDate() in w..w.plusDays(6) }.sumOf { (_, l) -> l.weightKg!! * l.reps!! }
         },
