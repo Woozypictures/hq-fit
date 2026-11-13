@@ -133,7 +133,8 @@ fun SpacedTitle(
 /** Small caps label above a block. */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    HqText(text.uppercase(), 12.sp, FontWeight.SemiBold, HqTheme.colors.muted, modifier, letterSpacing = 0.1.em)
+    if (HqTheme.colors.flat) HqText(text, 14.sp, FontWeight.Medium, HqTheme.colors.muted, modifier)
+    else HqText(text.uppercase(), 12.sp, FontWeight.SemiBold, HqTheme.colors.muted, modifier, letterSpacing = 0.1.em)
 }
 
 // ---------------------------------------------------------------- buttons
@@ -510,5 +511,43 @@ private fun BarTab(item: BarItem, selected: Boolean, modifier: Modifier, onClick
         Icon(item.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
         Spacer(Modifier.height(2.dp))
         HqText(item.label, 11.sp, if (selected) FontWeight.SemiBold else FontWeight.Medium, tint)
+    }
+}
+
+
+/** Woozy hero for calories: the number left is the headline, then a bar, then eaten / burned / target. */
+@Composable
+fun CalorieHero(eaten: Double, burned: Double?, target: Double) {
+    val c = HqTheme.colors
+    val left = target - eaten
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            HqText(formatWhole(kotlin.math.abs(left)), 56.sp, FontWeight.Bold, letterSpacing = (-2).sp)
+            HqText(if (left < 0) "  kcal over" else "  kcal left", 16.sp, FontWeight.Medium, c.muted, Modifier.padding(bottom = 10.dp))
+        }
+        HqProgressBar(fraction = if (target > 0) (eaten / target).toFloat() else 0f, color = if (left < 0) c.warn else c.primary, height = 10.dp)
+        Row(Modifier.fillMaxWidth()) {
+            HeroStat("Eaten", formatWhole(eaten), Modifier.weight(1f))
+            HeroStat("Burned", burned?.takeIf { it > 0 }?.let { formatWhole(it) } ?: "-", Modifier.weight(1f))
+            HeroStat("Target", formatWhole(target), Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun HeroStat(label: String, value: String, modifier: Modifier) {
+    Column(modifier) {
+        HqText(label, 12.sp, FontWeight.Medium, HqTheme.colors.muted)
+        HqText(value, 18.sp, FontWeight.SemiBold)
+    }
+}
+
+/** One macro as a compact column: name, value over target, thin bar. Three sit side by side. */
+@Composable
+fun MacroColumn(label: String, value: Double, target: Double, color: Color, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        HqText(label, 12.sp, FontWeight.Medium, HqTheme.colors.muted)
+        HqText("${formatWhole(value)} / ${formatWhole(target)} g", 14.sp, FontWeight.SemiBold)
+        HqProgressBar(fraction = if (target > 0) (value / target).toFloat() else 0f, color = color, height = 4.dp)
     }
 }

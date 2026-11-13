@@ -121,8 +121,13 @@ fun TodayScreen(
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                HqText(dateLine, 12.sp, FontWeight.SemiBold, c.primary, letterSpacing = 0.08.em)
-                HqText("Hello, ${name.trim().substringBefore(' ')}!", 28.sp, FontWeight.Bold)
+                if (c.flat) {
+                    HqText(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)), 14.sp, FontWeight.Medium, c.muted)
+                    HqText("Hello, ${name.trim().substringBefore(' ')}", 36.sp, FontWeight.Bold, letterSpacing = (-1).sp)
+                } else {
+                    HqText(dateLine, 12.sp, FontWeight.SemiBold, c.primary, letterSpacing = 0.08.em)
+                    HqText("Hello, ${name.trim().substringBefore(' ')}!", 28.sp, FontWeight.Bold)
+                }
             }
             AvatarCircle(
                 initial = name, size = 44.dp,
@@ -168,9 +173,19 @@ fun TodayScreen(
                             }
                         }
                         "energy" -> HqCard(Modifier.fillMaxWidth(), onClick = onDiary) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            val target = targets.energyKcal.toDouble().coerceAtLeast(1.0)
+                            if (c.flat) {
+                                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                                    SectionLabel("Calories")
+                                    uk.woozy.fit.designsystem.CalorieHero(eaten, burnedKcal, target)
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        uk.woozy.fit.designsystem.MacroColumn("Protein", proteinG, targets.proteinG.toDouble(), c.protein, Modifier.weight(1f))
+                                        uk.woozy.fit.designsystem.MacroColumn("Net carbs", netCarbsG, targets.netCarbsG.toDouble(), c.carbs, Modifier.weight(1f))
+                                        uk.woozy.fit.designsystem.MacroColumn("Fat", fatG, targets.fatG.toDouble(), c.fat, Modifier.weight(1f))
+                                    }
+                                }
+                            } else Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Energy")
-                                val target = targets.energyKcal.toDouble().coerceAtLeast(1.0)
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     EnergyRing("Consumed", formatWhole(eaten), (eaten / target).toFloat().coerceIn(0f, 1f), c.primary)
                                     // Like HQ: the burned ring is full once there is a reading, and empty without one.

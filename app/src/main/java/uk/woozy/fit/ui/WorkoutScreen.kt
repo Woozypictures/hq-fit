@@ -338,7 +338,7 @@ fun ActiveWorkoutScreen(
                 }
                 if (restLeft > 0) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        HqText("Rest ${clock(restLeft + 999)}", 15.sp, FontWeight.SemiBold, c.onGradient, Modifier.weight(1f))
+                        HqText("Rest ${clock(restLeft + 999)}", if (c.flat) 24.sp else 15.sp, FontWeight.Bold, c.onGradient, Modifier.weight(1f), letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                         HqText(
                             "Skip", 14.sp, FontWeight.SemiBold, c.onGradient,
                             Modifier.clip(CircleShape).clickable(role = Role.Button) { restEnd = 0; RestTimer.cancel(context) }.padding(horizontal = 12.dp, vertical = 8.dp),

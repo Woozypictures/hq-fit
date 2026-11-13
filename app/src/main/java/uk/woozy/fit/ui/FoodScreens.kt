@@ -3,6 +3,7 @@ package uk.woozy.fit.ui
 import uk.woozy.fit.designsystem.LocalGlassInset
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -161,6 +162,17 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
         }
 
         HqCard(Modifier.fillMaxWidth()) {
+            if (c.flat) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    uk.woozy.fit.designsystem.CalorieHero(eaten, null, targets.energyKcal.toDouble().coerceAtLeast(1.0))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        uk.woozy.fit.designsystem.MacroColumn("Protein", totals[Nutrients.PROTEIN] ?: 0.0, targets.proteinG.toDouble(), c.protein, Modifier.weight(1f))
+                        uk.woozy.fit.designsystem.MacroColumn("Net carbs", Nutrients.netCarbs(totals), targets.netCarbsG.toDouble(), c.carbs, Modifier.weight(1f))
+                        uk.woozy.fit.designsystem.MacroColumn("Fat", totals[Nutrients.FAT] ?: 0.0, targets.fatG.toDouble(), c.fat, Modifier.weight(1f))
+                    }
+                    TextButton(onClick = { onNutrients(dateText) }) { HqText("All nutrients", 14.sp, FontWeight.SemiBold, c.primary) }
+                }
+            } else
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     HqRing(progress = (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), color = c.primary, diameter = 112.dp, stroke = 12.dp) {
@@ -239,7 +251,8 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
                             Icon(if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(22.dp))
                         }
                     }
-                    if (open) rows.forEach { e ->
+                    if (open) rows.forEachIndexed { idx, e ->
+                        if (c.flat) Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(0.5.dp).background(c.hairline))
                         Row(
                             Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) { editing = e }.padding(horizontal = 16.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
