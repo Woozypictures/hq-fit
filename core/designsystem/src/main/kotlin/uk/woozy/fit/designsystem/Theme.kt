@@ -34,6 +34,8 @@ class HqColors(
     val fat: Color,
     val ok: Color,
     val warn: Color,
+    /** Flat surfaces: tonal panels with no outline (the Woozy look). */
+    val flat: Boolean = false,
 )
 
 val LightHqColors = HqColors(

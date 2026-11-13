@@ -30,7 +30,7 @@ import uk.woozy.fit.designsystem.HqTheme
 /** Page title row used by the four tabs. */
 @Composable
 fun ScreenTitle(title: String, modifier: Modifier = Modifier) {
-    HqText(title, 28.sp, FontWeight.Bold, modifier = modifier)
+    HqText(title, if (HqTheme.colors.flat) 36.sp else 28.sp, FontWeight.Bold, modifier = modifier, letterSpacing = if (HqTheme.colors.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
 }
 
 /** Back arrow and title, for Settings and the design gallery. */

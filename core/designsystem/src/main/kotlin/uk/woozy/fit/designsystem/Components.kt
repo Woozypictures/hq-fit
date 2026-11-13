@@ -72,9 +72,11 @@ fun HqCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = HqTheme.colors
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(if (c.flat) 22.dp else 16.dp)
     val frosted = LocalFrosted.current
-    val base = if (frosted) {
+    val base = if (c.flat && !frosted) {
+        modifier.clip(shape).background(c.card)
+    } else if (frosted) {
         // Frosted glass as in HQ: fill 5% to 22% white, rim 23% to 38% white.
         modifier.clip(shape)
             .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.22f))))
@@ -94,7 +96,7 @@ fun GradientCard(
 ) {
     val c = HqTheme.colors
     val base = modifier
-        .clip(RoundedCornerShape(16.dp))
+        .clip(RoundedCornerShape(if (c.flat) 22.dp else 16.dp))
         .background(Brush.linearGradient(listOf(c.gradientStart, c.gradientEnd)))
     Column(modifier = if (onClick != null) base.clickable(onClick = onClick) else base, content = content)
 }
