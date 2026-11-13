@@ -40,14 +40,26 @@ fun LineChart(points: List<DayValue>, goal: Double?, unit: String, modifier: Mod
             val h = size.height
             fun px(d: Double) = (((d - x0) / (x1 - x0)) * (w - 12f) + 6f).toFloat()
             fun py(v: Double) = (h - ((v - lo) / (hi - lo)) * (h - 12f) - 6f).toFloat()
+            if (c.flat) listOf(0.25f, 0.5f, 0.75f).forEach { f -> drawLine(c.hairline, Offset(0f, h * f), Offset(w, h * f), strokeWidth = 1.5f) }
             if (goal != null) {
                 drawLine(c.muted, Offset(0f, py(goal)), Offset(w, py(goal)), strokeWidth = 2f, pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f)))
             }
             val sorted = points.sortedBy { it.day }
-            for (i in 0 until sorted.size - 1) {
-                drawLine(c.primary, Offset(px(sorted[i].day), py(sorted[i].value)), Offset(px(sorted[i + 1].day), py(sorted[i + 1].value)), strokeWidth = 5f, cap = StrokeCap.Round)
+            if (c.flat && sorted.size > 1) {
+                val area = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(px(sorted.first().day), h)
+                    sorted.forEach { lineTo(px(it.day), py(it.value)) }
+                    lineTo(px(sorted.last().day), h); close()
+                }
+                drawPath(area, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(c.primary.copy(alpha = 0.22f), c.primary.copy(alpha = 0f))))
             }
-            sorted.forEach { drawCircle(c.primary, radius = 7f, center = Offset(px(it.day), py(it.value))) }
+            for (i in 0 until sorted.size - 1) {
+                drawLine(c.primary, Offset(px(sorted[i].day), py(sorted[i].value)), Offset(px(sorted[i + 1].day), py(sorted[i + 1].value)), strokeWidth = if (c.flat) 4f else 5f, cap = StrokeCap.Round)
+            }
+            if (c.flat) {
+                sorted.dropLast(1).forEach { drawCircle(c.primary, radius = 4f, center = Offset(px(it.day), py(it.value))) }
+                sorted.last().let { drawCircle(c.card, radius = 12f, center = Offset(px(it.day), py(it.value))); drawCircle(c.primary, radius = 8f, center = Offset(px(it.day), py(it.value))) }
+            } else sorted.forEach { drawCircle(c.primary, radius = 7f, center = Offset(px(it.day), py(it.value))) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             HqText("%.1f %s".format(java.util.Locale.UK, lo, unit), 11.sp, color = c.muted)
@@ -67,11 +79,12 @@ fun BarChart(values: List<Double>, labels: List<String>, target: Double? = null,
             val barW = slot * 0.62f
             values.forEachIndexed { i, v ->
                 val bh = if (v <= 0.0) 4f else ((v / top) * (size.height - 4f)).toFloat()
+                if (c.flat) drawRoundRect(c.track, Offset(i * slot + (slot - barW) / 2f, 0f), Size(barW, size.height), androidx.compose.ui.geometry.CornerRadius(14f, 14f))
                 drawRoundRect(
                     color = if (v <= 0.0) c.muted.copy(alpha = 0.3f) else c.primary,
                     topLeft = Offset(i * slot + (slot - barW) / 2f, size.height - bh),
                     size = Size(barW, bh),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(if (c.flat) 14f else 6f, if (c.flat) 14f else 6f),
                 )
             }
             if (target != null) {

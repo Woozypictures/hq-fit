@@ -302,10 +302,13 @@ fun SetTableHeader(weightUnit: String = "KG", modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HqText("SET", 11.sp, FontWeight.SemiBold, muted, Modifier.width(36.dp), letterSpacing = 0.1.em)
-        HqText("PREVIOUS", 11.sp, FontWeight.SemiBold, muted, Modifier.weight(1f), letterSpacing = 0.1.em)
-        HqText(weightUnit, 11.sp, FontWeight.SemiBold, muted, Modifier.width(72.dp), TextAlign.Center, letterSpacing = 0.1.em)
-        HqText("REPS", 11.sp, FontWeight.SemiBold, muted, Modifier.width(72.dp), TextAlign.Center, letterSpacing = 0.1.em)
+        val flat = HqTheme.colors.flat
+        fun h(t: String) = if (flat) t else t.uppercase()
+        val sp = if (flat) androidx.compose.ui.unit.TextUnit.Unspecified else 0.1.em
+        HqText(h("Set"), 12.sp, FontWeight.Medium, muted, Modifier.width(36.dp), letterSpacing = sp)
+        HqText(h("Previous"), 12.sp, FontWeight.Medium, muted, Modifier.weight(1f), letterSpacing = sp)
+        HqText(if (flat) weightUnit.lowercase() else weightUnit, 12.sp, FontWeight.Medium, muted, Modifier.width(72.dp), TextAlign.Center, letterSpacing = sp)
+        HqText(h("Reps"), 12.sp, FontWeight.Medium, muted, Modifier.width(72.dp), TextAlign.Center, letterSpacing = sp)
         Spacer(Modifier.width(48.dp))
     }
 }
@@ -346,7 +349,8 @@ fun SetRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = 60.dp)
+            .then(if (c.flat && done) Modifier.background(c.primary.copy(alpha = 0.10f)) else Modifier)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -359,14 +363,14 @@ fun SetRow(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(if (done) c.ink else c.track)
+                .background(if (done) (if (c.flat) c.primary else c.ink) else c.track)
                 .toggleable(value = done, role = Role.Checkbox, onValueChange = { onToggle() }),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = if (done) "Set done" else "Mark set done",
-                tint = if (done) c.page else c.muted,
+                tint = if (done) (if (c.flat) c.onPrimary else c.page) else c.muted,
                 modifier = Modifier.size(22.dp),
             )
         }
