@@ -74,7 +74,6 @@ fun ProfileScreen(onBack: () -> Unit) {
             label = { HqText("Name", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth(),
         )
         NumberField("Height (cm)", height) { height = it; ProfilePrefs.setHeightCm(context, it.toDoubleOrNull()) }
-        HqText("Weights are kilograms throughout. Both settings stay on this phone.", 13.sp, color = c.muted)
     }
 }
 
@@ -90,7 +89,6 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
             WorkoutPrefs.steps.map { NumberEntry.format(it) }, WorkoutPrefs.steps.indexOf(step).coerceAtLeast(0),
             onSelect = { step = WorkoutPrefs.steps[it]; WorkoutPrefs.setWeightStep(context, step) },
         )
-        HqText("What the + and - keys add or take off while you log a set (kg).", 13.sp, color = c.muted)
         HqCard(Modifier.fillMaxWidth()) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {

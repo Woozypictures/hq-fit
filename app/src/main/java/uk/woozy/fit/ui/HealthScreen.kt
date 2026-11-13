@@ -109,7 +109,6 @@ fun HealthScreen(db: HqFitDatabase, onBack: () -> Unit) {
         SectionLabel("Sync")
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                HqText("Weights, workouts, food and water are sent to Health Connect. Repeats never duplicate.", 13.sp, color = c.muted)
                 HqText(status, 13.sp, color = c.muted)
                 HqPillButton(if (busy) "Syncing" else "Sync now and import weights", style = PillStyle.Outline, enabled = !busy, onClick = {
                     busy = true

@@ -261,7 +261,7 @@ fun NewExerciseScreen(db: HqFitDatabase, onBack: () -> Unit) {
                 saved = true
             }
         })
-        if (saved) HqText("Saved. Find it in the library or when adding an exercise to a workout.", 13.sp, color = c.muted)
+        if (saved) HqText("Saved", 13.sp, color = c.muted)
     }
 }
 
