@@ -167,7 +167,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                 tiles.forEach { (big, small) ->
                     HqCard(Modifier.weight(1f)) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            HqText(big, 22.sp, FontWeight.Bold)
+                            HqText(big, if (c.flat) 30.sp else 22.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                             HqText(small, 12.sp, color = c.muted)
                         }
                     }
@@ -191,7 +191,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                         if (d.latestKg == null) {
                                             HqText("No weights yet. Pair your scale or type one in.", 14.sp, color = c.muted)
                                         } else {
-                                            HqText("${formatOne(d.latestKg)} kg", 28.sp, FontWeight.Bold)
+                                            HqText("${formatOne(d.latestKg)} kg", if (c.flat) 44.sp else 28.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                                             HqText("${formatOne(d.latestKg - GOAL_KG)} kg to your ${GOAL_KG.toInt()} kg goal", 14.sp, color = c.muted)
                                             LineChart(d.weights, GOAL_KG, "kg")
                                             val s = d.slopePerDay
@@ -216,7 +216,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                         if (logged.isEmpty()) {
                                             HqText("Nothing logged yet.", 14.sp, color = c.muted)
                                         } else {
-                                            HqText("${formatWhole(logged.average())} kcal average on ${logged.size} logged days", 15.sp, FontWeight.Medium)
+                                            HqText("${formatWhole(logged.average())} kcal average on ${logged.size} logged days", if (c.flat) 18.sp else 15.sp, FontWeight.SemiBold)
                                             StackedMacroChart(d.macroDays, d.kcalLabels, d.kcalTarget)
                                             val tw = d.thisWeekAvg
                     val lw = d.lastWeekAvg
