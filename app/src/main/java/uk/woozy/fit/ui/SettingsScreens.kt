@@ -109,7 +109,7 @@ fun SettingsScreen(
             ListRow(Icons.Rounded.Flag, "Targets", "Energy, macros, steps, water, nutrients", onClick = onTargets)
             ListRow(Icons.Rounded.MonitorWeight, "Scale and weight", "Pair your scale, type a weight, weekly reminder", onClick = onScale)
             ListRow(Icons.Rounded.FavoriteBorder, "Health Connect", "Permissions, steps, sleep, sync", onClick = onHealth)
-            ListRow(Icons.Rounded.Backup, "Backup and restore", "Encrypted backups, restore, CSV export", onClick = onBackup)
+            ListRow(Icons.Rounded.Backup, "Backup, restore and import", "Encrypted backups, restore, CSV export, Cronometer import", onClick = onBackup)
         }
 
         SectionLabel("More")
@@ -117,7 +117,6 @@ fun SettingsScreen(
             ListRow(Icons.Rounded.Person, "Profile", "Name and height", onClick = onProfile)
             ListRow(Icons.Rounded.FitnessCenter, "Workout", "Weight step, rest timer", onClick = onWorkoutSettings)
             ListRow(Icons.Rounded.Link, "HQ connection", "What HQ can read from this app", onClick = onHqConnection)
-            ListRow(Icons.Rounded.SwapVert, "Import and export", "Cronometer import, CSV, backups", onClick = onBackup)
         }
 
         SectionLabel("Notifications")
