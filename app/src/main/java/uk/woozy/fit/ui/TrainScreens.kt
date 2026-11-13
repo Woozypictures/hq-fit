@@ -153,8 +153,10 @@ fun TrainScreen(
                 }
                 val weekAll = (0..6).flatMap { byDate[monday.plusDays(it.toLong()).toString()].orEmpty() }
                 val doneDays = (0..6).count { i -> val d = monday.plusDays(i.toLong()).toString(); d in doneDates || byDate[d].orEmpty().any { it.status == "done" } }
+                // A workout logged without a scheduled day still counts, so the total is days with a plan or a done workout.
+                val weekDays = (0..6).count { i -> val d = monday.plusDays(i.toLong()).toString(); d in doneDates || byDate[d].orEmpty().isNotEmpty() }
                 if (weekAll.isNotEmpty() || doneDays > 0) {
-                    HqText("$doneDays of ${maxOf(weekAll.size, doneDays)} workouts done this week", 14.sp, FontWeight.Medium)
+                    HqText("$doneDays of ${maxOf(weekDays, doneDays)} workouts done this week", 14.sp, FontWeight.Medium)
                 }
                 HqText(
                     if (upcoming.isEmpty()) "No workouts scheduled" else "Next: ${upcoming.first().templateName}, ${upcoming.first().localDate().format(dayLine)}",

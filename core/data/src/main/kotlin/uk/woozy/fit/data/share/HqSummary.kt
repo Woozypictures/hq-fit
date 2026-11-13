@@ -51,6 +51,11 @@ object HqSummaryBuilder {
         val sunday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
         val ticks = db.checkIns().forDate(sunday.toString()).filter { it.done }.map { it.item }.toSet()
         val todays = week.firstOrNull { it.date == today.toString() }
+        // A workout logged without a scheduled day still counts, the same way the Train screen counts it.
+        val sessionDays = db.sessions().doneSince(monday.atStartOfDay(zone).toInstant().toEpochMilli())
+            .map { Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate().toString() }.toSet()
+        val doneDays = (week.filter { it.status == "done" }.map { it.date } + sessionDays).toSet()
+        val plannedDays = (week.filter { it.status != "skipped" }.map { it.date } + sessionDays).toSet()
         return HqSummary(
             date = today.toString(),
             kcal = totals[Nutrients.ENERGY] ?: 0.0,
@@ -67,8 +72,8 @@ object HqSummaryBuilder {
             weightAtMs = weight?.epochMs,
             workoutToday = todays?.templateName,
             workoutTodayDone = todays?.status == "done",
-            workoutsDoneThisWeek = week.count { it.status == "done" },
-            workoutsPlannedThisWeek = week.count { it.status != "skipped" },
+            workoutsDoneThisWeek = doneDays.size,
+            workoutsPlannedThisWeek = maxOf(plannedDays.size, doneDays.size),
             checkInDate = sunday.toString(),
             checkInMood = "mood" in ticks,
             checkInMetrics = "metrics" in ticks,
