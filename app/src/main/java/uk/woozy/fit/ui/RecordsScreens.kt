@@ -62,7 +62,7 @@ fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
         )
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (rows.isEmpty()) {
-                EmptyCard(if (allRows.isEmpty()) "No records yet" else "Nothing matches", if (allRows.isEmpty()) "Finish a workout and your best lifts appear here." else "Try a different name.")
+                EmptyCard(if (allRows.isEmpty()) "No records yet" else "Nothing matches", if (allRows.isEmpty()) "Finish a workout and your best lifts appear here." else "Try a different name.", emoji = if (allRows.isEmpty()) "\uD83C\uDFC6" else "\uD83D\uDD0D")
             } else {
                 HqCard(Modifier.fillMaxWidth()) {
                     rows.forEach { r ->
@@ -104,7 +104,7 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar(name.ifEmpty { "History" }, onBack) }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (bySession.isEmpty()) {
-                HqText("No finished sets yet. History appears after your first workout with this exercise.", 14.sp, color = c.muted)
+                EmptyCard("No history yet", "It appears after your first workout with this exercise.", emoji = "\uD83D\uDCC8")
             } else {
                 HqCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

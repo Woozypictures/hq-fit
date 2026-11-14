@@ -94,11 +94,23 @@ fun ListRow(
 
 /** A card that says what will fill it and when. Keeps the skeleton screens honest. */
 @Composable
-fun EmptyCard(title: String, message: String, modifier: Modifier = Modifier) {
+fun EmptyCard(title: String, message: String, modifier: Modifier = Modifier, emoji: String = "") {
+    // Zero-data state: a glyph on an inset disc, a 17sp title and one muted line, centred, never a bare grey sentence.
+    val c = HqTheme.colors
     HqCard(modifier = modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            HqText(title, 16.sp, FontWeight.SemiBold)
-            HqText(message, 14.sp, color = HqTheme.colors.muted)
+        Column(
+            Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (emoji.isNotEmpty()) {
+                androidx.compose.foundation.layout.Box(
+                    Modifier.padding(bottom = 6.dp).size(56.dp).clip(androidx.compose.foundation.shape.CircleShape).background(c.track),
+                    contentAlignment = androidx.compose.ui.Alignment.Center,
+                ) { HqText(emoji, 24.sp) }
+            }
+            HqText(title, 17.sp, FontWeight.SemiBold, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            HqText(message, 15.sp, color = c.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
     }
 }

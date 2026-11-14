@@ -36,7 +36,7 @@ fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> 
     }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Past workouts", onBack) }
-        if (sessions.isEmpty()) HqText("No finished workouts yet.", 14.sp, color = c.muted, modifier = Modifier.padding(16.dp))
+        if (sessions.isEmpty()) EmptyCard("No workouts yet", "Finish your first workout and it lands here.", Modifier.padding(16.dp), emoji = "\uD83C\uDFCB\uFE0F")
         LazyColumn(Modifier.weight(1f)) {
             items(sessions, key = { it.id }) { s ->
                 Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onOpen(s.id) }.padding(horizontal = 16.dp, vertical = 10.dp)) {

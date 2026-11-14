@@ -434,16 +434,13 @@ fun AddFoodScreen(
             Tile(Icons.Rounded.Add, "Recipe", c.fat, onRecipe)
         }
         if (results.isEmpty()) {
-            HqText(
-                if (text.isBlank()) when (tab) {
-                    1 -> "No favourites yet. Tap the star on a food to keep it here."
-                    2 -> "Nothing logged yet. Foods you eat show up here."
-                    3 -> "No custom foods yet. Create one above."
-                    else -> "No foods yet. Create a custom food, scan a barcode, or quick add."
-                }
-                else "Nothing matches \"$text\".",
-                14.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            val (t, m, e) = if (text.isBlank()) when (tab) {
+                1 -> Triple("No favourites yet", "Tap the star on a food to keep it here.", "\u2B50")
+                2 -> Triple("Nothing logged yet", "Foods you eat show up here.", "\uD83C\uDF7D\uFE0F")
+                3 -> Triple("No custom foods yet", "Create one with the tiles above.", "\uD83E\uDD63")
+                else -> Triple("No foods yet", "Create a custom food, scan a barcode, or quick add.", "\uD83E\uDD57")
+            } else Triple("Nothing matches", "No food called \"$text\". Try fewer words or scan the barcode.", "\uD83D\uDD0D")
+            EmptyCard(t, m, Modifier.padding(horizontal = 16.dp), emoji = e)
         }
         if (text.trim().length >= 2) {
             ListRow(
