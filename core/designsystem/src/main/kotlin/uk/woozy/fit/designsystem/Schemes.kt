@@ -45,10 +45,19 @@ private val hqSchemes = listOf(
  * scheme into a dark one the way HQ does; the four schemes that are dark by nature stay dark.
  */
 object HqSchemes {
-    val all: List<HqScheme> = listOf(HqScheme(DEFAULT_SCHEME, "Woozy"), HqScheme(EVERFIT_SCHEME_KEY, "Everfit")) + hqSchemes.map { HqScheme(it.key, it.label) }
+    const val FROSTED_KEY = "frosted"
+    // Same order as HQ: Woozy, Everfit, Natural, Frosted glass, then the rest.
+    val all: List<HqScheme> = listOf(HqScheme(DEFAULT_SCHEME, "Woozy"), HqScheme(EVERFIT_SCHEME_KEY, "Everfit")) +
+        hqSchemes.take(1).map { HqScheme(it.key, it.label) } + HqScheme(FROSTED_KEY, "Frosted glass") + hqSchemes.drop(1).map { HqScheme(it.key, it.label) }
 
     fun colors(key: String, wantDark: Boolean): HqColors {
         if (key == DEFAULT_SCHEME) return if (wantDark) WoozyDark else WoozyLight
+        if (key == FROSTED_KEY) return DarkHqColors.let {
+            HqColors(dark = true, page = Color(0xFF2E2E2E), card = Color(0xFF3A3A3A), primary = Color.White, onPrimary = Color(0xFF2E2E2E),
+                gradientStart = Color(0xFF3A3A3A), gradientEnd = Color(0xFF2E2E2E), onGradient = Color.White,
+                ink = Color(0xFFF2F2F2), muted = Color(0xFFB4B4B4), hairline = Color(0x3DFFFFFF), track = Color(0x33FFFFFF),
+                protein = it.protein, carbs = it.carbs, fat = it.fat, ok = it.ok, warn = it.warn)
+        }
         if (key == EVERFIT_SCHEME_KEY) return if (wantDark) DarkHqColors else LightHqColors
         val raw = hqSchemes.firstOrNull { it.key == key } ?: return colors(DEFAULT_SCHEME, wantDark)
         return if (!raw.dark && wantDark) darkOf(raw) else build(raw)

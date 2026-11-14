@@ -59,6 +59,7 @@ import uk.woozy.fit.designsystem.GlassItem
 import uk.woozy.fit.designsystem.GlassNavHeight
 import uk.woozy.fit.designsystem.GlassNavLift
 import uk.woozy.fit.designsystem.GlassPillNav
+import uk.woozy.fit.designsystem.GlassMenuItem
 import uk.woozy.fit.designsystem.GlassRoundButton
 import uk.woozy.fit.designsystem.LocalGlassInset
 import uk.woozy.fit.designsystem.glassSource
@@ -100,7 +101,7 @@ private object Routes {
 private val tabRoutes = listOf(Routes.TODAY, Routes.TRAIN, Routes.DIARY, Routes.PROGRESS)
 
 private val barItems = listOf(
-    BarItem("Today", Icons.Rounded.Home),
+    BarItem("Home", Icons.Rounded.Home),
     BarItem("Train", Icons.Rounded.FitnessCenter),
     BarItem("Diary", Icons.Rounded.Restaurant),
     BarItem("Progress", Icons.Rounded.BarChart),
@@ -163,6 +164,7 @@ fun HqFitRoot(
     val entry by nav.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     var quickAdd by remember { mutableStateOf(false) }
+    var refreshToast by remember { mutableStateOf(0L) }
     val calendarFlow = remember(db, today) {
         db.schedule().observeBetween(today.with(DayOfWeek.MONDAY).toString(), today.plusDays(70).toString())
     }
@@ -208,7 +210,13 @@ fun HqFitRoot(
         // Tab pages may go wide (two columns of cards); every other page is capped so it reads well on a tablet.
         androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize().glassSource(backdrop), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
         androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset else 0.dp)) {
-        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize()) {
+        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize(),
+            // Snappy with a slight transition: a short crossfade.
+            enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
+            exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
+            popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
+            popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
+        ) {
             composable(Routes.TODAY) {
                 TodayScreen(
                     name = remember { ProfilePrefs.name(syncContext) },
@@ -230,6 +238,7 @@ fun HqFitRoot(
                             runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext)) }
                             refreshTick++
                             refreshing = false
+                            refreshToast = System.currentTimeMillis()
                         }
                     },
                     steps = health?.steps,
@@ -425,6 +434,12 @@ fun HqFitRoot(
         }
         }
         }
+        var showToast by remember { mutableStateOf(false) }
+        LaunchedEffect(refreshToast) { if (refreshToast > 0) { showToast = true; kotlinx.coroutines.delay(2200); showToast = false } }
+        if (route in tabRoutes) uk.woozy.fit.designsystem.GlassToast(
+            "Last refreshed " + java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(java.time.LocalTime.now()), showToast, backdrop, gStyle,
+            Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 12.dp),
+        )
         if (route in tabRoutes) {
             uk.woozy.fit.designsystem.GlassTopFade(backdrop, gc.page, Modifier.align(androidx.compose.ui.Alignment.TopCenter))
             GlassPillNav(
@@ -433,73 +448,40 @@ fun HqFitRoot(
                 onSelect = { nav.navigateTab(tabRoutes[it]) },
                 backdrop = backdrop, style = gStyle,
                 modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
-                trailing = {
-                    GlassRoundButton(backdrop, gStyle, onClick = { quickAdd = true }) {
-                        androidx.compose.material3.Icon(Icons.Rounded.Add, contentDescription = "Quick add", tint = gStyle.ink, modifier = Modifier.size(28.dp))
-                    }
-                },
+                actionIcon = Icons.Rounded.Add, actionLabel = "Quick add", onAction = { quickAdd = !quickAdd },
             )
         }
-        }
-    }
-
-    if (quickAdd) {
-        QuickAddSheet(
-            onSearchFood = {
-                quickAdd = false
-                nav.navigate("${Routes.ADD}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText")
-            },
-            onQuickAdd = {
-                quickAdd = false
-                nav.navigate("${Routes.ADD}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText?quick=true")
-            },
-            onScanBarcode = {
-                quickAdd = false
-                nav.navigate("${Routes.SCAN}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText")
-            },
-            onWater = {
-                quickAdd = false
-                scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) }
-            },
-            onDismiss = { quickAdd = false },
-            onStartWorkout = {
-                quickAdd = false
-                val a = active
-                if (a != null) nav.navigate("${Routes.WORKOUT}/${a.id}")
-                else if (todays != null) startOrResume(todays)
-                else nav.navigateTab(Routes.TRAIN)
-            },
+        if (route in tabRoutes) uk.woozy.fit.designsystem.GlassPopupMenu(
+            visible = quickAdd, onDismiss = { quickAdd = false }, backdrop = backdrop, style = gStyle, bottomInset = navInset,
+            items = listOf(
+                GlassMenuItem("Add food", Icons.Rounded.Search) {
+                    quickAdd = false
+                    nav.navigate("${Routes.ADD}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText")
+                },
+                GlassMenuItem("Scan barcode", Icons.Rounded.QrCodeScanner) {
+                    quickAdd = false
+                    nav.navigate("${Routes.SCAN}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText")
+                },
+                GlassMenuItem("Add water", Icons.Rounded.WaterDrop) {
+                    quickAdd = false
+                    scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) }
+                },
+                GlassMenuItem("Quick add", Icons.Rounded.EditNote) {
+                    quickAdd = false
+                    nav.navigate("${Routes.ADD}/${guessMeal(java.time.LocalTime.now().hour).key}/$todayText?quick=true")
+                },
+                GlassMenuItem("Start workout", Icons.Rounded.PlayArrow) {
+                    quickAdd = false
+                    val a = active
+                    if (a != null) nav.navigate("${Routes.WORKOUT}/${a.id}")
+                    else if (todays != null) startOrResume(todays)
+                    else nav.navigateTab(Routes.TRAIN)
+                },
+            ),
         )
-    }
-}
-
-/** The + menu. Rows light up as the milestone that powers them lands. */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun QuickAddSheet(
-    onSearchFood: () -> Unit,
-    onQuickAdd: () -> Unit,
-    onScanBarcode: () -> Unit,
-    onWater: () -> Unit,
-    onDismiss: () -> Unit,
-    onStartWorkout: () -> Unit,
-) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = if (HqTheme.colors.flat) HqTheme.colors.card.copy(alpha = 0.90f) else HqTheme.colors.card,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        scrimColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.30f),
-    ) {
-        Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { SectionLabel("Quick add") }
-            ListRow(Icons.Rounded.Search, "Add food", "Search your foods or create one", onClick = onSearchFood)
-            ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Look a product up", onClick = onScanBarcode)
-            ListRow(Icons.Rounded.WaterDrop, "Add water", "One glass", onClick = onWater)
-            ListRow(Icons.Rounded.EditNote, "Quick add", "A name and calories", onClick = onQuickAdd)
-            ListRow(Icons.Rounded.PlayArrow, "Start workout", "Today's workout, or resume the one running", onClick = onStartWorkout)
         }
     }
+
 }
 
 /** Samsung Health owns steps; open it there. False when it is not installed. */

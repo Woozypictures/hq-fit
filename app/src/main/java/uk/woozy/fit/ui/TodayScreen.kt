@@ -119,15 +119,14 @@ fun TodayScreen(
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
-                if (c.flat) {
-                    HqText(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)), 14.sp, FontWeight.Medium, c.muted)
-                    HqText("Hello, ${name.trim().substringBefore(' ')}", 36.sp, FontWeight.Bold, letterSpacing = (-1).sp)
-                } else {
-                    HqText(dateLine, 12.sp, FontWeight.SemiBold, c.primary, letterSpacing = 0.08.em)
-                    HqText("Hello, ${name.trim().substringBefore(' ')}!", 28.sp, FontWeight.Bold)
-                }
+                // Same header as HQ: weekday, big date, greeting.
+                val hour = java.time.LocalTime.now().hour
+                val greet = if (hour < 12) "Good morning" else if (hour < 18) "Good afternoon" else "Good evening"
+                HqText(today.format(DateTimeFormatter.ofPattern("EEEE", Locale.UK)), 13.sp, FontWeight.Medium, c.muted)
+                HqText(today.format(DateTimeFormatter.ofPattern("d MMMM", Locale.UK)), if (c.flat) 40.sp else 32.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
+                HqText("$greet, ${name.trim().substringBefore(' ')}!", if (c.flat) 24.sp else 20.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
             }
             AvatarCircle(
                 initial = name, size = 44.dp,
@@ -142,7 +141,7 @@ fun TodayScreen(
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 HqText(problem, 13.sp, FontWeight.SemiBold)
-                HqText("TAP TO FIX", 11.sp, color = c.muted, letterSpacing = 0.08.em)
+                HqText("TAP TO FIX", 11.sp, color = c.muted, letterSpacing = 0.03.em)
             }
         }
 
@@ -153,7 +152,7 @@ fun TodayScreen(
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 HqText("You missed $missedCount workout${if (missedCount == 1) "" else "s"}", 14.sp, FontWeight.SemiBold)
-                HqText("TAP TO CATCH UP OR MOVE ${if (missedCount == 1) "IT" else "THEM"}", 11.sp, color = c.muted, letterSpacing = 0.08.em)
+                HqText("TAP TO CATCH UP OR MOVE ${if (missedCount == 1) "IT" else "THEM"}", 11.sp, color = c.muted, letterSpacing = 0.03.em)
             }
         }
 
@@ -161,7 +160,7 @@ fun TodayScreen(
                     when (key) {
                         "workout" -> GradientCard(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(20.dp)) {
-                                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.1.em)
+                                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.04.em)
                                 Spacer(Modifier.height(6.dp))
                                 SpacedTitle(workoutTitle ?: "Rest day", color = c.onGradient, size = 20.sp)
                                 Spacer(Modifier.height(4.dp))

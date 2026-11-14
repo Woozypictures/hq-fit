@@ -72,7 +72,7 @@ fun HqCard(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = HqTheme.colors
-    val shape = RoundedCornerShape(if (c.flat) 22.dp else 16.dp)
+    val shape = RoundedCornerShape(if (c.flat) 22.dp else 18.dp)
     val frosted = LocalFrosted.current
     val base = if (c.flat && !frosted) {
         modifier.clip(shape).background(c.card)
@@ -96,7 +96,7 @@ fun GradientCard(
 ) {
     val c = HqTheme.colors
     val base = modifier
-        .clip(RoundedCornerShape(if (c.flat) 22.dp else 16.dp))
+        .clip(RoundedCornerShape(if (c.flat) 22.dp else 18.dp))
         .background(Brush.linearGradient(listOf(c.gradientStart, c.gradientEnd)))
     Column(modifier = if (onClick != null) base.clickable(onClick = onClick) else base, content = content)
 }
@@ -127,14 +127,14 @@ fun SpacedTitle(
     color: Color = HqTheme.colors.ink,
     size: androidx.compose.ui.unit.TextUnit = 22.sp,
 ) {
-    HqText(text.uppercase(), size, FontWeight.SemiBold, color, modifier, letterSpacing = 0.25.em)
+    HqText(text.uppercase(), size, FontWeight.SemiBold, color, modifier, letterSpacing = 0.06.em)
 }
 
 /** Small caps label above a block. */
 @Composable
 fun SectionLabel(text: String, modifier: Modifier = Modifier) {
     if (HqTheme.colors.flat) HqText(text, 14.sp, FontWeight.Medium, HqTheme.colors.muted, modifier)
-    else HqText(text.uppercase(), 12.sp, FontWeight.SemiBold, HqTheme.colors.muted, modifier, letterSpacing = 0.1.em)
+    else HqText(text.uppercase(), 12.sp, FontWeight.SemiBold, HqTheme.colors.muted, modifier, letterSpacing = 0.04.em)
 }
 
 // ---------------------------------------------------------------- buttons
