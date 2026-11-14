@@ -204,7 +204,12 @@ fun AboutBlock(appName: String, repo: String) {
                 }.padding(vertical = 6.dp),
             )
         }
-        HqText("Licence AGPL-3.0 \u00b7 source at github.com/Woozypictures/$repo", 13.sp, color = c.muted)
+        HqText(
+            "Licence AGPL-3.0 \u00b7 source at github.com/Woozypictures/$repo", 13.sp, color = c.muted,
+            modifier = Modifier.fillMaxWidth().clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                runCatching { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/Woozypictures/$repo")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }.padding(vertical = 4.dp),
+        )
         HqText("Your data stays with you.", 13.sp, color = c.muted)
     }
 }

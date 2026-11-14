@@ -37,8 +37,8 @@ object FitWeather {
             val o = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
             val cur = o.getJSONObject("current")
             val d = o.getJSONObject("daily")
-            val line = "${t(cur.getDouble("temperature_2m"))} ${label(cur.getInt("weather_code"))} · High ${t(d.getJSONArray("temperature_2m_max").getDouble(0))}" +
-                " · Low ${t(d.getJSONArray("temperature_2m_min").getDouble(0))} · Rain ${d.getJSONArray("precipitation_probability_max").optInt(0)}%"
+            val line = "${t(cur.getDouble("temperature_2m"))} · ${label(cur.getInt("weather_code"))} · H ${t(d.getJSONArray("temperature_2m_max").getDouble(0))}" +
+                " L ${t(d.getJSONArray("temperature_2m_min").getDouble(0))} · Rain ${d.getJSONArray("precipitation_probability_max").optInt(0)}%"
             prefs(c).edit().putString("line", line).apply()
             line
         }.getOrNull()
@@ -58,5 +58,8 @@ fun openWeather(c: Context) {
     for (pkg in listOf("com.sec.android.daemonapp", "com.google.android.apps.weather")) {
         val i = c.packageManager.getLaunchIntentForPackage(pkg) ?: continue
         if (runCatching { c.startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess) return
+    }
+    runCatching {
+        c.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://www.google.com/search?q=weather+Slough")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }

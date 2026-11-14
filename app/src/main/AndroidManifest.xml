@@ -33,6 +33,11 @@
         <package android:name="com.google.android.apps.healthdata" />
         <package android:name="com.sec.android.app.shealth" />
         <package android:name="uk.woozy.hq" />
+        <package android:name="com.sec.android.daemonapp" />
+        <package android:name="com.google.android.apps.weather" />
+        <package android:name="com.instagram.android" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.twitter.android" />
     </queries>
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />

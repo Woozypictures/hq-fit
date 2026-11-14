@@ -124,12 +124,12 @@ fun TodayScreen(
                 // Same header as HQ: weekday, big date, greeting.
                 val hour = java.time.LocalTime.now().hour
                 val greet = if (hour < 12) "Good morning" else if (hour < 18) "Good afternoon" else "Good evening"
-                HqText(today.format(DateTimeFormatter.ofPattern("EEEE", Locale.UK)), 13.sp, FontWeight.Medium, c.muted)
-                HqText(today.format(DateTimeFormatter.ofPattern("d MMMM", Locale.UK)), if (c.flat) 40.sp else 32.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
-                HqText("$greet, ${name.trim().substringBefore(' ')}.", if (c.flat) 24.sp else 20.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
+                // Three lines at most, same as HQ: date, greeting, weather.
+                HqText(today.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)), 13.sp, FontWeight.Medium, c.muted)
+                HqText("$greet, ${name.trim().substringBefore(' ')}.", if (c.flat) 28.sp else 24.sp, FontWeight.Bold, maxLines = 2, letterSpacing = if (c.flat) (-0.6).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                 val weather = rememberWeatherLine(refreshing)
                 val ctx = androidx.compose.ui.platform.LocalContext.current
-                if (weather != null) HqText(weather, if (c.flat) 14.sp else 13.sp, color = c.muted, modifier = Modifier.clickable { openWeather(ctx) }.padding(top = 2.dp))
+                if (weather != null) HqText(weather, 12.sp, color = c.muted, maxLines = 1, modifier = Modifier.clickable { openWeather(ctx) }.padding(top = 2.dp))
             }
             AvatarCircle(
                 initial = name, size = 44.dp,
