@@ -98,8 +98,8 @@ fun TrainScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
+            .statusBarsPadding()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

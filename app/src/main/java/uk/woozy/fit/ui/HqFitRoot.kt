@@ -426,6 +426,7 @@ fun HqFitRoot(
         }
         }
         if (route in tabRoutes) {
+            uk.woozy.fit.designsystem.GlassTopFade(backdrop, gc.page, Modifier.align(androidx.compose.ui.Alignment.TopCenter))
             GlassPillNav(
                 items = barItems.map { GlassItem(it.label, it.icon) },
                 selected = tabRoutes.indexOf(route),

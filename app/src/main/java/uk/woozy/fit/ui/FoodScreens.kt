@@ -142,7 +142,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
     val eaten = totals[Nutrients.ENERGY] ?: 0.0
 
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenTitle("Diary")
