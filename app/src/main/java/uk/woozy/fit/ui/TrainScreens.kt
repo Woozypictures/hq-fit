@@ -128,7 +128,7 @@ fun TrainScreen(
                                     .clip(CircleShape)
                                     .then(
                                         when {
-                                            isDone -> Modifier.background(c.protein)
+                                            isDone -> Modifier.background(if (c.flat) c.primary else c.protein)
                                             isToday -> Modifier.border(2.dp, c.primary, CircleShape)
                                             isMissed -> Modifier.border(2.dp, Color(0xFFE5484D), CircleShape)
                                             first != null -> Modifier.border(1.5.dp, c.primary.copy(alpha = 0.6f), CircleShape)
@@ -141,7 +141,7 @@ fun TrainScreen(
                                     if (isDone) "\u2713" else day.dayOfMonth.toString(), 14.sp,
                                     if (isToday || isDone) FontWeight.Bold else FontWeight.Normal,
                                     when {
-                                        isDone -> Color.White
+                                        isDone -> if (c.flat) c.onPrimary else Color.White
                                         isToday -> c.primary
                                         isMissed -> Color(0xFFE5484D)
                                         else -> c.ink
@@ -182,6 +182,20 @@ fun TrainScreen(
             }
         }
 
+        if (c.flat) {
+            SectionLabel("Plan and history")
+            HqCard(Modifier.fillMaxWidth()) {
+                ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Pick the days for each workout and edit it", onClick = onProgrammes)
+                ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
+                ListRow(Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
+                ListRow(Icons.Rounded.CalendarMonth, "Past workouts", "Open one to fix a weight or rep", onClick = onPast)
+            }
+            SectionLabel("Build")
+            HqCard(Modifier.fillMaxWidth()) {
+                ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own and put it on the calendar", onClick = onNewWorkout)
+                ListRow(Icons.Rounded.FitnessCenter, "New exercise", "Add your own to the library", onClick = onNewExercise)
+            }
+        } else
         HqCard(Modifier.fillMaxWidth()) {
             ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Pick the days for each workout and edit it", onClick = onProgrammes)
             ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
