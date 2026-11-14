@@ -188,11 +188,12 @@ fun HqFitRoot(
             refreshTick++
         }
     }
-    val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db, refreshTick) {
+    val today = rememberToday()
+    val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db, refreshTick, today) {
         value = runCatching {
             val g = uk.woozy.fit.health.HealthGateway(syncContext)
             if (!g.available) null else g.snapshot(
-                LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant(), java.time.Instant.now(),
+                today.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant(), java.time.Instant.now(),
             )
         }.getOrNull()
     }
@@ -209,7 +210,6 @@ fun HqFitRoot(
             }
         }.getOrNull()
     }
-    val today = rememberToday()
     val sundayDate = remember(today) { today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY)).toString() }
     val ticksFlow = remember(db, sundayDate) { db.checkIns().observe(sundayDate) }
     val ticks by ticksFlow.collectAsState(initial = emptyList())
@@ -543,7 +543,7 @@ fun HqFitRoot(
             leftMs = restLeft,
             totalMs = (uk.woozy.fit.RestTimer.endMs(syncContext) - uk.woozy.fit.RestTimer.startMs(syncContext)).coerceAtLeast(1),
             backdrop = backdrop, style = gStyle, accent = uk.woozy.fit.designsystem.HqTheme.colors.primary,
-            onAdd = { uk.woozy.fit.RestTimer.start(syncContext, uk.woozy.fit.RestTimer.endMs(syncContext) + 15_000, "Rest") },
+            onAdd = { uk.woozy.fit.RestTimer.start(syncContext, uk.woozy.fit.RestTimer.endMs(syncContext) + 15_000, "Rest", extend = true) },
             onSkip = { uk.woozy.fit.RestTimer.cancel(syncContext); restLeft = 0 },
             modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 10.dp),
         )

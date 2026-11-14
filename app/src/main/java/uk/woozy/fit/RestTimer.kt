@@ -35,9 +35,10 @@ object RestTimer {
     /** Epoch ms when the current rest began (kept when +15s extends it), for the pill's progress line. */
     fun startMs(c: Context): Long = prefs(c).getLong("start", 0L)
 
-    fun start(c: Context, endMs: Long, exercise: String) {
+    /** [extend] is +15s on a running rest (keeps the start); a new rest from a ticked set always restarts the progress line. */
+    fun start(c: Context, endMs: Long, exercise: String, extend: Boolean = false) {
         val now = System.currentTimeMillis()
-        val running = endMs(c) > now
+        val running = extend && endMs(c) > now
         val ed = prefs(c).edit().putLong("end", endMs)
         if (!running) ed.putLong("start", now)
         ed.apply()

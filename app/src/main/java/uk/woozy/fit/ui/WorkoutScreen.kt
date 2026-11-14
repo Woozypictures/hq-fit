@@ -485,7 +485,7 @@ fun ActiveWorkoutScreen(
                     uk.woozy.fit.designsystem.GlassRestPill(
                         leftMs = restLeft, totalMs = (restEnd - RestTimer.startMs(context)).coerceAtLeast(1),
                         backdrop = backdrop, style = gStyle, accent = c.primary, solid = true,
-                        onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest") },
+                        onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest", extend = true) },
                         onSkip = { restEnd = 0; RestTimer.cancel(context) },
                     )
                 }
@@ -500,7 +500,7 @@ fun ActiveWorkoutScreen(
             uk.woozy.fit.designsystem.GlassRestPill(
                 leftMs = restLeft, totalMs = (restEnd - RestTimer.startMs(context)).coerceAtLeast(1),
                 backdrop = backdrop, style = gStyle, accent = c.primary,
-                onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest") },
+                onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest", extend = true) },
                 onSkip = { restEnd = 0; RestTimer.cancel(context) },
                 modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars).padding(bottom = 16.dp),
             )
