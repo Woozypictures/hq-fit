@@ -421,7 +421,8 @@ fun HistoryScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
     val byDay = sessions.groupBy { sessionDate(it) }
     val earliest = (sessions.minOfOrNull { sessionDate(it) } ?: today).let { if (it > today.minusDays(28)) today.minusDays(28) else it }
     val days = remember(today, earliest) { generateSequence(today) { it.minusDays(1) }.takeWhile { it >= earliest }.toList() }
-    val weeks = (ChronoUnit.WEEKS.between(earliest.with(DayOfWeek.MONDAY), today.with(DayOfWeek.MONDAY)).toInt() + 1).coerceAtLeast(1)
+    // A fixed two years of weeks, so the pager never jumps when the workouts finish loading; the last page is this week.
+    val weeks = 104
     val pager = rememberPagerState(initialPage = weeks - 1) { weeks }
     val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
