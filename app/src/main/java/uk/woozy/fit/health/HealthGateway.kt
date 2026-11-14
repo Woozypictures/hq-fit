@@ -29,6 +29,8 @@ data class HealthSnapshot(
     val sleepMinutes: Long?,
     val restingHr: Long?,
     val activeKcal: Double?,
+    /** When the Galaxy Watch (through Samsung Health) last wrote steps or heart rate, or null if never today. */
+    val watchLastMs: Long? = null,
 )
 
 /** A weight another app wrote to Health Connect. */
@@ -91,7 +93,15 @@ class HealthGateway(private val context: Context) {
             runCatching {
                 client.aggregate(AggregateRequest(setOf(ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL), range))[ActiveCaloriesBurnedRecord.ACTIVE_CALORIES_TOTAL]?.inKilocalories
             }.getOrNull() else null
-        return HealthSnapshot(steps, sleep, hr, kcal)
+        // Watch freshness: newest steps record from a watch (or from Samsung Health, which relays the Galaxy Watch).
+        val watch = if (ok(HealthPermission.getReadPermission(StepsRecord::class)))
+            runCatching {
+                client.readRecords(ReadRecordsRequest(StepsRecord::class, TimeRangeFilter.between(now.minus(Duration.ofHours(12)), now))).records
+                    .filter { it.metadata.dataOrigin.packageName != own }
+                    .filter { it.metadata.device?.type == androidx.health.connect.client.records.metadata.Device.TYPE_WATCH || it.metadata.dataOrigin.packageName == "com.sec.android.app.shealth" }
+                    .maxOfOrNull { it.endTime.toEpochMilli() }
+            }.getOrNull() else null
+        return HealthSnapshot(steps, sleep, hr, kcal, watch)
     }
 
     /** Weight history written by other apps (Feelfit, Renpho and so on), oldest first. */

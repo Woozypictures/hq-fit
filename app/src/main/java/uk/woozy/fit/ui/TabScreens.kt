@@ -68,7 +68,7 @@ private fun TabPage(content: @Composable () -> Unit) {
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         content()
@@ -95,7 +95,7 @@ private data class ProgressData(
     val firstKg: Double? = null, val firstDate: LocalDate? = null, val kg30: Double? = null, val kg7: Double? = null, val lastDate: LocalDate? = null,
 )
 
-private const val GOAL_KG = 80.0
+internal const val GOAL_KG = 80.0
 
 private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
     val zone = ZoneId.systemDefault()

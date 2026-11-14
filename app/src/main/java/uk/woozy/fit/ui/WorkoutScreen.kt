@@ -221,7 +221,21 @@ fun ActiveWorkoutScreen(
             KeypadKey.Plus -> save(NumberEntry.step(e.buffer, if (e.weight) weightStep else REP_STEP))
             KeypadKey.Minus -> save(NumberEntry.step(e.buffer, if (e.weight) -weightStep else -REP_STEP))
             KeypadKey.Done -> {
-                editing = if (e.weight) Editing(set.id, false, set.reps?.toString().orEmpty(), true) else null
+                if (e.weight) {
+                    editing = Editing(set.id, false, set.reps?.toString().orEmpty(), true)
+                } else {
+                    // Auto-advance (Everfit/Strong style): Done on reps ticks the set, starts rest, carries the weight
+                    // forward and opens the next unticked set in this exercise on its weight.
+                    val group = sets.filter { it.position == set.position }.sortedBy { it.setIndex }
+                    val next = group.firstOrNull { it.setIndex > set.setIndex && !it.done }
+                    if (!set.done) toggle(set)
+                    if (next != null) {
+                        val w = next.weightKg ?: set.weightKg
+                        if (next.weightKg == null && w != null) scope.launch { db.sessions().updateValues(next.id, w, next.reps) }
+                        editing = Editing(next.id, true, w?.let { NumberEntry.format(it) }.orEmpty(), true)
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    } else editing = null
+                }
             }
         }
     }
@@ -465,6 +479,17 @@ fun ActiveWorkoutScreen(
 
         if (editing != null) {
             val e = editing!!
+            if (c.flat && restLeft > 0) {
+                val gStyle = remember(c) { uk.woozy.fit.designsystem.glassStyle(c.dark, c.ink, c.muted) }
+                Box(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = Alignment.Center) {
+                    uk.woozy.fit.designsystem.GlassRestPill(
+                        leftMs = restLeft, totalMs = (restEnd - RestTimer.startMs(context)).coerceAtLeast(1),
+                        backdrop = backdrop, style = gStyle, accent = c.primary, solid = true,
+                        onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest") },
+                        onSkip = { restEnd = 0; RestTimer.cancel(context) },
+                    )
+                }
+            }
             NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "${NumberEntry.format(weightStep)} kg" else "1 rep")
         } else {
             Spacer(Modifier.navigationBarsPadding())
@@ -472,22 +497,13 @@ fun ActiveWorkoutScreen(
     }
         if (c.flat && restLeft > 0 && editing == null) {
             val gStyle = remember(c) { uk.woozy.fit.designsystem.glassStyle(c.dark, c.ink, c.muted) }
-            Row(
-                Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
-                    .padding(bottom = 16.dp).height(60.dp)
-                    .glass(backdrop, gStyle, androidx.compose.foundation.shape.RoundedCornerShape(30.dp))
-                    .padding(start = 24.dp, end = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                HqText("Rest", 14.sp, FontWeight.Medium, c.muted)
-                Spacer(Modifier.width(12.dp))
-                HqText(clock(restLeft + 999), 26.sp, FontWeight.Bold, c.ink, letterSpacing = (-0.5).sp)
-                Spacer(Modifier.width(20.dp))
-                HqText(
-                    "Skip", 14.sp, FontWeight.SemiBold, c.primary,
-                    Modifier.clip(CircleShape).clickable(role = Role.Button) { restEnd = 0; RestTimer.cancel(context) }.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
-            }
+            uk.woozy.fit.designsystem.GlassRestPill(
+                leftMs = restLeft, totalMs = (restEnd - RestTimer.startMs(context)).coerceAtLeast(1),
+                backdrop = backdrop, style = gStyle, accent = c.primary,
+                onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest") },
+                onSkip = { restEnd = 0; RestTimer.cancel(context) },
+                modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars).padding(bottom = 16.dp),
+            )
         }
     }
 
@@ -595,7 +611,8 @@ private fun ExerciseCard(
                 group.forEach { set -> TimedRow(set, onToggle) }
             } else {
                 SetTableHeader()
-                group.forEach { set ->
+                val currentId = group.firstOrNull { !it.done }?.id
+                group.forEachIndexed { idx, set ->
                     androidx.compose.runtime.key(set.id) {
                         val e = editing?.takeIf { it.setId == set.id }
                         var setMenu by remember { mutableStateOf(false) }
@@ -625,6 +642,8 @@ private fun ExerciseCard(
                                     repsActive = e != null && !e.weight,
                                     weightGhost = prevVals[set.exerciseId to set.setIndex]?.first?.let { NumberEntry.format(it) }.orEmpty(),
                                     repsGhost = (prevVals[set.exerciseId to set.setIndex]?.second ?: set.targetRepsMax ?: set.targetRepsMin)?.toString().orEmpty(),
+                                    current = set.id == currentId,
+                                    divider = idx > 0,
                                 )
                                 DropdownMenu(expanded = setMenu, onDismissRequest = { setMenu = false }) {
                                     listOf("normal" to "Normal set", "warmup" to "Warm-up set", "drop" to "Drop set", "failure" to "Failure set").forEach { (k, label) ->

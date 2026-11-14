@@ -110,7 +110,7 @@ fun TrainScreen(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenTitle("Train")

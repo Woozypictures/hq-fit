@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -333,7 +336,7 @@ fun MacroBar(
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HqText(label, 14.sp, FontWeight.Medium, modifier = Modifier.weight(1f))
             val over = target > 0 && value > target
-            HqText(if (over) "+${formatWhole(value - target)} $unit over" else "${formatWhole(value)} / ${formatWhole(target)} $unit", 13.sp, FontWeight.Normal, if (over) HqTheme.colors.warn else HqTheme.colors.muted)
+            HqText(if (over) "+${formatWhole(value - target)} $unit over" else if (MacroMode.remaining && target > 0) "${formatWhole(target - value)} $unit left" else "${formatWhole(value)} / ${formatWhole(target)} $unit", 13.sp, FontWeight.Normal, if (over) HqTheme.colors.warn else HqTheme.colors.muted)
         }
         Spacer(Modifier.height(6.dp))
         HqProgressBar(fraction = if (target > 0) (value / target).toFloat() else 0f, color = if (target > 0 && value > target) HqTheme.colors.warn else color)
@@ -395,19 +398,37 @@ fun SetRow(
     repsActive: Boolean = false,
     weightGhost: String = "",
     repsGhost: String = "",
+    current: Boolean = false,
+    divider: Boolean = false,
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val c = HqTheme.colors
     val value = if (done) c.primary else c.ink
+    // Done rows wash in the accent; the next set to do sits on the inset tone so the eye lands on it.
+    val rowBg by androidx.compose.animation.animateColorAsState(
+        when {
+            c.flat && done -> c.primary.copy(alpha = 0.10f)
+            c.flat && current -> c.track.copy(alpha = 0.55f)
+            else -> androidx.compose.ui.graphics.Color.Transparent
+        },
+        androidx.compose.animation.core.tween(220), label = "row",
+    )
+    val tick = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(1f) }
+    val wasDone = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(done) }
+    androidx.compose.runtime.LaunchedEffect(done) {
+        if (done && !wasDone.value) { tick.snapTo(0.8f); tick.animateTo(1f, androidx.compose.animation.core.spring(dampingRatio = 0.5f, stiffness = 520f)) }
+        wasDone.value = done
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 60.dp)
-            .then(if (c.flat && done) Modifier.background(c.primary.copy(alpha = 0.10f)) else Modifier)
+            .background(rowBg)
+            .then(if (divider) Modifier.drawBehind { drawLine(c.ink.copy(alpha = if (c.dark) 0.12f else 0.08f), androidx.compose.ui.geometry.Offset(16.dp.toPx(), 0f), androidx.compose.ui.geometry.Offset(size.width - 16.dp.toPx(), 0f), 1f) } else Modifier)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HqText(number, 15.sp, FontWeight.SemiBold, c.muted, Modifier.width(36.dp))
+        HqText(number, 15.sp, FontWeight.SemiBold, if (current && !done) c.primary else c.muted, Modifier.width(36.dp))
         HqText(previous, 13.sp, FontWeight.Normal, c.muted, Modifier.weight(1f))
         EditableCell(weight, value, weightActive, onWeightClick, if (done) "" else weightGhost)
         EditableCell(reps, value, repsActive, onRepsClick, if (done) "" else repsGhost)
@@ -415,6 +436,7 @@ fun SetRow(
         Box(
             modifier = Modifier
                 .size(40.dp)
+                .graphicsLayer { scaleX = tick.value; scaleY = tick.value }
                 .clip(CircleShape)
                 .background(if (done) (if (c.flat) c.primary else c.ink) else c.track)
                 .toggleable(value = done, role = Role.Checkbox, onValueChange = {
@@ -575,16 +597,68 @@ private fun BarTab(item: BarItem, selected: Boolean, modifier: Modifier, onClick
 }
 
 
+/**
+ * Cronometer's Consumed / Remaining switch, shared by every calorie and macro readout in the app and remembered
+ * between launches. Remaining is the default (what Woozy showed before).
+ */
+object MacroMode {
+    var remaining by androidx.compose.runtime.mutableStateOf(true)
+        private set
+    private var loaded = false
+    fun load(ctx: android.content.Context) {
+        if (loaded) return
+        loaded = true
+        remaining = ctx.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE).getBoolean("macro_remaining", true)
+    }
+    fun set(ctx: android.content.Context, value: Boolean) {
+        remaining = value; loaded = true
+        ctx.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE).edit().putBoolean("macro_remaining", value).apply()
+    }
+}
+
+/** Two-segment control: Consumed | Remaining, with a thumb that springs across. */
+@Composable
+fun ConsumedRemainingToggle(modifier: Modifier = Modifier) {
+    val c = HqTheme.colors
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    androidx.compose.runtime.LaunchedEffect(Unit) { MacroMode.load(ctx) }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val on = MacroMode.remaining
+    val pos by androidx.compose.animation.core.animateFloatAsState(if (on) 1f else 0f, WoozyTokens.Motion.pill, label = "seg")
+    androidx.compose.foundation.layout.BoxWithConstraints(
+        modifier.height(36.dp).clip(CircleShape).background(c.track).padding(3.dp),
+    ) {
+        val half = maxWidth / 2
+        Box(
+            Modifier.offset(x = half * pos).width(half).fillMaxHeight().clip(CircleShape).background(c.card)
+                .then(if (c.dark) Modifier else Modifier.border(0.5.dp, c.ink.copy(alpha = 0.06f), CircleShape)),
+        )
+        Row(Modifier.fillMaxSize()) {
+            listOf("Consumed" to false, "Remaining" to true).forEach { (label, v) ->
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().clip(CircleShape)
+                        .clickable(role = Role.Tab, interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {
+                            if (on != v) { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove); MacroMode.set(ctx, v) }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) { HqText(label, 13.sp, if (on == v) FontWeight.SemiBold else FontWeight.Normal, if (on == v) c.ink else c.muted) }
+            }
+        }
+    }
+}
+
 /** Woozy hero for calories: the number left is the headline, then a bar, then eaten / burned / target. */
 @Composable
 fun CalorieHero(eaten: Double, burned: Double?, target: Double) {
     val c = HqTheme.colors
     val left = target - eaten
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        // Tap the big number to flip between what is left and what you have eaten.
-        var eatenView by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+        // Follows the Consumed / Remaining switch; tapping the big number flips it too.
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(Unit) { MacroMode.load(ctx) }
+        val eatenView = !MacroMode.remaining
         Row(
-            Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Switch between eaten and left") { eatenView = !eatenView },
+            Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Switch between eaten and left") { MacroMode.set(ctx, eatenView) },
             verticalAlignment = Alignment.Bottom,
         ) {
             HqText(formatWhole(countUp(if (eatenView) eaten else kotlin.math.abs(left))), 56.sp, FontWeight.Bold, letterSpacing = (-2).sp)
@@ -613,7 +687,58 @@ fun MacroColumn(label: String, value: Double, target: Double, color: Color, modi
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         HqText(label, 12.sp, FontWeight.Medium, HqTheme.colors.muted)
         val over = target > 0 && value > target
-        HqText(if (over) "+${formatWhole(value - target)} g over" else "${formatWhole(value)} / ${formatWhole(target)} g", 14.sp, FontWeight.SemiBold, if (over) HqTheme.colors.warn else HqTheme.colors.ink)
+        val text = when {
+            over -> "+${formatWhole(value - target)} g over"
+            MacroMode.remaining && target > 0 -> "${formatWhole(target - value)} g left"
+            else -> "${formatWhole(value)} / ${formatWhole(target)} g"
+        }
+        HqText(text, 14.sp, FontWeight.SemiBold, if (over) HqTheme.colors.warn else HqTheme.colors.ink)
         HqProgressBar(fraction = if (target > 0) (value / target).toFloat() else 0f, color = if (over) HqTheme.colors.warn else color, height = 4.dp)
+    }
+}
+
+/**
+ * Live sync status pill (solid content surface, not glass): a dot, the source and how fresh it is, ticking every
+ * minute. Green when fresh, amber past two hours, accent and pulsing while a sync runs, red on a failure. Tap syncs.
+ */
+@Composable
+fun SyncStatusPill(
+    lastMs: Long,
+    syncing: Boolean,
+    watchLastMs: Long?,
+    failed: Boolean = false,
+    onSync: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val c = HqTheme.colors
+    val now by androidx.compose.runtime.produceState(System.currentTimeMillis()) {
+        while (true) { value = System.currentTimeMillis(); kotlinx.coroutines.delay(30_000) }
+    }
+    fun ago(ms: Long): String {
+        val m = ((now - ms) / 60_000).toInt()
+        return when {
+            m < 1 -> "just now"
+            m < 60 -> "$m min ago"
+            m < 24 * 60 -> java.time.Instant.ofEpochMilli(ms).atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+            else -> "${m / (24 * 60)} d ago"
+        }
+    }
+    val stale = lastMs <= 0 || now - lastMs > 2 * 60 * 60_000L
+    val dot = when { syncing -> c.primary; failed -> Color(0xFFE5484D); stale -> c.warn; else -> c.ok }
+    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "sync")
+    val a by pulse.animateFloat(1f, 0.25f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "dot")
+    val text = buildString {
+        append(if (syncing) "Syncing Health Connect" else if (failed) "Health Connect sync failed" else if (lastMs > 0) "Health Connect · ${ago(lastMs)}" else "Health Connect · not synced")
+        if (!syncing && watchLastMs != null) append("  ·  Watch ${ago(watchLastMs)}")
+    }
+    Row(
+        modifier.clip(CircleShape).background(c.track.copy(alpha = if (c.dark) 0.8f else 0.7f))
+            .clickable(role = Role.Button, onClickLabel = "Sync now", enabled = !syncing, onClick = onSync)
+            .padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(8.dp).graphicsLayer { alpha = if (syncing) a else 1f }.clip(CircleShape).background(dot))
+        Spacer(Modifier.width(8.dp))
+        HqText(text, 12.sp, FontWeight.Medium, if (stale && !syncing) c.warn else c.muted, maxLines = 1)
     }
 }

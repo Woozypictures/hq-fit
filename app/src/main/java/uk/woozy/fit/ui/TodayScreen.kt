@@ -92,6 +92,7 @@ fun TodayScreen(
     onProblem: () -> Unit = {},
     onSteps: () -> Unit = {},
     onDiary: () -> Unit = {},
+    watchLastMs: Long? = null,
     today: LocalDate = LocalDate.now(),
     /** Changes when water was just added from the + menu: scroll to the Water card and flash it. */
     waterFocus: Long = 0L,
@@ -136,7 +137,7 @@ fun TodayScreen(
             .onGloballyPositioned { colTop = it.positionInWindow().y }
             .verticalScroll(scroll)
             .statusBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -199,7 +200,10 @@ fun TodayScreen(
                             val target = targets.energyKcal.toDouble().coerceAtLeast(1.0)
                             if (c.flat) {
                                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                                    SectionLabel("Calories")
+                                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                        Box(Modifier.weight(1f)) { SectionLabel("Calories") }
+                                        uk.woozy.fit.designsystem.ConsumedRemainingToggle(Modifier.width(200.dp))
+                                    }
                                     uk.woozy.fit.designsystem.CalorieHero(eaten, burnedKcal, target)
                                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                                         uk.woozy.fit.designsystem.MacroColumn("Protein", proteinG, targets.proteinG.toDouble(), c.protein, Modifier.weight(1f))
@@ -279,13 +283,8 @@ fun TodayScreen(
                                 // Freshness: when Health Connect last synced; amber once it is over two hours old.
                                 val ctx = androidx.compose.ui.platform.LocalContext.current
                                 val at = remember(refreshing) { uk.woozy.fit.health.HealthSync.lastSyncMs(ctx) }
-                                if (at > 0) {
-                                    val mins = ((System.currentTimeMillis() - at) / 60_000).toInt()
-                                    HqText(
-                                        "Health Connect synced " + when { mins < 1 -> "just now"; mins < 60 -> "$mins min ago"; else -> java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")) },
-                                        12.sp, color = if (mins > 120) c.warn else c.muted,
-                                    )
-                                }
+                                val failed = remember(refreshing) { uk.woozy.fit.health.HealthSync.lastStatus(ctx).startsWith("Sync failed") }
+                                uk.woozy.fit.designsystem.SyncStatusPill(lastMs = at, syncing = refreshing, watchLastMs = watchLastMs, failed = failed, onSync = onRefresh)
                             }
                         }
                         "tasks" -> HqCard(Modifier.fillMaxWidth()) {

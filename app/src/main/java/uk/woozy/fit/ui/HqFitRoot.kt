@@ -256,6 +256,7 @@ fun HqFitRoot(
                     },
                     steps = health?.steps,
                     burnedKcal = health?.activeKcal,
+                    watchLastMs = health?.watchLastMs,
                     proteinG = dayTotals[Nutrients.PROTEIN] ?: 0.0,
                     netCarbsG = Nutrients.netCarbs(dayTotals),
                     fatG = dayTotals[Nutrients.FAT] ?: 0.0,
@@ -494,26 +495,14 @@ fun HqFitRoot(
                 kotlinx.coroutines.delay(if (restLeft > 0) 250 else 1500)
             }
         }
-        if (route in tabRoutes && restLeft > 0) androidx.compose.foundation.layout.Row(
-            Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 10.dp)
-                .then(Modifier.glass(backdrop, gStyle, androidx.compose.foundation.shape.CircleShape))
-                .padding(start = 18.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
-        ) {
-            val sec = ((restLeft + 999) / 1000).toInt()
-            uk.woozy.fit.designsystem.HqText("Rest %d:%02d".format(sec / 60, sec % 60), 17.sp, androidx.compose.ui.text.font.FontWeight.Bold, gStyle.ink)
-            androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
-            androidx.compose.foundation.layout.Box(
-                Modifier.clip(androidx.compose.foundation.shape.CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button) {
-                    uk.woozy.fit.RestTimer.start(syncContext, uk.woozy.fit.RestTimer.endMs(syncContext) + 15_000, "Rest")
-                }.padding(horizontal = 12.dp, vertical = 8.dp),
-            ) { uk.woozy.fit.designsystem.HqText("+15s", 15.sp, androidx.compose.ui.text.font.FontWeight.SemiBold, gStyle.ink) }
-            androidx.compose.foundation.layout.Box(
-                Modifier.clip(androidx.compose.foundation.shape.CircleShape).background(gStyle.capsule).clickable(role = androidx.compose.ui.semantics.Role.Button) {
-                    uk.woozy.fit.RestTimer.cancel(syncContext); restLeft = 0
-                }.padding(horizontal = 14.dp, vertical = 8.dp),
-            ) { uk.woozy.fit.designsystem.HqText("Skip", 15.sp, androidx.compose.ui.text.font.FontWeight.SemiBold, gStyle.ink) }
-        }
+        if (route in tabRoutes && restLeft > 0) uk.woozy.fit.designsystem.GlassRestPill(
+            leftMs = restLeft,
+            totalMs = (uk.woozy.fit.RestTimer.endMs(syncContext) - uk.woozy.fit.RestTimer.startMs(syncContext)).coerceAtLeast(1),
+            backdrop = backdrop, style = gStyle, accent = uk.woozy.fit.designsystem.HqTheme.colors.primary,
+            onAdd = { uk.woozy.fit.RestTimer.start(syncContext, uk.woozy.fit.RestTimer.endMs(syncContext) + 15_000, "Rest") },
+            onSkip = { uk.woozy.fit.RestTimer.cancel(syncContext); restLeft = 0 },
+            modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 10.dp),
+        )
         if (route in tabRoutes) uk.woozy.fit.designsystem.GlassToast(
             toastText, showToast, backdrop, gStyle,
             Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 12.dp),

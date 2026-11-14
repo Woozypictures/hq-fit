@@ -32,8 +32,15 @@ object RestTimer {
     /** Epoch ms when the current rest ends, or 0. */
     fun endMs(c: Context): Long = prefs(c).getLong("end", 0L)
 
+    /** Epoch ms when the current rest began (kept when +15s extends it), for the pill's progress line. */
+    fun startMs(c: Context): Long = prefs(c).getLong("start", 0L)
+
     fun start(c: Context, endMs: Long, exercise: String) {
-        prefs(c).edit().putLong("end", endMs).apply()
+        val now = System.currentTimeMillis()
+        val running = endMs(c) > now
+        val ed = prefs(c).edit().putLong("end", endMs)
+        if (!running) ed.putLong("start", now)
+        ed.apply()
         ensureChannels(c)
         val nm = NotificationManagerCompat.from(c)
         val open = PendingIntent.getActivity(

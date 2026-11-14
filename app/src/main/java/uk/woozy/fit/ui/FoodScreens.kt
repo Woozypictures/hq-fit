@@ -143,7 +143,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
     val eaten = totals[Nutrients.ENERGY] ?: 0.0
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenTitle("Diary")
@@ -165,6 +165,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
         HqCard(Modifier.fillMaxWidth()) {
             if (c.flat) {
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    uk.woozy.fit.designsystem.ConsumedRemainingToggle(Modifier.fillMaxWidth())
                     uk.woozy.fit.designsystem.CalorieHero(eaten, null, targets.energyKcal.toDouble().coerceAtLeast(1.0))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         uk.woozy.fit.designsystem.MacroColumn("Protein", totals[Nutrients.PROTEIN] ?: 0.0, targets.proteinG.toDouble(), c.protein, Modifier.weight(1f))
@@ -175,6 +176,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
                 }
             } else
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                uk.woozy.fit.designsystem.ConsumedRemainingToggle(Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     HqRing(progress = (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), color = c.primary, diameter = 112.dp, stroke = 12.dp) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
