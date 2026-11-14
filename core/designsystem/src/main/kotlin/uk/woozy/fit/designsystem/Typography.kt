@@ -34,6 +34,21 @@ internal val HqTypography: Typography = Typography().let { t ->
     )
 }
 
+
+/**
+ * One type scale for both Woozy apps (Apple-style steps): 11 micro, 13 caption, 15 body, 17 headline, 20, 24, 28, 34,
+ * then display sizes as given. Every size passed in snaps to the nearest step, so both apps share the same rhythm.
+ */
+internal fun snapType(size: TextUnit): TextUnit {
+    if (!size.isSp) return size
+    val v = size.value
+    val s = when {
+        v <= 11.5f -> 11f; v <= 13.9f -> 13f; v <= 15.9f -> 15f; v <= 18.5f -> 17f
+        v <= 21.9f -> 20f; v <= 25.9f -> 24f; v <= 30.9f -> 28f; v <= 36.9f -> 34f; else -> v
+    }
+    return s.sp
+}
+
 /** The one text composable for HQ Fit: Google Sans with tabular figures, so numbers line up. */
 @Composable
 fun HqText(
@@ -50,7 +65,7 @@ fun HqText(
         text = text,
         modifier = modifier,
         color = color,
-        fontSize = size,
+        fontSize = snapType(size),
         fontWeight = weight,
         fontFamily = GoogleSans,
         letterSpacing = letterSpacing,
