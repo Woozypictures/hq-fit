@@ -179,13 +179,18 @@ fun CardColumn(
     @Composable
     fun one(key: String) {
         val isDragging = dragging == key
-        val wiggle = rememberInfiniteTransition(label = "wiggle")
+        // Wiggle only while rearranging; an always-on infinite transition kept every card requesting 120Hz frames.
         val phase = (key.hashCode() and 3) * 40
-        val angle by wiggle.animateFloat(-0.9f, 0.9f, infiniteRepeatable(tween(130 + phase, easing = LinearEasing), RepeatMode.Reverse), label = "a")
+        val wig = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
+        androidx.compose.runtime.LaunchedEffect(editing && !isDragging) {
+            if (editing && !isDragging) while (true) {
+                wig.animateTo(0.9f, tween(130 + phase, easing = LinearEasing)); wig.animateTo(-0.9f, tween(130 + phase, easing = LinearEasing))
+            } else wig.snapTo(0f)
+        }
         Box(
             Modifier.onSizeChanged { heights[key] = it.height }
                 .graphicsLayer {
-                    if (editing && !isDragging) rotationZ = angle
+                    if (editing && !isDragging) rotationZ = wig.value
                     if (isDragging) { translationY = offset; scaleX = 1.03f; scaleY = 1.03f; shadowElevation = 24f }
                 }
                 .zIndex(if (isDragging) 1f else 0f)

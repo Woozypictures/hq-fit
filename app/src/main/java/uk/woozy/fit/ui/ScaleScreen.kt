@@ -126,8 +126,14 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
                 val start = first?.kg ?: shown
                 val toGoal = if (shown != null && start != null) ((start - shown) / (start - GOAL_KG).let { if (it == 0.0) 1.0 else it }).toFloat().coerceIn(0f, 1f) else 0f
                 val live = ui.liveKg != null
-                val breathe = androidx.compose.animation.core.rememberInfiniteTransition(label = "scale")
-                val glow by breathe.animateFloat(0.25f, 0.7f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(800), androidx.compose.animation.core.RepeatMode.Reverse), label = "glow")
+                // Breathes only while the scale is settling or scanning; still otherwise (no idle frames).
+                val glowA = remember { androidx.compose.animation.core.Animatable(0.45f) }
+                val busy = (live && !ui.stable) || ui.scanning
+                LaunchedEffect(busy) {
+                    if (busy) while (true) { glowA.animateTo(0.7f, androidx.compose.animation.core.tween(800)); glowA.animateTo(0.25f, androidx.compose.animation.core.tween(800)) }
+                    else glowA.snapTo(0.45f)
+                }
+                val glow = glowA.value
                 Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     val halo = c.primary.copy(alpha = if (live && !ui.stable) glow else 0.45f)
                     androidx.compose.foundation.Canvas(Modifier.size(196.dp)) {

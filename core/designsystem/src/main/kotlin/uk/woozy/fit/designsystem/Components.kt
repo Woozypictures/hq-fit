@@ -725,8 +725,12 @@ fun SyncStatusPill(
     }
     val stale = lastMs <= 0 || now - lastMs > 2 * 60 * 60_000L
     val dot = when { syncing -> c.primary; failed -> Color(0xFFE5484D); stale -> c.warn; else -> c.ok }
-    val pulse = androidx.compose.animation.core.rememberInfiniteTransition(label = "sync")
-    val a by pulse.animateFloat(1f, 0.25f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(700), androidx.compose.animation.core.RepeatMode.Reverse), label = "dot")
+    // Pulse only while a sync runs (an idle infinite transition would keep Home redrawing every frame).
+    val dotAlpha = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(1f) }
+    androidx.compose.runtime.LaunchedEffect(syncing) {
+        if (syncing) while (true) { dotAlpha.animateTo(0.25f, androidx.compose.animation.core.tween(700)); dotAlpha.animateTo(1f, androidx.compose.animation.core.tween(700)) }
+        else dotAlpha.snapTo(1f)
+    }
     val text = buildString {
         append(if (syncing) "Syncing Health Connect" else if (failed) "Health Connect sync failed" else if (lastMs > 0) "Health Connect · ${ago(lastMs)}" else "Health Connect · not synced")
         if (!syncing && watchLastMs != null) append("  ·  Watch ${ago(watchLastMs)}")
@@ -737,7 +741,7 @@ fun SyncStatusPill(
             .padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(8.dp).graphicsLayer { alpha = if (syncing) a else 1f }.clip(CircleShape).background(dot))
+        Box(Modifier.size(8.dp).graphicsLayer { alpha = dotAlpha.value }.clip(CircleShape).background(dot))
         Spacer(Modifier.width(8.dp))
         HqText(text, 12.sp, FontWeight.Medium, if (stale && !syncing) c.warn else c.muted, maxLines = 1)
     }

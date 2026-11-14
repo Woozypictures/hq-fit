@@ -450,16 +450,16 @@ fun HistoryScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
             itemsIndexed(days, key = { _, d -> d.toString() }) { i, d ->
                 val here = byDay[d].orEmpty()
                 val has = here.isNotEmpty()
-                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                    Box(
-                        Modifier.width(24.dp).fillMaxHeight().drawBehind {
-                            val x = size.width / 2
-                            val dotY = 22.dp.toPx()
-                            if (i > 0) drawLine(c.muted.copy(alpha = 0.4f), Offset(x, 0f), Offset(x, dotY), 1.5f, pathEffect = dashed)
-                            if (i < days.lastIndex) drawLine(c.muted.copy(alpha = 0.4f), Offset(x, dotY), Offset(x, size.height), 1.5f, pathEffect = dashed)
-                            drawCircle(if (has) c.primary else c.muted.copy(alpha = 0.45f), radius = 4.5.dp.toPx(), center = Offset(x, dotY))
-                        },
-                    )
+                // Timeline drawn behind the row itself: no intrinsic-height pass (which measured every row twice while
+                // flinging through two years of history).
+                Row(Modifier.fillMaxWidth().drawBehind {
+                    val x = 12.dp.toPx()
+                    val dotY = 22.dp.toPx()
+                    if (i > 0) drawLine(c.muted.copy(alpha = 0.4f), Offset(x, 0f), Offset(x, dotY), 1.5f, pathEffect = dashed)
+                    if (i < days.lastIndex) drawLine(c.muted.copy(alpha = 0.4f), Offset(x, dotY), Offset(x, size.height), 1.5f, pathEffect = dashed)
+                    drawCircle(if (has) c.primary else c.muted.copy(alpha = 0.45f), radius = 4.5.dp.toPx(), center = Offset(x, dotY))
+                }) {
+                    Spacer(Modifier.width(24.dp))
                     Column(Modifier.weight(1f).padding(start = 8.dp, top = 14.dp, bottom = 22.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         HqText(
                             if (d == today) "TODAY" else d.format(labelFmt).uppercase(Locale.UK), 12.sp, FontWeight.Bold,

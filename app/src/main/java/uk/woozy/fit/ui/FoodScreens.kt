@@ -469,7 +469,7 @@ fun AddFoodScreen(
         }
         LazyColumn(Modifier.weight(1f)) {
             online?.let { drafts ->
-                items(drafts.size) { i ->
+                items(drafts.size, key = { i -> "off-" + (drafts[i].barcode ?: drafts[i].name) + "-" + i }, contentType = { "food" }) { i ->
                     val d = drafts[i]
                     Column(
                         Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) {
