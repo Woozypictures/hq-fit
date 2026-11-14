@@ -373,7 +373,7 @@ fun RearrangeScreen(
                                 }) {
                                     PlanCard(w, today, null, trailing = {
                                         Box(
-                                            Modifier.size(40.dp).pointerInput(w.id) {
+                                            Modifier.size(40.dp).pointerInput(w.id, idx, byDate) {
                                                 detectDragGestures(
                                                     onDragStart = { dragId = w.id; dragY = 0f; haptic.performHapticFeedback(HapticFeedbackType.LongPress) },
                                                     onDragCancel = { dragId = null; dragY = 0f },
