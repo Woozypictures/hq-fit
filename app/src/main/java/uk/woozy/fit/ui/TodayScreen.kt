@@ -206,6 +206,7 @@ fun TodayScreen(
                                         uk.woozy.fit.designsystem.MacroColumn("Net carbs", netCarbsG, targets.netCarbsG.toDouble(), c.carbs, Modifier.weight(1f))
                                         uk.woozy.fit.designsystem.MacroColumn("Fat", fatG, targets.fatG.toDouble(), c.fat, Modifier.weight(1f))
                                     }
+                                    if (eaten <= 0) HqText("Nothing logged yet. Tap + to add ${uk.woozy.fit.ui.guessMeal(java.time.LocalTime.now().hour).title.lowercase()}.", 13.sp, color = c.muted)
                                 }
                             } else Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Energy")
@@ -219,6 +220,7 @@ fun TodayScreen(
                                 uk.woozy.fit.designsystem.MacroBar("Protein", proteinG, targets.proteinG.toDouble(), "g", c.protein)
                                 uk.woozy.fit.designsystem.MacroBar("Net carbs", netCarbsG, targets.netCarbsG.toDouble(), "g", c.carbs)
                                 uk.woozy.fit.designsystem.MacroBar("Fat", fatG, targets.fatG.toDouble(), "g", c.fat)
+                                if (eaten <= 0) HqText("Nothing logged yet. Tap + to add ${uk.woozy.fit.ui.guessMeal(java.time.LocalTime.now().hour).title.lowercase()}.", 13.sp, color = c.muted)
                             }
                         }
                         "nutrients" -> HqCard(Modifier.fillMaxWidth(), onClick = onNutrients) {
@@ -274,6 +276,16 @@ fun TodayScreen(
                                 SectionLabel("Steps \uD83D\uDC5F")
                                 HqText("${steps?.let { formatWhole(it.toDouble()) } ?: "-"} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
                                 Segments(((steps ?: 0L).toFloat() / targets.steps.coerceAtLeast(1)).coerceIn(0f, 1f), c.primary)
+                                // Freshness: when Health Connect last synced; amber once it is over two hours old.
+                                val ctx = androidx.compose.ui.platform.LocalContext.current
+                                val at = remember(refreshing) { uk.woozy.fit.health.HealthSync.lastSyncMs(ctx) }
+                                if (at > 0) {
+                                    val mins = ((System.currentTimeMillis() - at) / 60_000).toInt()
+                                    HqText(
+                                        "Health Connect synced " + when { mins < 1 -> "just now"; mins < 60 -> "$mins min ago"; else -> java.time.Instant.ofEpochMilli(at).atZone(java.time.ZoneId.systemDefault()).toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")) },
+                                        12.sp, color = if (mins > 120) c.warn else c.muted,
+                                    )
+                                }
                             }
                         }
                         "tasks" -> HqCard(Modifier.fillMaxWidth()) {

@@ -76,7 +76,7 @@ fun ExerciseThumb(name: String, size: Dp = 48.dp, modifier: Modifier = Modifier)
         model = ExerciseMedia.urls(id)[0],
         contentDescription = null,
         contentScale = ContentScale.Crop,
-        modifier = modifier.size(size).clip(RoundedCornerShape(10.dp)).background(c.track),
+        modifier = modifier.size(size).clip(RoundedCornerShape(12.dp)).background(c.track),
     )
 }
 
@@ -89,7 +89,7 @@ fun ExerciseHero(name: String, onClick: () -> Unit, modifier: Modifier = Modifie
         model = ExerciseMedia.urls(id)[0],
         contentDescription = "$name. Tap for how to do it",
         contentScale = ContentScale.Crop,
-        modifier = modifier.fillMaxWidth().aspectRatio(16f / 10f).clip(RoundedCornerShape(16.dp)).background(c.track)
+        modifier = modifier.fillMaxWidth().aspectRatio(16f / 10f).clip(RoundedCornerShape(14.dp)).background(c.track)
             .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
     )
 }

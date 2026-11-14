@@ -89,14 +89,14 @@ class ScaleSession(
         _ui.update { it.copy(scanning = false) }
     }
 
-    fun connect(address: String) {
+    fun connect(address: String, auto: Boolean = false) {
         val a = adapter ?: return
         stopScan()
         disconnect()
         status("Connecting")
         log("connect $address")
         val device: BluetoothDevice = runCatching { a.getRemoteDevice(address) }.getOrNull() ?: run { status("Bad address"); return }
-        gatt = device.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
+        gatt = device.connectGatt(context, auto, callback, BluetoothDevice.TRANSPORT_LE)
     }
 
     fun disconnect() {

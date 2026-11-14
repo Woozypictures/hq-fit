@@ -24,7 +24,10 @@ object HealthSync {
     private fun prefs(c: Context) = c.getSharedPreferences("health", Context.MODE_PRIVATE)
 
     fun lastStatus(c: Context): String = prefs(c).getString("status", "Not synced yet") ?: "Not synced yet"
-    private fun setStatus(c: Context, s: String) = prefs(c).edit().putString("status", s).apply()
+    private fun setStatus(c: Context, s: String) = prefs(c).edit().putString("status", s).putLong("at", System.currentTimeMillis()).apply()
+
+    /** When Health Connect was last synced (any outcome), or 0. Shown as a freshness line on Home. */
+    fun lastSyncMs(c: Context): Long = prefs(c).getLong("at", 0L)
 
     /** Writes the last 90 days of own weights and workouts (safe to repeat) and imports other apps' weights. */
     suspend fun run(c: Context, db: HqFitDatabase, hc: HealthGateway, nowMs: Long = System.currentTimeMillis()): String {

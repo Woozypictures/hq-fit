@@ -146,13 +146,13 @@ fun ActiveWorkoutScreen(
     val session by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, sessionId) { value = db.sessions().get(sessionId) }
     val setsFlow = remember(sessionId) { db.sessions().observeSets(sessionId) }
     val sets by setsFlow.collectAsState(initial = emptyList())
-    val previous by produceState(emptyMap<Pair<Long, Int>, String>(), sessionId, sets.size) {
+    // Last session's actual weight and reps for each set: shown in the Previous column and as ghost text.
+    val prevVals by produceState(emptyMap<Pair<Long, Int>, Pair<Double?, Int?>>(), sessionId, sets.size) {
         value = sets.map { it.exerciseId to it.setIndex }.distinct().mapNotNull { (e, i) ->
-            db.sessions().previous(e, i, sessionId)?.let { p ->
-                (e to i) to "${NumberEntry.format(p.weightKg ?: 0.0)} x ${p.reps ?: 0}"
-            }
+            db.sessions().previous(e, i, sessionId)?.let { p -> (e to i) to (p.weightKg to p.reps) }
         }.toMap()
     }
+    val previous = prevVals.mapValues { (_, v) -> "${NumberEntry.format(v.first ?: 0.0)} x ${v.second ?: 0}" }
 
     val now by produceState(System.currentTimeMillis()) {
         while (true) {
@@ -186,7 +186,9 @@ fun ActiveWorkoutScreen(
                 db.sessions().updateDone(set.id, false, null)
             } else {
                 if (set.durationSec == null && set.reps == null) {
-                    db.sessions().updateValues(set.id, set.weightKg, set.targetRepsMax ?: set.targetRepsMin)
+                    // A tick accepts the ghost: last time's reps (and weight when none is set), else the plan.
+                    val prev = prevVals[set.exerciseId to set.setIndex]
+                    db.sessions().updateValues(set.id, set.weightKg ?: prev?.first, prev?.second ?: set.targetRepsMax ?: set.targetRepsMin)
                 }
                 db.sessions().updateDone(set.id, true, System.currentTimeMillis())
                 if (set.restSec > 0 && WorkoutPrefs.autoRest(context)) {
@@ -281,6 +283,7 @@ fun ActiveWorkoutScreen(
             ExerciseCard(
                 group = group,
                 previous = previous,
+                prevVals = prevVals,
                 editing = editing,
                 showThumb = false,
                 onToggle = ::toggle,
@@ -541,6 +544,7 @@ fun ActiveWorkoutScreen(
 private fun ExerciseCard(
     group: List<SetLogEntity>,
     previous: Map<Pair<Long, Int>, String>,
+    prevVals: Map<Pair<Long, Int>, Pair<Double?, Int?>> = emptyMap(),
     editing: Editing?,
     onToggle: (SetLogEntity) -> Unit,
     onEdit: (SetLogEntity, Boolean) -> Unit,
@@ -561,7 +565,7 @@ private fun ExerciseCard(
     HqCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(top = 12.dp, bottom = 4.dp)) {
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable(role = Role.Button, onClickLabel = "Show how to do it", onClick = onInfo), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = "Show how to do it", onClick = onInfo), verticalAlignment = Alignment.CenterVertically) {
                     if (showThumb) ExerciseThumb(first.exerciseName, 44.dp, Modifier.padding(end = 10.dp))
                 Column(Modifier.weight(1f)) {
                     HqText(first.exerciseName, 16.sp, FontWeight.SemiBold)
@@ -619,6 +623,8 @@ private fun ExerciseCard(
                                     onRepsClick = { onEdit(set, false) },
                                     weightActive = e?.weight == true,
                                     repsActive = e != null && !e.weight,
+                                    weightGhost = prevVals[set.exerciseId to set.setIndex]?.first?.let { NumberEntry.format(it) }.orEmpty(),
+                                    repsGhost = (prevVals[set.exerciseId to set.setIndex]?.second ?: set.targetRepsMax ?: set.targetRepsMin)?.toString().orEmpty(),
                                 )
                                 DropdownMenu(expanded = setMenu, onDismissRequest = { setMenu = false }) {
                                     listOf("normal" to "Normal set", "warmup" to "Warm-up set", "drop" to "Drop set", "failure" to "Failure set").forEach { (k, label) ->

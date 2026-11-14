@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -226,4 +227,32 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
     }
+}
+
+
+/**
+ * Feelfit-style weigh-in from Home: while Home is open and a scale is paired, wait for it in the background
+ * (Bluetooth auto-connect costs nothing until the scale wakes). Step on, and the reading is saved and announced.
+ */
+@Composable
+fun HomeScaleListener(db: HqFitDatabase, onWeighed: (Double) -> Unit) {
+    val context = LocalContext.current
+    val addr = remember { context.getSharedPreferences("scale", Context.MODE_PRIVATE).getString("addr", null) } ?: return
+    if (!hasAll(context, scalePermissions())) return
+    val scope = rememberCoroutineScope()
+    val session = remember {
+        ScaleSession(context.applicationContext) { kg, epochMs, stored ->
+            scope.launch {
+                if (db.weights().countBetween(epochMs - 60_000, epochMs + 60_000) == 0) {
+                    val v = Math.round(kg * 10.0) / 10.0
+                    db.weights().insert(WeightEntryEntity(epochMs = epochMs, kg = v, source = if (stored) "import" else "scale"))
+                    if (!stored) onWeighed(v)
+                }
+            }
+        }
+    }
+    val ui by session.ui.collectAsState()
+    // (Re)arm whenever the scale is not connected: after a reading the scale sleeps and drops the link.
+    LaunchedEffect(ui.connected) { if (!ui.connected) runCatching { session.connect(addr, auto = true) } }
+    DisposableEffect(Unit) { onDispose { session.disconnect() } }
 }

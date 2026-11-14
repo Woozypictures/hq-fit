@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -60,6 +61,10 @@ import uk.woozy.fit.designsystem.GlassItem
 import uk.woozy.fit.designsystem.GlassNavHeight
 import uk.woozy.fit.designsystem.GlassNavLift
 import uk.woozy.fit.designsystem.GlassPillNav
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import uk.woozy.fit.designsystem.glass
 import uk.woozy.fit.designsystem.GlassMenuItem
 import uk.woozy.fit.designsystem.frostedContent
 import uk.woozy.fit.designsystem.GlassRoundButton
@@ -224,6 +229,7 @@ fun HqFitRoot(
             popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
         ) {
             composable(Routes.TODAY) {
+                HomeScaleListener(db) { kg -> toastText = "\u2696\uFE0F Weighed ${"%.1f".format(kg)} kg, saved"; refreshToast = System.currentTimeMillis() }
                 TodayScreen(
                     name = remember { ProfilePrefs.name(syncContext) },
                     onSettings = { nav.navigate(Routes.SETTINGS) },
@@ -467,12 +473,9 @@ fun HqFitRoot(
         }
         var showToast by remember { mutableStateOf(false) }
         LaunchedEffect(refreshToast) { if (refreshToast > 0) { showToast = true; kotlinx.coroutines.delay(2200); showToast = false } }
-        if (route in tabRoutes) uk.woozy.fit.designsystem.GlassToast(
-            toastText, showToast, backdrop, gStyle,
-            Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 12.dp),
-        )
         if (route in tabRoutes) {
             uk.woozy.fit.designsystem.GlassTopFade(backdrop, gc.page, Modifier.align(androidx.compose.ui.Alignment.TopCenter))
+            uk.woozy.fit.designsystem.GlassBottomFade(gc.page, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
             GlassPillNav(
                 items = barItems.map { GlassItem(it.label, it.icon) },
                 selected = tabRoutes.indexOf(route),
@@ -482,6 +485,39 @@ fun HqFitRoot(
                 actionIcon = Icons.Rounded.Add, actionLabel = "Add", onAction = { quickAdd = !quickAdd },
             )
         }
+        // Rest timer on every tab while it runs (Everfit keeps it in reach): time left, +15s and Skip.
+        var restLeft by remember { mutableStateOf(0L) }
+        LaunchedEffect(route, refreshTick) {
+            while (true) {
+                val end = uk.woozy.fit.RestTimer.endMs(syncContext)
+                restLeft = (end - System.currentTimeMillis()).coerceAtLeast(0)
+                kotlinx.coroutines.delay(if (restLeft > 0) 250 else 1500)
+            }
+        }
+        if (route in tabRoutes && restLeft > 0) androidx.compose.foundation.layout.Row(
+            Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 10.dp)
+                .then(Modifier.glass(backdrop, gStyle, androidx.compose.foundation.shape.CircleShape))
+                .padding(start = 18.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            val sec = ((restLeft + 999) / 1000).toInt()
+            uk.woozy.fit.designsystem.HqText("Rest %d:%02d".format(sec / 60, sec % 60), 17.sp, androidx.compose.ui.text.font.FontWeight.Bold, gStyle.ink)
+            androidx.compose.foundation.layout.Spacer(Modifier.size(10.dp))
+            androidx.compose.foundation.layout.Box(
+                Modifier.clip(androidx.compose.foundation.shape.CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                    uk.woozy.fit.RestTimer.start(syncContext, uk.woozy.fit.RestTimer.endMs(syncContext) + 15_000, "Rest")
+                }.padding(horizontal = 12.dp, vertical = 8.dp),
+            ) { uk.woozy.fit.designsystem.HqText("+15s", 15.sp, androidx.compose.ui.text.font.FontWeight.SemiBold, gStyle.ink) }
+            androidx.compose.foundation.layout.Box(
+                Modifier.clip(androidx.compose.foundation.shape.CircleShape).background(gStyle.capsule).clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                    uk.woozy.fit.RestTimer.cancel(syncContext); restLeft = 0
+                }.padding(horizontal = 14.dp, vertical = 8.dp),
+            ) { uk.woozy.fit.designsystem.HqText("Skip", 15.sp, androidx.compose.ui.text.font.FontWeight.SemiBold, gStyle.ink) }
+        }
+        if (route in tabRoutes) uk.woozy.fit.designsystem.GlassToast(
+            toastText, showToast, backdrop, gStyle,
+            Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 12.dp),
+        )
         if (route in tabRoutes) uk.woozy.fit.designsystem.GlassPopupMenu(
             visible = quickAdd, onDismiss = { quickAdd = false }, backdrop = backdrop, style = gStyle, bottomInset = navInset,
             items = listOf(

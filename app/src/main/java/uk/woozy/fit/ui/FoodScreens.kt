@@ -259,7 +259,7 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Column(Modifier.weight(1f)) {
-                                HqText(e.name, 15.sp, FontWeight.Medium)
+                                HqText(e.name, 15.sp, FontWeight.Medium, maxLines = 2)
                                 if (e.grams != null) HqText("${NumberEntry.format(e.grams!!)} g", 12.sp, color = c.muted)
                             }
                             HqText(formatWhole(Nutrients.decode(e.nutrients)[Nutrients.ENERGY] ?: 0.0), 14.sp, color = c.muted)
@@ -416,11 +416,11 @@ fun AddFoodScreen(
         ) {
             @Composable fun Tile(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, tint: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
                 Column(
-                    Modifier.weight(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).clickable(role = Role.Button, onClick = onClick).padding(vertical = 4.dp),
+                    Modifier.weight(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClick = onClick).padding(vertical = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Box(
-                        Modifier.size(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).background(tint.copy(alpha = 0.16f)),
+                        Modifier.size(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)).background(tint.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center,
                     ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(26.dp)) }
                     HqText(label, 12.sp, FontWeight.Medium, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2)
@@ -473,7 +473,7 @@ fun AddFoodScreen(
                             scope.launch { picked = uk.woozy.fit.data.db.Foods.saveDraft(db, d, System.currentTimeMillis()) }
                         }.padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        HqText(d.name, 16.sp, FontWeight.Medium)
+                        HqText(d.name, 16.sp, FontWeight.Medium, maxLines = 2)
                         HqText(
                             listOf(d.brand, d.per100[Nutrients.ENERGY]?.let { "${formatWhole(it)} kcal per 100 g" } ?: "Incomplete data").filter { it.isNotBlank() }.joinToString(" · "),
                             13.sp, color = c.muted,
@@ -487,7 +487,7 @@ fun AddFoodScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        HqText(f.name, 16.sp, FontWeight.Medium)
+                        HqText(f.name, 16.sp, FontWeight.Medium, maxLines = 2)
                         val kcal = Nutrients.decode(f.per100)[Nutrients.ENERGY]
                         HqText(
                             listOf(

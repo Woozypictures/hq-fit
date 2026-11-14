@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -78,10 +80,8 @@ fun HqCard(
     val base = if (c.flat && !frosted) {
         modifier.clip(shape).background(c.card)
     } else if (frosted) {
-        // Frosted glass as in HQ: fill 5% to 22% white, rim 23% to 38% white.
-        modifier.clip(shape)
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.05f), Color.White.copy(alpha = 0.22f))))
-            .border(1.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.38f), Color.White.copy(alpha = 0.23f))), shape)
+        // Frosted glass scheme: cards are solid and crisp (glass is kept for navigation only, as Apple advises).
+        modifier.clip(shape).background(Color(0xFF3A3A3A)).border(1.dp, Color.White.copy(alpha = 0.10f), shape)
     } else {
         modifier.clip(shape).background(c.card).border(1.dp, c.hairline, shape)
     }
@@ -332,10 +332,11 @@ fun MacroBar(
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HqText(label, 14.sp, FontWeight.Medium, modifier = Modifier.weight(1f))
-            HqText("${formatWhole(value)} / ${formatWhole(target)} $unit", 13.sp, FontWeight.Normal, HqTheme.colors.muted)
+            val over = target > 0 && value > target
+            HqText(if (over) "+${formatWhole(value - target)} $unit over" else "${formatWhole(value)} / ${formatWhole(target)} $unit", 13.sp, FontWeight.Normal, if (over) HqTheme.colors.warn else HqTheme.colors.muted)
         }
         Spacer(Modifier.height(6.dp))
-        HqProgressBar(fraction = if (target > 0) (value / target).toFloat() else 0f, color = color)
+        HqProgressBar(fraction = if (target > 0) (value / target).toFloat() else 0f, color = if (target > 0 && value > target) HqTheme.colors.warn else color)
     }
 }
 
@@ -361,7 +362,7 @@ fun SetTableHeader(weightUnit: String = "KG", modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EditableCell(text: String, color: Color, active: Boolean, onClick: (() -> Unit)?) {
+private fun EditableCell(text: String, color: Color, active: Boolean, onClick: (() -> Unit)?, ghost: String = "") {
     val c = HqTheme.colors
     Box(
         modifier = Modifier
@@ -372,7 +373,9 @@ private fun EditableCell(text: String, color: Color, active: Boolean, onClick: (
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
-        HqText(text.ifEmpty { "-" }, 17.sp, FontWeight.SemiBold, color, textAlign = TextAlign.Center)
+        // Ghost text: last time's figure in grey until you type or tick; a tick accepts it.
+        if (text.isEmpty() && ghost.isNotEmpty()) HqText(ghost, 17.sp, FontWeight.SemiBold, c.muted.copy(alpha = 0.55f), textAlign = TextAlign.Center)
+        else HqText(text.ifEmpty { "-" }, 17.sp, FontWeight.SemiBold, color, textAlign = TextAlign.Center)
     }
 }
 
@@ -390,6 +393,8 @@ fun SetRow(
     onRepsClick: (() -> Unit)? = null,
     weightActive: Boolean = false,
     repsActive: Boolean = false,
+    weightGhost: String = "",
+    repsGhost: String = "",
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val c = HqTheme.colors
@@ -404,8 +409,8 @@ fun SetRow(
     ) {
         HqText(number, 15.sp, FontWeight.SemiBold, c.muted, Modifier.width(36.dp))
         HqText(previous, 13.sp, FontWeight.Normal, c.muted, Modifier.weight(1f))
-        EditableCell(weight, value, weightActive, onWeightClick)
-        EditableCell(reps, value, repsActive, onRepsClick)
+        EditableCell(weight, value, weightActive, onWeightClick, if (done) "" else weightGhost)
+        EditableCell(reps, value, repsActive, onRepsClick, if (done) "" else repsGhost)
         Spacer(Modifier.width(8.dp))
         Box(
             modifier = Modifier
@@ -576,9 +581,14 @@ fun CalorieHero(eaten: Double, burned: Double?, target: Double) {
     val c = HqTheme.colors
     val left = target - eaten
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            HqText(formatWhole(countUp(kotlin.math.abs(left))), 56.sp, FontWeight.Bold, letterSpacing = (-2).sp)
-            HqText(if (left < 0) "  kcal over" else "  kcal left", 16.sp, FontWeight.Medium, c.muted, Modifier.padding(bottom = 10.dp))
+        // Tap the big number to flip between what is left and what you have eaten.
+        var eatenView by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+        Row(
+            Modifier.clip(RoundedCornerShape(12.dp)).clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Switch between eaten and left") { eatenView = !eatenView },
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            HqText(formatWhole(countUp(if (eatenView) eaten else kotlin.math.abs(left))), 56.sp, FontWeight.Bold, letterSpacing = (-2).sp)
+            HqText(if (eatenView) "  kcal eaten" else if (left < 0) "  kcal over" else "  kcal left", 16.sp, FontWeight.Medium, if (!eatenView && left < 0) c.warn else c.muted, Modifier.padding(bottom = 10.dp))
         }
         HqProgressBar(fraction = if (target > 0) (eaten / target).toFloat() else 0f, color = if (left < 0) c.warn else c.primary, height = 10.dp)
         Row(Modifier.fillMaxWidth()) {
@@ -602,7 +612,8 @@ private fun HeroStat(label: String, value: String, modifier: Modifier) {
 fun MacroColumn(label: String, value: Double, target: Double, color: Color, modifier: Modifier = Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         HqText(label, 12.sp, FontWeight.Medium, HqTheme.colors.muted)
-        HqText("${formatWhole(value)} / ${formatWhole(target)} g", 14.sp, FontWeight.SemiBold)
-        HqProgressBar(fraction = if (target > 0) (value / target).toFloat() else 0f, color = color, height = 4.dp)
+        val over = target > 0 && value > target
+        HqText(if (over) "+${formatWhole(value - target)} g over" else "${formatWhole(value)} / ${formatWhole(target)} g", 14.sp, FontWeight.SemiBold, if (over) HqTheme.colors.warn else HqTheme.colors.ink)
+        HqProgressBar(fraction = if (target > 0) (value / target).toFloat() else 0f, color = if (over) HqTheme.colors.warn else color, height = 4.dp)
     }
 }

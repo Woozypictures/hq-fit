@@ -92,9 +92,9 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
                                 val on = days[t.id].orEmpty().contains(d)
                                 Box(
                                     Modifier.weight(1f).height(40.dp)
-                                        .clip(RoundedCornerShape(10.dp))
+                                        .clip(RoundedCornerShape(12.dp))
                                         .background(if (c.flat) (if (on) c.primary else c.track) else if (on) c.primary.copy(alpha = 0.30f) else Color.Transparent)
-                                        .then(if (c.flat) Modifier else Modifier.border(1.dp, if (on) c.primary else c.muted.copy(alpha = 0.4f), RoundedCornerShape(10.dp)))
+                                        .then(if (c.flat) Modifier else Modifier.border(1.dp, if (on) c.primary else c.muted.copy(alpha = 0.4f), RoundedCornerShape(12.dp)))
                                         .clickable {
                                             val now = days[t.id].orEmpty()
                                             days[t.id] = if (on) now - d else now + d
