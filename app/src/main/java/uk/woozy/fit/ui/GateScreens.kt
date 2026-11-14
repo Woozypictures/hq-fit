@@ -44,8 +44,9 @@ private fun GateFrame(content: @Composable () -> Unit) {
 
 @Composable
 fun LoadingScreen() {
-    // Blank page while the encrypted database opens (the page colour is drawn by the caller).
-    Box(Modifier.fillMaxSize())
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        HqText("Woozy Fit", 20.sp, FontWeight.SemiBold, color = HqTheme.colors.muted)
+    }
 }
 
 /**
