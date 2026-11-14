@@ -49,6 +49,13 @@ internal fun snapType(size: TextUnit): TextUnit {
     return s.sp
 }
 
+/** Three weights per screen, Apple-style: Regular, Semibold, Bold. Medium and lighter fold into Regular. */
+internal fun snapWeight(w: FontWeight): FontWeight = when {
+    w.weight >= 650 -> FontWeight.Bold
+    w.weight >= 550 -> FontWeight.SemiBold
+    else -> FontWeight.Normal
+}
+
 /** The one text composable for HQ Fit: Google Sans with tabular figures, so numbers line up. */
 @Composable
 fun HqText(
@@ -66,7 +73,7 @@ fun HqText(
         modifier = modifier,
         color = color,
         fontSize = snapType(size),
-        fontWeight = weight,
+        fontWeight = snapWeight(weight),
         fontFamily = GoogleSans,
         letterSpacing = letterSpacing,
         textAlign = textAlign,

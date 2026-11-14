@@ -623,6 +623,14 @@ internal fun AmountSheet(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
             )
             if (food.servingG != null) HqText("One serving is ${NumberEntry.format(food.servingG!!)} g${if (food.servingLabel.isNotBlank()) " (${food.servingLabel})" else ""}", 13.sp, color = c.muted)
+            // One-tap amounts so the keyboard is rarely needed: servings when the product has one, grams otherwise.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val sv = food.servingG
+                val opts = if (sv != null) listOf("\u00BD serving" to sv / 2, "1 serving" to sv, "2 servings" to sv * 2) else listOf("50 g" to 50.0, "100 g" to 100.0, "150 g" to 150.0)
+                opts.forEach { (label, v) ->
+                    androidx.compose.material3.FilterChip(selected = grams == NumberEntry.format(v), onClick = { grams = NumberEntry.format(v) }, label = { HqText(label, 13.sp) })
+                }
+            }
             NutrientList(scaled, names)
             HqPillButton("Log to ${meal.title}", onClick = {
                 if (g > 0) scope.launch { Diary.log(db, food, g, date, meal, System.currentTimeMillis()); onLogged() }
