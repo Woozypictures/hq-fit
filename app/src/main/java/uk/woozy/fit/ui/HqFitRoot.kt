@@ -1,5 +1,8 @@
 package uk.woozy.fit.ui
 
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.debounce
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -145,6 +148,46 @@ fun HqFitRoot(
     }
     var refreshTick by remember { mutableStateOf(0) }
     var refreshing by remember { mutableStateOf(false) }
+    // Live pipeline. (1) Back in the app: re-read Health Connect at once, and sync if the last one is over 2 min old.
+    // (2) While open: re-read every 2 min, so the watch's steps and calories tick along. (3) After anything is logged
+    // (food, water, a weight, a workout): the diary updates instantly from the local database, then a quick
+    // Health Connect sync follows 6s after the last change, so HQ and Samsung Health catch up without a refresh.
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val syncScope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                refreshTick++
+                if (System.currentTimeMillis() - uk.woozy.fit.health.HealthSync.lastSyncMs(syncContext) > 120_000) syncScope.launch {
+                    refreshing = true
+                    runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext), quick = true) }
+                    refreshing = false
+                    refreshTick++
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
+    androidx.compose.runtime.LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            while (true) { kotlinx.coroutines.delay(120_000); refreshTick++ }
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(db) {
+        val changes = kotlinx.coroutines.flow.callbackFlow {
+            val o = object : androidx.room.InvalidationTracker.Observer(arrayOf("diary_entry", "water_entry", "weight_entry", "workout_session")) {
+                override fun onInvalidated(tables: Set<String>) { trySend(Unit) }
+            }
+            db.invalidationTracker.addObserver(o)
+            awaitClose { db.invalidationTracker.removeObserver(o) }
+        }
+        @OptIn(kotlinx.coroutines.FlowPreview::class)
+        changes.debounce(6_000).collect {
+            runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext), quick = true) }
+            refreshTick++
+        }
+    }
     val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db, refreshTick) {
         value = runCatching {
             val g = uk.woozy.fit.health.HealthGateway(syncContext)

@@ -667,7 +667,7 @@ fun CalorieHero(eaten: Double, burned: Double?, target: Double) {
         HqProgressBar(fraction = if (target > 0) (eaten / target).toFloat() else 0f, color = if (left < 0) c.warn else c.primary, height = 10.dp)
         Row(Modifier.fillMaxWidth()) {
             HeroStat("Eaten", formatWhole(countUp(eaten)), Modifier.weight(1f))
-            HeroStat("Burned", burned?.takeIf { it > 0 }?.let { formatWhole(it) } ?: "-", Modifier.weight(1f))
+            HeroStat("Active", burned?.takeIf { it > 0 }?.let { formatWhole(it) } ?: "-", Modifier.weight(1f))
             HeroStat("Target", formatWhole(target), Modifier.weight(1f))
         }
     }
