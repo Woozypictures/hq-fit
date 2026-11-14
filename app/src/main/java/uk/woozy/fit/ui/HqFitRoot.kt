@@ -486,7 +486,9 @@ private fun QuickAddSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = HqTheme.colors.card,
+        containerColor = if (HqTheme.colors.flat) HqTheme.colors.card.copy(alpha = 0.90f) else HqTheme.colors.card,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        scrimColor = androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.30f),
     ) {
         Column(Modifier.navigationBarsPadding().padding(bottom = 16.dp)) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { SectionLabel("Quick add") }

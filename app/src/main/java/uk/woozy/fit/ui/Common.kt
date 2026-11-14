@@ -1,5 +1,7 @@
 package uk.woozy.fit.ui
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -73,7 +75,12 @@ fun ListRow(
         modifier = clickable.padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = c.primary, modifier = Modifier.size(24.dp))
+        if (c.flat) {
+            androidx.compose.foundation.layout.Box(
+                Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(c.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, contentDescription = null, tint = c.primary, modifier = Modifier.size(22.dp)) }
+        } else Icon(icon, contentDescription = null, tint = c.primary, modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             HqText(title, 16.sp, FontWeight.Medium)
