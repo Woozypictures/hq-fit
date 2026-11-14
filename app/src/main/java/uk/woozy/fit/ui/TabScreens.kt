@@ -92,7 +92,7 @@ private data class ProgressData(
     val weekPlanned: List<Int>,
     val weekVolume: List<Double>,
     /** Feelfit-style changes: since the first weigh-in, over 30 days, over 7 days (null when there is no reading that far back). */
-    val firstKg: Double? = null, val firstDate: LocalDate? = null, val kg30: Double? = null, val kg7: Double? = null,
+    val firstKg: Double? = null, val firstDate: LocalDate? = null, val kg30: Double? = null, val kg7: Double? = null, val lastDate: LocalDate? = null,
 )
 
 private const val GOAL_KG = 80.0
@@ -126,10 +126,11 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
     val sessions = db.sessions().doneSince(weeks.first().atStartOfDay(zone).toInstant().toEpochMilli())
     val sets = sessions.flatMap { s -> db.sessions().sets(s.id).filter { it.done && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }.map { s to it } }
     val oldest = all.lastOrNull()
-    fun kgAt(daysAgo: Long): Double? { val t = today.minusDays(daysAgo).atStartOfDay(zone).toInstant().toEpochMilli(); return all.firstOrNull { it.epochMs <= t }?.kg }
+    // A change over N days needs a weigh-in inside the window as well as one before it; otherwise it shows a dash.
+    fun kgAt(daysAgo: Long): Double? { val t = today.minusDays(daysAgo).atStartOfDay(zone).toInstant().toEpochMilli(); if ((all.firstOrNull()?.epochMs ?: 0L) <= t) return null; return all.firstOrNull { it.epochMs <= t }?.kg }
     return ProgressData(
         firstKg = oldest?.kg, firstDate = oldest?.let { java.time.Instant.ofEpochMilli(it.epochMs).atZone(zone).toLocalDate() },
-        kg30 = kgAt(30), kg7 = kgAt(7),
+        kg30 = kgAt(30), kg7 = kgAt(7), lastDate = all.firstOrNull()?.let { java.time.Instant.ofEpochMilli(it.epochMs).atZone(zone).toLocalDate() },
         weights = weights, latestKg = latest, slopePerDay = slope, goalDate = goalDate,
         kcalDays = kcal, macroDays = macroDays, kcalLabels = days.map { it.dayOfMonth.toString() }, kcalTarget = target,
         thisWeekAvg = kcal.takeLast(7).filter { it > 0 }.takeIf { it.isNotEmpty() }?.average(),
@@ -219,6 +220,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                                     }
                                                 }
                                                 Column(Modifier.weight(1f).padding(start = 18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    d.lastDate?.let { HqText("Last weighed " + it.format(DateTimeFormatter.ofPattern("d MMM", Locale.UK)), 12.sp, color = c.muted) }
                                                     HqText("Goal", 12.sp, color = c.muted)
                                                     HqText("${GOAL_KG.toInt()} kg", 20.sp, FontWeight.Bold)
                                                     HqText("${formatOne(kotlin.math.abs(d.latestKg - GOAL_KG))} kg to go \u00b7 ${(done * 100).toInt()}% of the way", 13.sp, color = c.muted)

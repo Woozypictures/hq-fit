@@ -104,6 +104,10 @@ fun HqFitTheme(darkTheme: Boolean, scheme: String = DEFAULT_SCHEME, frosted: Boo
     val materialScheme = if (c.dark) {
         darkColorScheme(
             primary = c.primary, onPrimary = c.onPrimary,
+            // Dialogs, menus and sheets use the card colour, not Material's default lavender.
+            surfaceContainerLowest = c.card, surfaceContainerLow = c.card, surfaceContainer = c.card,
+            surfaceContainerHigh = c.card, surfaceContainerHighest = c.card, surfaceTint = c.card,
+            secondaryContainer = c.primary.copy(alpha = 0.16f), onSecondaryContainer = c.ink,
             background = c.page, onBackground = c.ink,
             surface = c.card, onSurface = c.ink,
             surfaceVariant = c.track, onSurfaceVariant = c.muted,
@@ -112,6 +116,10 @@ fun HqFitTheme(darkTheme: Boolean, scheme: String = DEFAULT_SCHEME, frosted: Boo
     } else {
         lightColorScheme(
             primary = c.primary, onPrimary = c.onPrimary,
+            // Dialogs, menus and sheets use the card colour, not Material's default lavender.
+            surfaceContainerLowest = c.card, surfaceContainerLow = c.card, surfaceContainer = c.card,
+            surfaceContainerHigh = c.card, surfaceContainerHighest = c.card, surfaceTint = c.card,
+            secondaryContainer = c.primary.copy(alpha = 0.16f), onSecondaryContainer = c.ink,
             background = c.page, onBackground = c.ink,
             surface = c.card, onSurface = c.ink,
             surfaceVariant = c.track, onSurfaceVariant = c.muted,

@@ -61,6 +61,7 @@ import uk.woozy.fit.designsystem.GlassNavHeight
 import uk.woozy.fit.designsystem.GlassNavLift
 import uk.woozy.fit.designsystem.GlassPillNav
 import uk.woozy.fit.designsystem.GlassMenuItem
+import uk.woozy.fit.designsystem.frostedContent
 import uk.woozy.fit.designsystem.GlassRoundButton
 import uk.woozy.fit.designsystem.LocalGlassInset
 import uk.woozy.fit.designsystem.glassSource
@@ -213,7 +214,7 @@ fun HqFitRoot(
         val navInset = androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + GlassNavHeight + GlassNavLift
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         // Tab pages may go wide (two columns of cards); every other page is capped so it reads well on a tablet.
-        androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize().glassSource(backdrop), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+        androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize().frostedContent(quickAdd).glassSource(backdrop), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
         androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset else 0.dp)) {
         NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize(),
             // Snappy with a slight transition: a short crossfade.

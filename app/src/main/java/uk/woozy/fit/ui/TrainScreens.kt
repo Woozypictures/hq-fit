@@ -272,10 +272,14 @@ private fun TimelineItem(row: TemplateItemRow) {
     Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 16.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(10.dp).height(72.dp), contentAlignment = Alignment.Center) { Box(Modifier.width(1.5.dp).fillMaxHeight().background(c.hairline)) }
         Spacer(Modifier.width(12.dp))
+        // The exercise picture, with the first letter on a tint behind it when there is none.
         Box(
             Modifier.size(52.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).background(c.primary.copy(alpha = 0.10f)),
             contentAlignment = Alignment.Center,
-        ) { HqText(row.exerciseName.take(1).uppercase(Locale.UK), 20.sp, FontWeight.Bold, c.primary) }
+        ) {
+            HqText(row.exerciseName.take(1).uppercase(Locale.UK), 20.sp, FontWeight.Bold, c.primary)
+            ExerciseThumb(row.exerciseName, 52.dp)
+        }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             HqText(row.exerciseName, 15.sp, FontWeight.SemiBold, maxLines = 2)

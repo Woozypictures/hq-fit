@@ -653,7 +653,34 @@ private fun TimedRow(set: SetLogEntity, onToggle: (SetLogEntity) -> Unit) {
         Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HqText(if (set.done) "Done" else "Not done", 15.sp, color = if (set.done) c.primary else c.muted, modifier = Modifier.weight(1f))
+        // Everfit-style timer for timed exercises: tap to count down; at zero it buzzes and ticks the set off.
+        val total = set.durationSec ?: 0
+        var left by androidx.compose.runtime.saveable.rememberSaveable(set.id) { mutableStateOf(total) }
+        var running by androidx.compose.runtime.saveable.rememberSaveable(set.id) { mutableStateOf(false) }
+        val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+        LaunchedEffect(running) {
+            while (running && left > 0) { kotlinx.coroutines.delay(1000); left -= 1 }
+            if (running && left <= 0) {
+                running = false
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                if (!set.done) onToggle(set)
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            if (total > 0 && !set.done) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    HqText("%d:%02d".format(left / 60, left % 60), 26.sp, FontWeight.Bold, if (running) c.primary else c.ink, letterSpacing = (-0.5).sp)
+                    Spacer(Modifier.width(12.dp))
+                    Box(
+                        Modifier.clip(CircleShape).background(if (running) c.track else c.primary)
+                            .clickable(role = Role.Button) { if (left <= 0) left = total; running = !running }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) { HqText(if (running) "Pause" else if (left < total) "Resume" else "Start", 14.sp, FontWeight.SemiBold, if (running) c.ink else c.onPrimary) }
+                    if (left < total && !running) HqText("Reset", 14.sp, FontWeight.SemiBold, c.muted, modifier = Modifier.padding(start = 12.dp).clickable(role = Role.Button) { left = total })
+                }
+                if (total > 0) uk.woozy.fit.designsystem.HqProgressBar(1f - left / total.toFloat(), c.primary, Modifier.padding(top = 8.dp, end = 12.dp), height = 4.dp)
+            } else HqText(if (set.done) "Done" else "Not done", 15.sp, color = if (set.done) c.primary else c.muted)
+        }
         Box(
             modifier = Modifier
                 .size(40.dp)
