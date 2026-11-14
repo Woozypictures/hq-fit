@@ -348,6 +348,11 @@ fun LibraryScreen(db: HqFitDatabase, onBack: () -> Unit) {
             onValueChange = { text = it },
             label = { HqText("Search exercises", 13.sp, color = c.muted) },
             singleLine = true,
+            shape = if (c.flat) androidx.compose.foundation.shape.RoundedCornerShape(22.dp) else androidx.compose.material3.OutlinedTextFieldDefaults.shape,
+            colors = if (c.flat) androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = c.primary,
+                unfocusedContainerColor = c.card, focusedContainerColor = c.card,
+            ) else androidx.compose.material3.OutlinedTextFieldDefaults.colors(),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
         ChipRow("Muscle", muscles, muscle) { muscle = it }
@@ -358,6 +363,7 @@ fun LibraryScreen(db: HqFitDatabase, onBack: () -> Unit) {
         )
         LazyColumn(Modifier.weight(1f)) {
             items(results, key = { it.id }) { e ->
+                if (c.flat) androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(0.5.dp).background(c.hairline))
                 Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
                     HqText(e.name, 16.sp, FontWeight.Medium)
                     HqText(listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · "), 13.sp, color = c.muted)
@@ -370,16 +376,21 @@ fun LibraryScreen(db: HqFitDatabase, onBack: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ChipRow(label: String, options: List<String>, selected: String, onSelect: (String) -> Unit) {
+    val c = HqTheme.colors
+    val chipColors = if (c.flat) androidx.compose.material3.FilterChipDefaults.filterChipColors(
+        containerColor = c.card, labelColor = c.ink, selectedContainerColor = c.primary, selectedLabelColor = c.onPrimary,
+    ) else androidx.compose.material3.FilterChipDefaults.filterChipColors()
+    val chipBorder = if (c.flat) null else androidx.compose.material3.FilterChipDefaults.filterChipBorder(true, false)
     LazyRow(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(top = 8.dp),
     ) {
         item {
-            FilterChip(selected = selected.isEmpty(), onClick = { onSelect("") }, label = { HqText("All ${label.lowercase()}", 13.sp) })
+            FilterChip(selected = selected.isEmpty(), onClick = { onSelect("") }, label = { HqText("All ${label.lowercase()}", 13.sp, color = if (c.flat && selected.isEmpty()) c.onPrimary else c.ink) }, colors = chipColors, border = if (c.flat) null else chipBorder)
         }
         items(options) { o ->
-            FilterChip(selected = selected == o, onClick = { onSelect(if (selected == o) "" else o) }, label = { HqText(o, 13.sp) })
+            FilterChip(selected = selected == o, onClick = { onSelect(if (selected == o) "" else o) }, label = { HqText(o, 13.sp, color = if (c.flat && selected == o) c.onPrimary else c.ink) }, colors = chipColors, border = if (c.flat) null else chipBorder)
         }
     }
 }

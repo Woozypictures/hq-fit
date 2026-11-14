@@ -93,15 +93,15 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
                                 Box(
                                     Modifier.weight(1f).height(40.dp)
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(if (on) c.primary.copy(alpha = 0.30f) else Color.Transparent)
-                                        .border(1.dp, if (on) c.primary else c.muted.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                        .background(if (c.flat) (if (on) c.primary else c.track) else if (on) c.primary.copy(alpha = 0.30f) else Color.Transparent)
+                                        .then(if (c.flat) Modifier else Modifier.border(1.dp, if (on) c.primary else c.muted.copy(alpha = 0.4f), RoundedCornerShape(10.dp)))
                                         .clickable {
                                             val now = days[t.id].orEmpty()
                                             days[t.id] = if (on) now - d else now + d
                                             changed[t.id] = true
                                         },
                                     contentAlignment = Alignment.Center,
-                                ) { HqText(d.getDisplayName(TextStyle.NARROW, Locale.UK), 13.sp, if (on) FontWeight.Bold else FontWeight.Normal) }
+                                ) { HqText(d.getDisplayName(TextStyle.NARROW, Locale.UK), 13.sp, if (on) FontWeight.Bold else FontWeight.Normal, if (c.flat && on) c.onPrimary else c.ink) }
                             }
                         }
                         HqPillButton("Edit exercises", onClick = { onEdit(t.id) }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
@@ -111,7 +111,11 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
             SectionLabel("Weeks to plan")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(4, 8, 10, 12, 26).forEach { w ->
-                    FilterChip(selected = weeks == w, onClick = { weeks = w }, label = { HqText("$w", 13.sp) })
+                    FilterChip(
+                        selected = weeks == w, onClick = { weeks = w }, label = { HqText("$w", 13.sp, color = if (c.flat && weeks == w) c.onPrimary else c.ink) },
+                        colors = if (c.flat) androidx.compose.material3.FilterChipDefaults.filterChipColors(containerColor = c.card, selectedContainerColor = c.primary) else androidx.compose.material3.FilterChipDefaults.filterChipColors(),
+                        border = if (c.flat) null else androidx.compose.material3.FilterChipDefaults.filterChipBorder(true, weeks == w),
+                    )
                 }
             }
             ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own, then pick its days here", onClick = onNewWorkout)
