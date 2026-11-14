@@ -86,6 +86,7 @@ private object Routes {
     const val TARGETS = "targets"
     const val PAST = "past"
     const val TRAINING = "training"
+    const val REARRANGE = "rearrange"
     const val PROGRAMMES = "programmes"
     const val NEW_EXERCISE = "newexercise"
     const val WORKOUT = "workout"
@@ -295,12 +296,25 @@ fun HqFitRoot(
                 )
             }
             composable(Routes.TRAINING) {
-                val doneDates by produceState(emptySet<String>(), db, calendar) {
+                val sessions by produceState(emptyList<uk.woozy.fit.data.db.WorkoutSessionEntity>(), db, calendar) {
                     val zone = java.time.ZoneId.systemDefault()
                     val from = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY).atStartOfDay(zone).toInstant().toEpochMilli()
-                    value = db.sessions().doneSince(from).map { java.time.Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate().toString() }.toSet()
+                    value = db.sessions().doneSince(from)
                 }
-                TrainingScreen(calendar = calendar, doneDates = doneDates, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.PREVIEW}/$it") }, onHistory = { nav.navigate(Routes.PAST) })
+                val counts by produceState(emptyMap<Long, Int>(), db, calendar) {
+                    value = calendar.map { it.templateId }.distinct().associateWith { t -> db.templates().items(t).size }
+                }
+                TrainingScreen(
+                    calendar = calendar, sessions = sessions, exerciseCounts = counts,
+                    onBack = { nav.popBackStack() },
+                    onOpen = { nav.navigate("${Routes.PREVIEW}/$it") },
+                    onOpenSession = { nav.navigate("${Routes.SUMMARY}/$it") },
+                    onRearrange = { nav.navigate(Routes.REARRANGE) },
+                    onHistory = { nav.navigate(Routes.PAST) },
+                )
+            }
+            composable(Routes.REARRANGE) {
+                RearrangeScreen(calendar = calendar, onBack = { nav.popBackStack() }, onMove = { id, date -> db.schedule().move(id, date) })
             }
             composable(Routes.DIARY) {
                 DiaryScreen(db = db, onAdd = { meal, date -> nav.navigate("${Routes.ADD}/${meal.key}/$date") }, onNutrients = { nav.navigate("${Routes.NUTRIENTS}/$it") })
@@ -395,7 +409,7 @@ fun HqFitRoot(
                     onNewWorkout = { scope.launch { nav.navigate("${Routes.EDIT}/${createWorkout(db, "New workout")}") } },
                 )
             }
-            composable(Routes.PAST) { PastWorkoutsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
+            composable(Routes.PAST) { HistoryScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
             composable(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
             composable("profile") { ProfileScreen(onBack = { nav.popBackStack() }) }
             composable("workoutsettings") { WorkoutSettingsScreen(onBack = { nav.popBackStack() }) }
@@ -459,7 +473,7 @@ fun HqFitRoot(
                 onSelect = { nav.navigateTab(tabRoutes[it]) },
                 backdrop = backdrop, style = gStyle,
                 modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter),
-                actionIcon = Icons.Rounded.Add, actionLabel = "Quick add", onAction = { quickAdd = !quickAdd },
+                actionIcon = Icons.Rounded.Add, actionLabel = "Add", onAction = { quickAdd = !quickAdd },
             )
         }
         if (route in tabRoutes) uk.woozy.fit.designsystem.GlassPopupMenu(

@@ -246,7 +246,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                 HqCard(Modifier.fillMaxWidth()) {
                                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         ListRow(androidx.compose.material.icons.Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
-                                        ListRow(androidx.compose.material.icons.Icons.Rounded.CalendarMonth, "Past workouts", "Open one to fix a weight or rep", onClick = onPast)
+                                        ListRow(androidx.compose.material.icons.Icons.Rounded.CalendarMonth, "History", "Every workout you have done", onClick = onPast)
                                         ListRow(androidx.compose.material.icons.Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
                                     }
                                 }

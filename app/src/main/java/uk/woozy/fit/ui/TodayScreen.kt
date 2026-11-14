@@ -127,6 +127,9 @@ fun TodayScreen(
                 HqText(today.format(DateTimeFormatter.ofPattern("EEEE", Locale.UK)), 13.sp, FontWeight.Medium, c.muted)
                 HqText(today.format(DateTimeFormatter.ofPattern("d MMMM", Locale.UK)), if (c.flat) 40.sp else 32.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                 HqText("$greet, ${name.trim().substringBefore(' ')}.", if (c.flat) 24.sp else 20.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
+                val weather = rememberWeatherLine(refreshing)
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                if (weather != null) HqText(weather, if (c.flat) 14.sp else 13.sp, color = c.muted, modifier = Modifier.clickable { openWeather(ctx) }.padding(top = 2.dp))
             }
             AvatarCircle(
                 initial = name, size = 44.dp,
@@ -162,7 +165,7 @@ fun TodayScreen(
                             Column(Modifier.padding(20.dp)) {
                                 HqText(if (workoutTitle == null) "REST DAY" else "TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.04.em)
                                 Spacer(Modifier.height(6.dp))
-                                if (workoutTitle == null) HqText("Hoo-ray, it's your rest day \uD83C\uDF34", 20.sp, FontWeight.Bold, c.onGradient)
+                                if (workoutTitle == null) HqText("Hoo-ray, it's your rest day \uD83C\uDF34", 18.sp, FontWeight.SemiBold, c.onGradient)
                                 else SpacedTitle("\uD83C\uDFCB\uFE0F $workoutTitle", color = c.onGradient, size = 20.sp)
                                 Spacer(Modifier.height(4.dp))
                                 HqText(workoutCaption, 13.sp, color = c.onGradient.copy(alpha = 0.8f))
