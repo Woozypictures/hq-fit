@@ -210,11 +210,11 @@ fun TodayScreen(
                             } else Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Energy")
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                                    EnergyRing("Consumed", formatWhole(eaten), (eaten / target).toFloat().coerceIn(0f, 1f), c.primary)
+                                    EnergyRing("Consumed", formatWhole(uk.woozy.fit.designsystem.countUp(eaten)), (eaten / target).toFloat().coerceIn(0f, 1f), c.primary)
                                     // Like HQ: the burned ring is full once there is a reading, and empty without one.
-                                    EnergyRing("Burned", burnedKcal?.takeIf { it > 0 }?.let { formatWhole(it) } ?: "-", if ((burnedKcal ?: 0.0) > 0) 1f else 0f, c.protein)
+                                    EnergyRing("Burned", burnedKcal?.takeIf { it > 0 }?.let { formatWhole(uk.woozy.fit.designsystem.countUp(it)) } ?: "-", if ((burnedKcal ?: 0.0) > 0) 1f else 0f, c.protein)
                                     val left = target - eaten
-                                    EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(kotlin.math.abs(left)), (left / target).toFloat().coerceIn(0f, 1f), c.fat)
+                                    EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(uk.woozy.fit.designsystem.countUp(kotlin.math.abs(left))), (left / target).toFloat().coerceIn(0f, 1f), c.fat)
                                 }
                                 uk.woozy.fit.designsystem.MacroBar("Protein", proteinG, targets.proteinG.toDouble(), "g", c.protein)
                                 uk.woozy.fit.designsystem.MacroBar("Net carbs", netCarbsG, targets.netCarbsG.toDouble(), "g", c.carbs)

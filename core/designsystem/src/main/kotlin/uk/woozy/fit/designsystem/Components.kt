@@ -281,6 +281,17 @@ fun springValue(target: Float): Float {
     return a.value
 }
 
+/** A number that counts up to [target] when it first shows and eases to each new value (instant in previews and with Remove animations on). */
+@Composable
+fun countUp(target: Double): Double {
+    val still = androidx.compose.ui.platform.LocalInspectionMode.current || rememberReduceMotion()
+    val a = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (still) target.toFloat() else 0f) }
+    androidx.compose.runtime.LaunchedEffect(target) {
+        if (still) a.snapTo(target.toFloat()) else a.animateTo(target.toFloat(), androidx.compose.animation.core.tween(700, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+    }
+    return a.value.toDouble()
+}
+
 /** Thin horizontal bar, 0 to 1. */
 @Composable
 fun HqProgressBar(
@@ -566,12 +577,12 @@ fun CalorieHero(eaten: Double, burned: Double?, target: Double) {
     val left = target - eaten
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.Bottom) {
-            HqText(formatWhole(kotlin.math.abs(left)), 56.sp, FontWeight.Bold, letterSpacing = (-2).sp)
+            HqText(formatWhole(countUp(kotlin.math.abs(left))), 56.sp, FontWeight.Bold, letterSpacing = (-2).sp)
             HqText(if (left < 0) "  kcal over" else "  kcal left", 16.sp, FontWeight.Medium, c.muted, Modifier.padding(bottom = 10.dp))
         }
         HqProgressBar(fraction = if (target > 0) (eaten / target).toFloat() else 0f, color = if (left < 0) c.warn else c.primary, height = 10.dp)
         Row(Modifier.fillMaxWidth()) {
-            HeroStat("Eaten", formatWhole(eaten), Modifier.weight(1f))
+            HeroStat("Eaten", formatWhole(countUp(eaten)), Modifier.weight(1f))
             HeroStat("Burned", burned?.takeIf { it > 0 }?.let { formatWhole(it) } ?: "-", Modifier.weight(1f))
             HeroStat("Target", formatWhole(target), Modifier.weight(1f))
         }
