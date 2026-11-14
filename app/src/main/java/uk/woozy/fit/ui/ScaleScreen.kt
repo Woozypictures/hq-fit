@@ -69,6 +69,7 @@ private fun scalePermissions(): Array<String> =
 private fun hasAll(c: Context, perms: Array<String>) = perms.all { ContextCompat.checkSelfPermission(c, it) == PackageManager.PERMISSION_GRANTED }
 
 /** Weight: pair the scale, type a weight in, set the weekly reminder, and see the packet log if pairing misbehaves. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
     val c = HqTheme.colors
@@ -178,7 +179,8 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
                         }
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Wraps onto two lines on narrow phones instead of squeezing a long scale name.
+                androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (savedAddress != null && !ui.connected) {
                         HqPillButton("Connect ${savedName ?: "scale"}", onClick = { withPermission { session.connect(savedAddress!!) } })
                     }
@@ -200,7 +202,7 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
                         }.padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        HqText(d.name, 15.sp, FontWeight.Medium)
+                        HqText(d.name, 15.sp, FontWeight.Medium, modifier = Modifier.weight(1f).padding(end = 12.dp), maxLines = 2)
                         HqText("${d.rssi} dBm", 13.sp, color = c.muted)
                     }
                 }

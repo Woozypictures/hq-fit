@@ -584,7 +584,7 @@ private fun ExerciseCard(
                 Row(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = "Show how to do it", onClick = onInfo), verticalAlignment = Alignment.CenterVertically) {
                     if (showThumb) ExerciseThumb(first.exerciseName, 44.dp, Modifier.padding(end = 10.dp))
                 Column(Modifier.weight(1f)) {
-                    HqText(first.exerciseName, 16.sp, FontWeight.SemiBold)
+                    HqText(first.exerciseName, 16.sp, FontWeight.SemiBold, maxLines = 2)
                     val timed = first.durationSec
                     val target = when {
                         timed != null -> formatDuration(timed)
@@ -760,7 +760,7 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
                     HqCard(Modifier.fillMaxWidth()) {
                         s.records.forEach { r ->
                             Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                                HqText(r.exerciseName, 16.sp, FontWeight.SemiBold)
+                                HqText(r.exerciseName, 16.sp, FontWeight.SemiBold, maxLines = 2)
                                 HqText(
                                     r.records.joinToString(" · ") { it.label } +
                                         "  (${NumberEntry.format(r.best.weightKg)} kg x ${r.best.reps})",
@@ -850,7 +850,7 @@ internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, onPic
                     ) {
                         ExerciseThumb(e.name, 40.dp, Modifier.padding(end = 12.dp))
                         Column {
-                            HqText(e.name, 16.sp, FontWeight.Medium)
+                            HqText(e.name, 16.sp, FontWeight.Medium, maxLines = 2)
                             HqText(listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · "), 13.sp, color = c.muted)
                         }
                     }
@@ -905,7 +905,7 @@ private fun SectionIntro(title: String, count: Int, groups: List<List<SetLogEnti
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 ExerciseThumb(first.exerciseName, 56.dp, Modifier.padding(end = 12.dp))
                 Column(Modifier.weight(1f)) {
-                    HqText(first.exerciseName, 16.sp, FontWeight.SemiBold)
+                    HqText(first.exerciseName, 16.sp, FontWeight.SemiBold, maxLines = 2)
                     val target = when {
                         first.durationSec != null -> formatDuration(first.durationSec!!)
                         first.targetRepsMin != null && first.targetRepsMax != null && first.targetRepsMin != first.targetRepsMax -> "${first.targetRepsMin}-${first.targetRepsMax} reps"

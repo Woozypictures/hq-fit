@@ -296,7 +296,7 @@ private fun EntrySheet(db: HqFitDatabase, entry: DiaryEntryEntity, names: Map<St
     val n = Nutrients.decode(entry.nutrients)
     ModalBottomSheet(onDismissRequest = onDone, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.card) {
         Column(Modifier.navigationBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            HqText(entry.name, 20.sp, FontWeight.Bold)
+            HqText(entry.name, 20.sp, FontWeight.Bold, maxLines = 3)
             if (entry.grams != null) {
                 OutlinedTextField(
                     value = grams, onValueChange = { grams = it.filter { ch -> ch.isDigit() || ch == '.' } },
@@ -335,7 +335,7 @@ private fun NutrientList(n: Map<String, Double>, names: Map<String, Pair<String,
     rows.sortedBy { names.keys.indexOf(it.key) }.forEach { (key, value) ->
         val (name, unit) = names.getValue(key)
         Row(Modifier.fillMaxWidth()) {
-            HqText(name, 14.sp, modifier = Modifier.weight(1f))
+            HqText(name, 14.sp, modifier = Modifier.weight(1f), maxLines = 2)
             HqText("${NumberEntry.format(Math.round(value * 10) / 10.0)} $unit", 14.sp, color = c.muted)
         }
     }
@@ -577,7 +577,7 @@ private fun ReviewSheet(
             foods.forEach { f ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        HqText(f.name, 15.sp, FontWeight.Medium, modifier = Modifier.weight(1f))
+                        HqText(f.name, 15.sp, FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 2)
                         TextButton(onClick = { onRemove(f.id) }) { HqText("Remove", 13.sp, color = c.muted) }
                     }
                     NumberField("Amount (g)", grams[f.id] ?: NumberEntry.format(f.servingG ?: 100.0)) { grams[f.id] = it }
@@ -616,8 +616,8 @@ internal fun AmountSheet(
     val scaled = Nutrients.scale(per100, g)
     ModalBottomSheet(onDismissRequest = onDone, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.card) {
         Column(Modifier.navigationBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            HqText(food.name, 20.sp, FontWeight.Bold)
-            if (food.brand.isNotBlank()) HqText(food.brand, 14.sp, color = c.muted)
+            HqText(food.name, 20.sp, FontWeight.Bold, maxLines = 3)
+            if (food.brand.isNotBlank()) HqText(food.brand, 14.sp, color = c.muted, maxLines = 1)
             if (food.incomplete) HqText("Incomplete data: the source left out some figures, so totals may be low.", 13.sp, color = c.muted)
             OutlinedTextField(
                 value = grams, onValueChange = { grams = it.filter { ch -> ch.isDigit() || ch == '.' } },

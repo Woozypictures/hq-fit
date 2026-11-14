@@ -110,7 +110,7 @@ fun ExerciseDetailSheet(db: HqFitDatabase, name: String, onDismiss: () -> Unit) 
             Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            HqText(name, 20.sp, FontWeight.SemiBold)
+            HqText(name, 20.sp, FontWeight.SemiBold, maxLines = 3)
             entity?.let { e ->
                 val line = listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · ")
                 if (line.isNotEmpty()) HqText(line, 14.sp, color = c.muted)

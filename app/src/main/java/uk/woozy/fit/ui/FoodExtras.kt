@@ -78,7 +78,7 @@ fun RecipeScreen(db: HqFitDatabase, onBack: () -> Unit) {
             ingredients.forEachIndexed { i, (f, g) ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        HqText(f.name, 15.sp, FontWeight.Medium)
+                        HqText(f.name, 15.sp, FontWeight.Medium, maxLines = 2)
                         HqText("${NumberEntry.format(g)} g", 13.sp, color = c.muted)
                     }
                     TextButton(onClick = { ingredients = ingredients.filterIndexed { j, _ -> j != i } }) { HqText("Remove", 13.sp, color = c.muted) }
@@ -89,12 +89,12 @@ fun RecipeScreen(db: HqFitDatabase, onBack: () -> Unit) {
                 OutlinedTextField(value = search, onValueChange = { search = it }, label = { HqText("Search your foods to add", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 results.forEach { f ->
                     Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { picked = f; grams = f.servingG?.let { NumberEntry.format(it) } ?: "100" }.padding(vertical = 6.dp)) {
-                        HqText(f.name, 15.sp)
-                        if (f.brand.isNotBlank()) HqText(f.brand, 12.sp, color = c.muted)
+                        HqText(f.name, 15.sp, maxLines = 2)
+                        if (f.brand.isNotBlank()) HqText(f.brand, 12.sp, color = c.muted, maxLines = 1)
                     }
                 }
             } else {
-                HqText(p.name, 15.sp, FontWeight.SemiBold)
+                HqText(p.name, 15.sp, FontWeight.SemiBold, maxLines = 2)
                 NumberField("Grams", grams) { grams = it }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HqPillButton("Add", modifier = Modifier.weight(1f), enabled = (grams.toDoubleOrNull() ?: 0.0) > 0, onClick = {

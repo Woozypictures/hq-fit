@@ -40,7 +40,7 @@ fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> 
         LazyColumn(Modifier.weight(1f)) {
             items(sessions, key = { it.id }) { s ->
                 Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onOpen(s.id) }.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                    HqText(s.name, 16.sp, FontWeight.Medium)
+                    HqText(s.name, 16.sp, FontWeight.Medium, maxLines = 2)
                     // Imported Everfit days have no real start time or length, so only live workouts show them.
                     val imported = s.scheduledId == uk.woozy.fit.data.imports.EverfitImport.MARKER
                     val minutes = ((s.endedMs ?: s.startedMs) - s.startedMs) / 60_000

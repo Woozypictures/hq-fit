@@ -73,7 +73,7 @@ fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
                         ) {
                             Column(Modifier.weight(1f)) {
                                 muscleOf[r.exerciseId]?.takeIf { it.isNotBlank() }?.let { HqText(it.uppercase(), 11.sp, FontWeight.SemiBold, c.muted) }
-                                HqText(r.exerciseName, 16.sp, FontWeight.Medium)
+                                HqText(r.exerciseName, 16.sp, FontWeight.Medium, maxLines = 2)
                                 HqText("${r.sessions} time${if (r.sessions == 1) "" else "s"}", 13.sp, color = c.muted)
                             }
                             Column(horizontalAlignment = Alignment.End) {

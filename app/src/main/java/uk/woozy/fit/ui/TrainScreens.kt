@@ -296,7 +296,7 @@ private fun ItemRow(row: TemplateItemRow) {
     Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                HqText(row.exerciseName, 16.sp, FontWeight.Medium)
+                HqText(row.exerciseName, 16.sp, FontWeight.Medium, maxLines = 2)
                 HqText(detail(row), 13.sp, color = c.muted)
             }
             if (row.supersetGroup != null) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
@@ -363,7 +363,7 @@ fun LibraryScreen(db: HqFitDatabase, onBack: () -> Unit) {
             items(results, key = { it.id }) { e ->
                 if (c.flat) androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(0.5.dp).background(c.hairline))
                 Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    HqText(e.name, 16.sp, FontWeight.Medium)
+                    HqText(e.name, 16.sp, FontWeight.Medium, maxLines = 2)
                     HqText(listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · "), 13.sp, color = c.muted)
                 }
             }

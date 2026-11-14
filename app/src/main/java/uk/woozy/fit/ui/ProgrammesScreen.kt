@@ -85,7 +85,7 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
             templates.forEach { t ->
                 HqCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        HqText(t.name, 17.sp, FontWeight.SemiBold)
+                        HqText(t.name, 17.sp, FontWeight.SemiBold, maxLines = 2)
                         if (t.focus.isNotBlank()) HqText(t.focus, 13.sp, color = c.muted)
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             DayOfWeek.entries.forEach { d ->

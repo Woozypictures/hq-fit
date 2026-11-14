@@ -197,7 +197,7 @@ fun HqPillButton(
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
-        HqText(text, 15.sp, FontWeight.SemiBold, foreground)
+        HqText(text, 15.sp, FontWeight.SemiBold, foreground, maxLines = 1)
     }
 }
 

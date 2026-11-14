@@ -87,7 +87,7 @@ fun TemplateEditorScreen(db: HqFitDatabase, templateId: Long, onBack: () -> Unit
                         rows.forEach { r ->
                             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { editing = r }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    HqText(r.exerciseName, 16.sp, FontWeight.Medium)
+                                    HqText(r.exerciseName, 16.sp, FontWeight.Medium, maxLines = 2)
                                     HqText(editorDetail(r), 13.sp, color = c.muted)
                                 }
                                 if (r.supersetGroup != null) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
@@ -132,7 +132,7 @@ fun TemplateEditorScreen(db: HqFitDatabase, templateId: Long, onBack: () -> Unit
         var section by remember(r.id) { mutableStateOf(Section.fromKey(r.section)) }
         ModalBottomSheet(onDismissRequest = { editing = null }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = c.card) {
             Column(Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                HqText(r.exerciseName, 18.sp, FontWeight.SemiBold)
+                HqText(r.exerciseName, 18.sp, FontWeight.SemiBold, maxLines = 3)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Section.entries.forEach { s ->
                         HqPillButton(s.title, onClick = { section = s }, style = if (section == s) PillStyle.Filled else PillStyle.Outline, modifier = Modifier.weight(1f))
