@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.border
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.WaterDrop
 import androidx.compose.material3.Icon
@@ -90,6 +93,9 @@ fun TodayScreen(
     onSteps: () -> Unit = {},
     onDiary: () -> Unit = {},
     today: LocalDate = LocalDate.now(),
+    /** Changes when water was just added from the + menu: scroll to the Water card and flash it. */
+    waterFocus: Long = 0L,
+    onWaterShown: () -> Unit = {},
     /** Today's nutrient totals by key, and your set targets (value, kind), for the Nutrients card. */
     dayTotals: Map<String, Double> = emptyMap(),
     nutrientTargets: Map<String, Pair<Double, String>> = emptyMap(),
@@ -110,11 +116,25 @@ fun TodayScreen(
     var editing by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(editing) { editing = false }
 
+    val scroll = rememberScrollState()
+    var colTop by remember { mutableStateOf(0f) }
+    var waterTop by remember { mutableStateOf(-1f) }
+    val flash = remember { androidx.compose.animation.core.Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(waterFocus) {
+        if (waterFocus > 0) {
+            kotlinx.coroutines.delay(250)
+            if (waterTop >= 0f) scroll.animateScrollTo((scroll.value + waterTop - colTop - 120f).toInt().coerceAtLeast(0))
+            flash.animateTo(1f, androidx.compose.animation.core.tween(220))
+            flash.animateTo(0f, androidx.compose.animation.core.tween(900))
+            onWaterShown()
+        }
+    }
     uk.woozy.fit.designsystem.SmoothRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, container = c.card, accent = c.primary, modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .onGloballyPositioned { colTop = it.positionInWindow().y }
+            .verticalScroll(scroll)
             .statusBarsPadding()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp + LocalGlassInset.current),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -222,7 +242,11 @@ fun TodayScreen(
                                 HqText("Red means over the safe upper limit. Tap for every nutrient.", 11.sp, color = c.muted)
                             }
                         }
-                        "water" -> HqCard(Modifier.fillMaxWidth()) {
+                        "water" -> HqCard(
+                            Modifier.fillMaxWidth()
+                                .onGloballyPositioned { waterTop = it.positionInWindow().y }
+                                .border(2.dp, c.primary.copy(alpha = flash.value), androidx.compose.foundation.shape.RoundedCornerShape(if (c.flat) 22.dp else 18.dp)),
+                        ) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 SectionLabel("Water \uD83D\uDCA7")
                                 Row(

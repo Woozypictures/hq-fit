@@ -168,6 +168,8 @@ fun HqFitRoot(
     val route = entry?.destination?.route
     var quickAdd by remember { mutableStateOf(false) }
     var refreshToast by remember { mutableStateOf(0L) }
+    var toastText by remember { mutableStateOf("") }
+    var waterFocus by remember { mutableStateOf(0L) }
     val calendarFlow = remember(db, today) {
         db.schedule().observeBetween(today.with(DayOfWeek.MONDAY).toString(), today.plusDays(70).toString())
     }
@@ -241,6 +243,7 @@ fun HqFitRoot(
                             runCatching { uk.woozy.fit.health.HealthSync.run(syncContext, db, uk.woozy.fit.health.HealthGateway(syncContext)) }
                             refreshTick++
                             refreshing = false
+                            toastText = "Last refreshed " + java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(java.time.LocalTime.now())
                             refreshToast = System.currentTimeMillis()
                         }
                     },
@@ -258,6 +261,8 @@ fun HqFitRoot(
                     onSteps = { if (!openSamsungHealth(syncContext)) nav.navigate(Routes.HEALTH) },
                     onDiary = { nav.navigateTab(Routes.DIARY) },
                     today = today,
+                    waterFocus = waterFocus,
+                    onWaterShown = { waterFocus = 0L },
                     dayTotals = dayTotals,
                     nutrientTargets = nutrientTargets,
                     onNutrients = { nav.navigate("${Routes.NUTRIENTS}/$todayText") },
@@ -462,7 +467,7 @@ fun HqFitRoot(
         var showToast by remember { mutableStateOf(false) }
         LaunchedEffect(refreshToast) { if (refreshToast > 0) { showToast = true; kotlinx.coroutines.delay(2200); showToast = false } }
         if (route in tabRoutes) uk.woozy.fit.designsystem.GlassToast(
-            "Last refreshed " + java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(java.time.LocalTime.now()), showToast, backdrop, gStyle,
+            toastText, showToast, backdrop, gStyle,
             Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 12.dp),
         )
         if (route in tabRoutes) {
@@ -490,6 +495,11 @@ fun HqFitRoot(
                 GlassMenuItem("Add water", Icons.Rounded.WaterDrop) {
                     quickAdd = false
                     scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) }
+                    // Show it: go to Home, scroll to Water and flash it, and say what was added.
+                    if (route != Routes.TODAY) nav.navigateTab(Routes.TODAY)
+                    waterFocus = System.currentTimeMillis()
+                    toastText = "\uD83D\uDCA7 ${targets.waterGlassMl} ml of water added"
+                    refreshToast = System.currentTimeMillis()
                 },
                 GlassMenuItem("Quick add", Icons.Rounded.EditNote) {
                     quickAdd = false
