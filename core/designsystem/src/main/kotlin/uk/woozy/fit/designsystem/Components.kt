@@ -245,6 +245,7 @@ fun HqRing(
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     val track = HqTheme.colors.track
+    val shown = springValue(progress.coerceIn(0f, 1f))
     Box(
         modifier = modifier.size(diameter).semantics(mergeDescendants = true) { progressBarRangeInfo = ProgressBarRangeInfo(progress.coerceIn(0f, 1f), 0f..1f) },
         contentAlignment = Alignment.Center,
@@ -257,7 +258,7 @@ fun HqRing(
                 color = track, startAngle = 0f, sweepAngle = 360f, useCenter = false,
                 topLeft = Offset(inset, inset), size = arc, style = Stroke(width = s),
             )
-            val sweep = 360f * progress.coerceIn(0f, 1f)
+            val sweep = 360f * shown
             if (sweep > 0f) {
                 drawArc(
                     color = color, startAngle = -90f, sweepAngle = sweep, useCenter = false,
@@ -267,6 +268,17 @@ fun HqRing(
         }
         content()
     }
+}
+
+/** A value that springs from 0 to [target] when it first shows and to each new target after (instant in previews and with Remove animations on). */
+@Composable
+fun springValue(target: Float): Float {
+    val still = androidx.compose.ui.platform.LocalInspectionMode.current || rememberReduceMotion()
+    val a = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(if (still) target else 0f) }
+    androidx.compose.runtime.LaunchedEffect(target) {
+        if (still) a.snapTo(target) else a.animateTo(target, androidx.compose.animation.core.spring(dampingRatio = 0.85f, stiffness = 120f))
+    }
+    return a.value
 }
 
 /** Thin horizontal bar, 0 to 1. */
@@ -289,7 +301,7 @@ fun HqProgressBar(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(fraction.coerceIn(0f, 1f))
+                .fillMaxWidth(springValue(fraction.coerceIn(0f, 1f)))
                 .clip(CircleShape)
                 .background(color),
         )

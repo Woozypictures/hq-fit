@@ -4,6 +4,7 @@ import uk.woozy.fit.designsystem.LocalGlassInset
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -383,9 +384,22 @@ fun AddFoodScreen(
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Add to ${meal.title}", onBack) }
+        // Cronometer-style: one search field with the barcode scanner inside it, then four one-tap tiles.
         OutlinedTextField(
             value = text, onValueChange = { text = it }, singleLine = true,
-            label = { HqText("Search foods", 13.sp, color = c.muted) },
+            placeholder = { HqText("Search all foods", 15.sp, color = c.muted) },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = c.muted) },
+            trailingIcon = {
+                Icon(
+                    Icons.Rounded.QrCodeScanner, contentDescription = "Scan barcode", tint = c.primary,
+                    modifier = Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable(role = Role.Button, onClick = onScan).padding(10.dp),
+                )
+            },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = c.track, focusedContainerColor = c.track,
+                unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent, focusedBorderColor = c.primary.copy(alpha = 0.4f),
+            ),
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
         )
         androidx.compose.foundation.layout.Row(
@@ -396,11 +410,26 @@ fun AddFoodScreen(
                 androidx.compose.material3.FilterChip(selected = tab == i, onClick = { tab = i }, label = { HqText(label, 13.sp) })
             }
         }
-        HqCard(Modifier.fillMaxWidth().padding(16.dp)) {
-            ListRow(Icons.Rounded.QrCodeScanner, "Scan barcode", "Look a product up in Open Food Facts", onClick = onScan)
-            ListRow(Icons.Rounded.Add, "Create a custom food", "Your own figures per 100 g", onClick = onCustom)
-            ListRow(Icons.Rounded.Add, "Create a recipe", "Combine foods into one", onClick = onRecipe)
-            ListRow(Icons.Rounded.EditNote, "Quick add", "A name and calories, no food needed", onClick = { quick = true })
+        if (text.isBlank()) androidx.compose.foundation.layout.Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            @Composable fun Tile(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, tint: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
+                Column(
+                    Modifier.weight(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).clickable(role = Role.Button, onClick = onClick).padding(vertical = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        Modifier.size(56.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).background(tint.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center,
+                    ) { Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(26.dp)) }
+                    HqText(label, 12.sp, FontWeight.Medium, textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2)
+                }
+            }
+            Tile(Icons.Rounded.QrCodeScanner, "Scan\nbarcode", c.protein, onScan)
+            Tile(Icons.Rounded.EditNote, "Quick\nadd", c.carbs, { quick = true })
+            Tile(Icons.Rounded.Add, "Custom\nfood", c.primary, onCustom)
+            Tile(Icons.Rounded.Add, "Recipe", c.fat, onRecipe)
         }
         if (results.isEmpty()) {
             HqText(
@@ -487,8 +516,20 @@ fun AddFoodScreen(
                 }
             }
         }
-        if (selected.isNotEmpty()) {
-            HqPillButton("Review ${selected.size} item${if (selected.size == 1) "" else "s"}", onClick = { review = true }, modifier = Modifier.fillMaxWidth().padding(16.dp))
+        // Sticky bar as in Cronometer: review amounts, or add every ticked food at its usual serving in one tap.
+        if (selected.isNotEmpty()) Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            HqPillButton("Review ${selected.size}", onClick = { review = true }, modifier = Modifier.weight(1f), style = PillStyle.Outline)
+            HqPillButton("Add to ${meal.title}", onClick = {
+                scope.launch {
+                    val now = System.currentTimeMillis()
+                    selected.forEach { f -> Diary.log(db, f, f.servingG ?: 100.0, date, meal, now) }
+                    selected = emptyList()
+                    onBack()
+                }
+            }, modifier = Modifier.weight(1f))
         }
     }
 

@@ -112,7 +112,7 @@ fun HqConnectionScreen(db: HqFitDatabase, onBack: () -> Unit) {
             14.sp, color = c.muted,
         )
         val x = s
-        if (x == null) HqText("Loading", 14.sp, color = c.muted) else HqCard(Modifier.fillMaxWidth()) {
+        if (x == null) uk.woozy.fit.designsystem.SkeletonBlock(c.track, lines = 6) else HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 @Composable fun line(k: String, v: String) = Row { HqText(k, 14.sp, color = c.muted, modifier = Modifier.weight(1f)); HqText(v, 14.sp, FontWeight.Medium) }
                 line("Date", x.date)

@@ -91,6 +91,8 @@ private data class ProgressData(
     val weekDone: List<Double>,
     val weekPlanned: List<Int>,
     val weekVolume: List<Double>,
+    /** Feelfit-style changes: since the first weigh-in, over 30 days, over 7 days (null when there is no reading that far back). */
+    val firstKg: Double? = null, val firstDate: LocalDate? = null, val kg30: Double? = null, val kg7: Double? = null,
 )
 
 private const val GOAL_KG = 80.0
@@ -123,7 +125,11 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
     val sched = db.schedule().between(weeks.first().toString(), weeks.last().plusDays(6).toString())
     val sessions = db.sessions().doneSince(weeks.first().atStartOfDay(zone).toInstant().toEpochMilli())
     val sets = sessions.flatMap { s -> db.sessions().sets(s.id).filter { it.done && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }.map { s to it } }
+    val oldest = all.lastOrNull()
+    fun kgAt(daysAgo: Long): Double? { val t = today.minusDays(daysAgo).atStartOfDay(zone).toInstant().toEpochMilli(); return all.firstOrNull { it.epochMs <= t }?.kg }
     return ProgressData(
+        firstKg = oldest?.kg, firstDate = oldest?.let { java.time.Instant.ofEpochMilli(it.epochMs).atZone(zone).toLocalDate() },
+        kg30 = kgAt(30), kg7 = kgAt(7),
         weights = weights, latestKg = latest, slopePerDay = slope, goalDate = goalDate,
         kcalDays = kcal, macroDays = macroDays, kcalLabels = days.map { it.dayOfMonth.toString() }, kcalTarget = target,
         thisWeekAvg = kcal.takeLast(7).filter { it > 0 }.takeIf { it.isNotEmpty() }?.average(),
@@ -150,7 +156,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
     TabPage {
         ScreenTitle("Progress")
         val d = data
-        if (d == null) { HqText("Loading", 14.sp, color = c.muted); return@TabPage }
+        if (d == null) { uk.woozy.fit.designsystem.SkeletonBlock(c.track, lines = 6); return@TabPage }
 
         run {
             val doneWeeks = d.weekDone
@@ -191,8 +197,51 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                         if (d.latestKg == null) {
                                             HqText("No weights yet. Pair your scale or type one in.", 14.sp, color = c.muted)
                                         } else {
-                                            HqText("${formatOne(d.latestKg)} kg", if (c.flat) 44.sp else 28.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
-                                            HqText("${formatOne(d.latestKg - GOAL_KG)} kg to your ${GOAL_KG.toInt()} kg goal", 14.sp, color = c.muted)
+                                            // Feelfit-style: the weight in a ring with a dotted halo, the goal beside it, then the changes.
+                                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                                val start = d.firstKg ?: d.latestKg
+
+                                                val done = ((start - d.latestKg) / (start - GOAL_KG).let { if (it == 0.0) 1.0 else it }).toFloat().coerceIn(0f, 1f)
+                                                Box(contentAlignment = Alignment.Center) {
+                                                    val halo = c.primary.copy(alpha = 0.55f)
+                                                    androidx.compose.foundation.Canvas(Modifier.size(132.dp)) {
+                                                        val r = size.minDimension / 2 - 2.dp.toPx()
+                                                        for (k in 0 until 24) {
+                                                            val a = Math.toRadians(k * 15.0 - 90)
+                                                            drawCircle(halo, 1.8.dp.toPx(), androidx.compose.ui.geometry.Offset(center.x + r * kotlin.math.cos(a).toFloat(), center.y + r * kotlin.math.sin(a).toFloat()))
+                                                        }
+                                                    }
+                                                    uk.woozy.fit.designsystem.HqRing(progress = done, color = c.primary, diameter = 108.dp, stroke = 6.dp) {
+                                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                            HqText(formatOne(d.latestKg), 26.sp, FontWeight.Bold, letterSpacing = (-0.5).sp)
+                                                            HqText("kg", 12.sp, color = c.muted)
+                                                        }
+                                                    }
+                                                }
+                                                Column(Modifier.weight(1f).padding(start = 18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    HqText("Goal", 12.sp, color = c.muted)
+                                                    HqText("${GOAL_KG.toInt()} kg", 20.sp, FontWeight.Bold)
+                                                    HqText("${formatOne(kotlin.math.abs(d.latestKg - GOAL_KG))} kg to go \u00b7 ${(done * 100).toInt()}% of the way", 13.sp, color = c.muted)
+                                                    if (kotlin.math.abs(d.latestKg - GOAL_KG) <= 0.2) HqText("At goal \uD83C\uDF89", 13.sp, color = c.ok)
+                                                }
+                                            }
+                                            @Composable fun Delta(label: String, kg: Double?, modifier: Modifier) {
+                                                Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+                                                    HqText(label, 12.sp, color = c.muted)
+                                                    if (kg == null) HqText("-", 18.sp, FontWeight.SemiBold, c.muted)
+                                                    else {
+                                                        val diff = d.latestKg - kg
+                                                        // Green when it moves towards the goal, amber when away.
+                                                        val good = (GOAL_KG < d.latestKg && diff <= 0) || (GOAL_KG >= d.latestKg && diff >= 0)
+                                                        HqText((if (diff > 0) "+" else "") + formatOne(diff) + " kg", 18.sp, FontWeight.SemiBold, if (kotlin.math.abs(diff) < 0.05) c.ink else if (good) c.ok else c.warn)
+                                                    }
+                                                }
+                                            }
+                                            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                                Delta(d.firstDate?.let { "Since " + it.format(DateTimeFormatter.ofPattern("MMM yyyy", Locale.UK)) } ?: "Since start", d.firstKg, Modifier.weight(1f))
+                                                Delta("30 days", d.kg30, Modifier.weight(1f))
+                                                Delta("7 days", d.kg7, Modifier.weight(1f))
+                                            }
                                             LineChart(d.weights, GOAL_KG, "kg")
                                             val s = d.slopePerDay
                                             HqText(

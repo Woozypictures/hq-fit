@@ -146,7 +146,7 @@ fun NutrientSummaryScreen(db: HqFitDatabase, date: String, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Nutrients, $date", onBack) }
         val d = data
-        if (d == null) { HqText("Loading", 14.sp, color = c.muted, modifier = Modifier.padding(16.dp)); return@Column }
+        if (d == null) { uk.woozy.fit.designsystem.SkeletonBlock(c.track, lines = 8); return@Column }
         val (nutrients, totals, targets) = d
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (totals.isEmpty()) HqText("Nothing logged for this day.", 14.sp, color = c.muted)
@@ -188,7 +188,7 @@ fun TargetsEditorScreen(db: HqFitDatabase, onBack: () -> Unit) {
         value = db.nutrients().all() to db.targets().all().associateBy { it.key }
     }
     val base = loaded
-    if (base == null) { HqText("Loading", 14.sp, color = c.muted, modifier = Modifier.statusBarsPadding().padding(16.dp)); return }
+    if (base == null) { uk.woozy.fit.designsystem.SkeletonBlock(c.track, Modifier.statusBarsPadding(), lines = 8); return }
     val (nutrients, existing) = base
     val values = remember { mutableStateOf(existing.mapValues { NumberEntry.format(it.value.value) }) }
     val kinds = remember { mutableStateOf(existing.mapValues { it.value.kind }) }

@@ -2,6 +2,12 @@ package uk.woozy.fit.ui
 
 import uk.woozy.fit.designsystem.LocalGlassInset
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.ui.unit.em
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -154,39 +160,81 @@ fun WorkoutPreviewScreen(
     val items by itemsFlow.collectAsState(initial = emptyList())
     var moving by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Workout", onBack) }
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    val equipment by produceState(emptyList<String>(), items) {
+        value = items.map { it.exerciseId }.distinct().mapNotNull { db.exercises().findById(it)?.equipment?.takeIf { e -> e.isNotBlank() } }.distinct().sorted()
+    }
+
+    // Everfit's workout preview: a full-bleed hero with a diagonal sheen and a white Start pill, equipment chips,
+    // then the plan as a timeline (section headers with an emoji, one row per exercise, sets on the right).
+    Column(Modifier.fillMaxSize().navigationBarsPadding().verticalScroll(rememberScrollState())) {
+        Box(
+            Modifier.fillMaxWidth()
+                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(c.gradientStart, c.gradientEnd)))
+                .drawBehind {
+                    val w = size.width; val h = size.height
+                    val sheen = androidx.compose.ui.graphics.Path().apply { moveTo(w * 0.35f, h); lineTo(w, h * 0.12f); lineTo(w, h * 0.48f); lineTo(w * 0.68f, h); close() }
+                    drawPath(sheen, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.08f))
+                    val sheen2 = androidx.compose.ui.graphics.Path().apply { moveTo(w * 0.55f, h); lineTo(w, h * 0.55f); lineTo(w, h * 0.7f); lineTo(w * 0.72f, h); close() }
+                    drawPath(sheen2, androidx.compose.ui.graphics.Color.White.copy(alpha = 0.06f))
+                }
+                .statusBarsPadding(),
         ) {
-            if (s != null) {
-                SpacedTitle(s.templateName, color = c.ink, size = 22.sp)
-                HqText(LocalDate.parse(s.date).format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)), 14.sp, FontWeight.Medium, c.primary)
-                if (s.date != s.originalDate) {
-                    HqText("Moved from ${LocalDate.parse(s.originalDate).format(dayLine)}", 13.sp, color = c.muted)
+            Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, top = 4.dp, bottom = 24.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Back", onClick = onBack), contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.onGradient, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Move to another day") { moving = true }, contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(Icons.Rounded.EventRepeat, contentDescription = "Move to another day", tint = c.onGradient, modifier = Modifier.size(24.dp))
+                    }
+                    Box(Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Edit workout") { s?.let { onEdit(it.templateId) } }, contentAlignment = Alignment.Center) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Edit, contentDescription = "Edit workout", tint = c.onGradient, modifier = Modifier.size(22.dp))
+                    }
+                }
+                Spacer(Modifier.height(48.dp))
+                Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (s != null) {
+                        HqText(LocalDate.parse(s.date).format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.UK)).uppercase(Locale.UK), 12.sp, FontWeight.SemiBold, c.onGradient.copy(alpha = 0.8f), letterSpacing = 0.04.em)
+                        HqText(
+                            (if (s.templateName.any { Character.isSurrogate(it) }) s.templateName else "\uD83C\uDFCB\uFE0F" + s.templateName + "\uD83C\uDFCB\uFE0F").uppercase(Locale.UK),
+                            22.sp, FontWeight.Bold, c.onGradient, letterSpacing = 0.18.em, maxLines = 2,
+                        )
+                        if (s.date != s.originalDate) HqText("Moved from ${LocalDate.parse(s.originalDate).format(dayLine)}", 13.sp, color = c.onGradient.copy(alpha = 0.8f))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    HqPillButton(if (s?.status == "done") "Train again" else "Start Workout", onClick = { s?.let(onStart) }, style = PillStyle.OnGradient, modifier = Modifier.widthIn(min = 160.dp))
                 }
             }
-            Section.entries.forEach { section ->
-                val rows = items.filter { it.section == section.key }
-                if (rows.isNotEmpty()) {
-                    SectionLabel(section.title)
-                    HqCard(Modifier.fillMaxWidth()) {
-                        rows.forEach { ItemRow(it) }
+        }
+        if (equipment.isNotEmpty()) {
+            HqText("Equipment", 16.sp, FontWeight.Bold, modifier = Modifier.padding(start = 16.dp, top = 20.dp, bottom = 10.dp))
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                equipment.forEach { e ->
+                    Box(Modifier.clip(CircleShape).border(1.dp, c.hairline, CircleShape).padding(horizontal = 14.dp, vertical = 8.dp)) {
+                        HqText(e.replaceFirstChar { it.uppercase() }, 13.sp, FontWeight.Medium)
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
         }
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            HqPillButton(
-                if (s?.status == "done") "Train again" else "Start workout",
-                onClick = { s?.let(onStart) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-            HqPillButton("Move to another day", onClick = { moving = true }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
-            HqPillButton("Edit workout", onClick = { s?.let { onEdit(it.templateId) } }, modifier = Modifier.fillMaxWidth(), style = PillStyle.Outline)
+        Spacer(Modifier.height(12.dp))
+        val emoji = mapOf("warm_up" to "\uD83D\uDD25", "workout" to "\uD83D\uDCAA", "cool_down" to "\uD83E\uDDD8")
+        Section.entries.forEach { section ->
+            val rows = items.filter { it.section == section.key }
+            if (rows.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(10.dp).clip(CircleShape).background(c.hairline))
+                    Spacer(Modifier.width(12.dp))
+                    HqText("${emoji[section.key].orEmpty()} ${section.title} ${emoji[section.key].orEmpty()}", 17.sp, FontWeight.Bold)
+                }
+                rows.forEachIndexed { i, r ->
+                    val firstOfSuperset = r.supersetGroup != null && (i == 0 || rows[i - 1].supersetGroup != r.supersetGroup)
+                    if (firstOfSuperset) HqText("SUPERSET", 11.sp, FontWeight.SemiBold, c.muted, letterSpacing = 0.04.em, modifier = Modifier.padding(start = 44.dp, top = 6.dp))
+                    TimelineItem(r)
+                }
+            }
         }
+        Spacer(Modifier.height(32.dp))
     }
 
     if (moving && s != null) {
@@ -214,6 +262,27 @@ fun WorkoutPreviewScreen(
                 }
             }
         }
+    }
+}
+
+/** One exercise on the preview timeline: a rail on the left, a thumbnail tile, name and detail, sets on the right. */
+@Composable
+private fun TimelineItem(row: TemplateItemRow) {
+    val c = HqTheme.colors
+    Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 16.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(10.dp).height(72.dp), contentAlignment = Alignment.Center) { Box(Modifier.width(1.5.dp).fillMaxHeight().background(c.hairline)) }
+        Spacer(Modifier.width(12.dp))
+        Box(
+            Modifier.size(52.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).background(c.primary.copy(alpha = 0.10f)),
+            contentAlignment = Alignment.Center,
+        ) { HqText(row.exerciseName.take(1).uppercase(Locale.UK), 20.sp, FontWeight.Bold, c.primary) }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            HqText(row.exerciseName, 15.sp, FontWeight.SemiBold, maxLines = 2)
+            HqText(detail(row), 13.sp, color = c.muted, maxLines = 2)
+            if (row.note.isNotBlank()) HqText(row.note, 12.sp, color = c.muted, maxLines = 2)
+        }
+        HqText("x${row.sets}", 14.sp, FontWeight.SemiBold, c.muted)
     }
 }
 
