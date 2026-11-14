@@ -104,10 +104,14 @@ fun TodayScreen(
     /** Planned workouts from the last week that were not done, shown as a banner like Everfit's. */
     missedCount: Int = 0,
     onMissed: () -> Unit = {},
+    /** Rest day: tapping the top card opens the full training calendar, like Everfit. */
+    onRestDay: () -> Unit = {},
     weighedToday: Boolean = false,
     onScale: () -> Unit = {},
 ) {
     val c = HqTheme.colors
+    // A different rest-day line each time Home opens, like Everfit.
+    val restLine = remember { REST_LINES.random() }
     val dateLine = remember(today) {
         "TODAY, " + today.format(DateTimeFormatter.ofPattern("MMM d", Locale.UK)).uppercase(Locale.UK)
     }
@@ -179,11 +183,11 @@ fun TodayScreen(
 
         CardColumn(cards, names, available = { it != "checkin" || checkIn != null }, editing = editing, onEditing = { editing = it }) { key ->
                     when (key) {
-                        "workout" -> GradientCard(modifier = Modifier.fillMaxWidth()) {
+                        "workout" -> GradientCard(modifier = Modifier.fillMaxWidth(), onClick = if (workoutTitle == null) onRestDay else onStartWorkout) {
                             Column(Modifier.padding(20.dp)) {
                                 HqText(if (workoutTitle == null) "REST DAY" else "TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.04.em)
                                 Spacer(Modifier.height(6.dp))
-                                if (workoutTitle == null) HqText("Hoo-ray, it's your rest day \uD83C\uDF34", 18.sp, FontWeight.SemiBold, c.onGradient)
+                                if (workoutTitle == null) HqText(restLine, 18.sp, FontWeight.SemiBold, c.onGradient)
                                 else SpacedTitle("\uD83C\uDFCB\uFE0F $workoutTitle", color = c.onGradient, size = 20.sp)
                                 Spacer(Modifier.height(4.dp))
                                 HqText(workoutCaption, 13.sp, color = c.onGradient.copy(alpha = 0.8f))
@@ -343,3 +347,17 @@ private fun EnergyRing(label: String, value: String, progress: Float, color: Col
         HqText(label, 12.sp, color = HqTheme.colors.muted)
     }
 }
+
+
+private val REST_LINES = listOf(
+    "Relax and recharge \uD83D\uDEC1",
+    "Hoo-ray, it's your rest day \uD83C\uDF34",
+    "Invest in rest \u2615",
+    "Today's checklist: chill \u2705",
+    "Growth happens while you rest \uD83C\uDF31",
+    "Put your feet up \uD83D\uDECB\uFE0F",
+    "Rest is part of the plan \uD83D\uDE34",
+    "Recover well, come back stronger \uD83D\uDD0B",
+    "Nothing to lift today \uD83E\uDDD8",
+    "Take it easy, you earned it \uD83C\uDF1E",
+)

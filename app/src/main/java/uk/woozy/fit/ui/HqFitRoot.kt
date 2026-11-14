@@ -307,6 +307,7 @@ fun HqFitRoot(
                     onProblem = { nav.navigate(Routes.HEALTH) },
                     missedCount = missed,
                     onMissed = { nav.navigateTab(Routes.TRAIN) },
+                    onRestDay = { nav.navigate(Routes.TRAINING) },
                     weighedToday = weighedToday,
                     onScale = { nav.navigate(Routes.SCALE) },
                     onSteps = { if (!openSamsungHealth(syncContext)) nav.navigate(Routes.HEALTH) },
