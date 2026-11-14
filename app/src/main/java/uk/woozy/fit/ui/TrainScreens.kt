@@ -36,6 +36,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.EventRepeat
 import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.AddCircleOutline
+import androidx.compose.material.icons.rounded.PlaylistAdd
+import androidx.compose.material.icons.rounded.MenuBook
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,10 +133,10 @@ fun TrainScreen(
         }
         HqCard(Modifier.fillMaxWidth()) {
             ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Pick the days for each workout and edit it", onClick = onProgrammes)
-            ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
+            ListRow(Icons.Rounded.MenuBook, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
             ListRow(Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
-            ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own and put it on the calendar", onClick = onNewWorkout)
-            ListRow(Icons.Rounded.FitnessCenter, "New exercise", "Add your own to the library", onClick = onNewExercise)
+            ListRow(Icons.Rounded.PlaylistAdd, "New workout", "Build your own and put it on the calendar", onClick = onNewWorkout)
+            ListRow(Icons.Rounded.AddCircleOutline, "New exercise", "Add your own to the library", onClick = onNewExercise)
         }
         Spacer(Modifier.height(8.dp))
     }

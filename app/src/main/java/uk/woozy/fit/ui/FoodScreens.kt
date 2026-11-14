@@ -178,16 +178,18 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 uk.woozy.fit.designsystem.ConsumedRemainingToggle(Modifier.fillMaxWidth())
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                    HqRing(progress = (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), color = c.primary, diameter = 112.dp, stroke = 12.dp) {
+                    // The ring follows the Consumed / Remaining switch; the figure beside it is the other half.
+                    val rem = uk.woozy.fit.designsystem.MacroMode.remaining
+                    val left = targets.energyKcal - eaten
+                    HqRing(progress = (eaten / targets.energyKcal).toFloat().coerceIn(0f, 1f), color = if (left < 0) c.warn else c.primary, diameter = 112.dp, stroke = 12.dp) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            HqText(formatWhole(eaten), 22.sp, FontWeight.Bold)
-                            HqText("of ${formatWhole(targets.energyKcal.toDouble())} kcal", 11.sp, color = c.muted)
+                            HqText(formatWhole(if (rem) kotlin.math.abs(left) else eaten), 22.sp, FontWeight.Bold)
+                            HqText(if (rem) (if (left < 0) "kcal over" else "kcal left") else "kcal eaten", 11.sp, color = c.muted)
                         }
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        val left = targets.energyKcal - eaten
-                        HqText(formatWhole(kotlin.math.abs(left)), 24.sp, FontWeight.Bold, if (left < 0) c.fat else c.ink)
-                        HqText(if (left < 0) "kcal over" else "kcal left", 12.sp, color = c.muted)
+                        HqText(formatWhole(if (rem) eaten else kotlin.math.abs(left)), 24.sp, FontWeight.Bold, if (!rem && left < 0) c.warn else c.ink)
+                        HqText(if (rem) "of ${formatWhole(targets.energyKcal.toDouble())} eaten" else if (left < 0) "kcal over" else "kcal left", 12.sp, color = c.muted)
                     }
                 }
                 MacroBar("Protein", totals[Nutrients.PROTEIN] ?: 0.0, targets.proteinG.toDouble(), "g", c.protein)
@@ -245,13 +247,15 @@ fun DiaryScreen(db: HqFitDatabase, onAdd: (Meal, String) -> Unit, onNutrients: (
                             contentAlignment = Alignment.Center,
                         ) { Icon(Icons.Rounded.Add, contentDescription = "Add to ${meal.title}", tint = c.primary, modifier = Modifier.size(22.dp)) }
                         Row(
-                            Modifier.weight(1f).heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = if (open) "Collapse ${meal.title}" else "Expand ${meal.title}") { open = !open }.padding(end = 12.dp),
+                            // An empty meal has nothing to fold: the row adds to it instead and shows no chevron.
+                            Modifier.weight(1f).heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = if (rows.isEmpty()) "Add to ${meal.title}" else if (open) "Collapse ${meal.title}" else "Expand ${meal.title}") { if (rows.isEmpty()) onAdd(meal, dateText) else open = !open }.padding(end = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             HqText(meal.title, 16.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
                             HqText("${formatWhole(rows.sumOf { Nutrients.decode(it.nutrients)[Nutrients.ENERGY] ?: 0.0 })} kcal", 14.sp, color = c.muted)
                             Spacer(Modifier.size(4.dp))
-                            Icon(if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(22.dp))
+                            if (rows.isNotEmpty()) Icon(if (open) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown, contentDescription = null, tint = c.muted, modifier = Modifier.size(22.dp))
+                            else Spacer(Modifier.size(22.dp))
                         }
                     }
                     if (open) rows.forEachIndexed { idx, e ->

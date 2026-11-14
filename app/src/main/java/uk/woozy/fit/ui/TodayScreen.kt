@@ -213,7 +213,10 @@ fun TodayScreen(
                                     if (eaten <= 0) HqText("Nothing logged yet. Tap + to add ${uk.woozy.fit.ui.guessMeal(java.time.LocalTime.now().hour).title.lowercase()}.", 13.sp, color = c.muted)
                                 }
                             } else Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                SectionLabel("Energy")
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(Modifier.weight(1f)) { SectionLabel("Energy") }
+                                    uk.woozy.fit.designsystem.ConsumedRemainingToggle(Modifier.width(200.dp))
+                                }
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     EnergyRing("Consumed", formatWhole(uk.woozy.fit.designsystem.countUp(eaten)), (eaten / target).toFloat().coerceIn(0f, 1f), c.primary)
                                     // Like HQ: the burned ring is full once there is a reading, and empty without one.

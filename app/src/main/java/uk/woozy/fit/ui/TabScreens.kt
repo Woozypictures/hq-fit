@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -168,14 +169,15 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
             val tiles = listOf(
                 "${doneWeeks.last().toInt()} of ${d.weekPlanned.last()}" to "Workouts this week",
                 "$streak" to if (streak == 1) "Week streak" else "Weeks streak",
-                "${doneWeeks.sum().toInt()}" to "Workouts, 8 weeks",
+                "${doneWeeks.sum().toInt()}" to "Workouts in 8 weeks",
             )
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Equal-height tiles: the row takes the tallest tile's height so two-line labels don't leave ragged bottoms.
+            Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 tiles.forEach { (big, small) ->
-                    HqCard(Modifier.weight(1f)) {
+                    HqCard(Modifier.weight(1f).fillMaxHeight()) {
                         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             HqText(big, if (c.flat) 30.sp else 22.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
-                            HqText(small, 12.sp, color = c.muted)
+                            HqText(small, 12.sp, color = c.muted, maxLines = 2)
                         }
                     }
                 }
