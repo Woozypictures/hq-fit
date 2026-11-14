@@ -110,7 +110,7 @@ fun TodayScreen(
     var editing by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(editing) { editing = false }
 
-    PullToRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+    uk.woozy.fit.designsystem.SmoothRefreshBox(isRefreshing = refreshing, onRefresh = onRefresh, container = c.card, accent = c.primary, modifier = Modifier.fillMaxSize()) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -126,7 +126,7 @@ fun TodayScreen(
                 val greet = if (hour < 12) "Good morning" else if (hour < 18) "Good afternoon" else "Good evening"
                 HqText(today.format(DateTimeFormatter.ofPattern("EEEE", Locale.UK)), 13.sp, FontWeight.Medium, c.muted)
                 HqText(today.format(DateTimeFormatter.ofPattern("d MMMM", Locale.UK)), if (c.flat) 40.sp else 32.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
-                HqText("$greet, ${name.trim().substringBefore(' ')}!", if (c.flat) 24.sp else 20.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
+                HqText("$greet, ${name.trim().substringBefore(' ')}.", if (c.flat) 24.sp else 20.sp, FontWeight.Bold, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
             }
             AvatarCircle(
                 initial = name, size = 44.dp,
@@ -151,7 +151,7 @@ fun TodayScreen(
                     .background(Color(0xFFE5484D).copy(alpha = 0.14f)).clickable(role = Role.Button, onClick = onMissed)
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
-                HqText("You missed $missedCount workout${if (missedCount == 1) "" else "s"}", 14.sp, FontWeight.SemiBold)
+                HqText("\uD83D\uDC49 You missed $missedCount workout${if (missedCount == 1) "" else "s"}", 14.sp, FontWeight.SemiBold)
                 HqText("TAP TO CATCH UP OR MOVE ${if (missedCount == 1) "IT" else "THEM"}", 11.sp, color = c.muted, letterSpacing = 0.03.em)
             }
         }
@@ -160,9 +160,10 @@ fun TodayScreen(
                     when (key) {
                         "workout" -> GradientCard(modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(20.dp)) {
-                                HqText("TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.04.em)
+                                HqText(if (workoutTitle == null) "REST DAY" else "TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.04.em)
                                 Spacer(Modifier.height(6.dp))
-                                SpacedTitle(workoutTitle ?: "Rest day", color = c.onGradient, size = 20.sp)
+                                if (workoutTitle == null) HqText("Hoo-ray, it's your rest day \uD83C\uDF34", 20.sp, FontWeight.Bold, c.onGradient)
+                                else SpacedTitle("\uD83C\uDFCB\uFE0F $workoutTitle", color = c.onGradient, size = 20.sp)
                                 Spacer(Modifier.height(4.dp))
                                 HqText(workoutCaption, 13.sp, color = c.onGradient.copy(alpha = 0.8f))
                                 if (workoutTitle != null) {
@@ -220,7 +221,7 @@ fun TodayScreen(
                         }
                         "water" -> HqCard(Modifier.fillMaxWidth()) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                SectionLabel("Water")
+                                SectionLabel("Water \uD83D\uDCA7")
                                 Row(
                                     Modifier.fillMaxWidth().semantics { contentDescription = "Water: $waterMl of ${targets.waterMl} millilitres" },
                                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -243,7 +244,7 @@ fun TodayScreen(
                         }
                         "steps" -> HqCard(Modifier.fillMaxWidth(), onClick = onSteps) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                SectionLabel("Steps")
+                                SectionLabel("Steps \uD83D\uDC5F")
                                 HqText("${steps?.let { formatWhole(it.toDouble()) } ?: "-"} / ${formatWhole(targets.steps.toDouble())} steps", 18.sp, FontWeight.SemiBold)
                                 Segments(((steps ?: 0L).toFloat() / targets.steps.coerceAtLeast(1)).coerceIn(0f, 1f), c.primary)
                             }

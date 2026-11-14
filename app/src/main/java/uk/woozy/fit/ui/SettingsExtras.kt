@@ -95,7 +95,7 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
                     HqText("Start rest timer after each set", 16.sp, FontWeight.Medium)
                     HqText("Uses the rest time in the workout. Off means ticking a set starts nothing.", 12.sp, color = c.muted)
                 }
-                Switch(checked = auto, onCheckedChange = { auto = it; WorkoutPrefs.setAutoRest(context, it) })
+                uk.woozy.fit.designsystem.HapticSwitch(checked = auto, onCheckedChange = { auto = it; WorkoutPrefs.setAutoRest(context, it) })
             }
         }
     }

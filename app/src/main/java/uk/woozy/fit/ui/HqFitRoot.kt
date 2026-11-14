@@ -85,6 +85,7 @@ private object Routes {
     const val NUTRIENTS = "nutrients"
     const val TARGETS = "targets"
     const val PAST = "past"
+    const val TRAINING = "training"
     const val PROGRAMMES = "programmes"
     const val NEW_EXERCISE = "newexercise"
     const val WORKOUT = "workout"
@@ -290,7 +291,16 @@ fun HqFitRoot(
                     onNewExercise = { nav.navigate(Routes.NEW_EXERCISE) },
                     onPast = { nav.navigate(Routes.PAST) },
                     onProgrammes = { nav.navigate(Routes.PROGRAMMES) },
+                    onTraining = { nav.navigate(Routes.TRAINING) },
                 )
+            }
+            composable(Routes.TRAINING) {
+                val doneDates by produceState(emptySet<String>(), db, calendar) {
+                    val zone = java.time.ZoneId.systemDefault()
+                    val from = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY).atStartOfDay(zone).toInstant().toEpochMilli()
+                    value = db.sessions().doneSince(from).map { java.time.Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate().toString() }.toSet()
+                }
+                TrainingScreen(calendar = calendar, doneDates = doneDates, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.PREVIEW}/$it") }, onHistory = { nav.navigate(Routes.PAST) })
             }
             composable(Routes.DIARY) {
                 DiaryScreen(db = db, onAdd = { meal, date -> nav.navigate("${Routes.ADD}/${meal.key}/$date") }, onNutrients = { nav.navigate("${Routes.NUTRIENTS}/$it") })

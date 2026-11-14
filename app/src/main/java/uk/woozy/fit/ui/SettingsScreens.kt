@@ -138,7 +138,7 @@ fun SettingsScreen(
                         HqText("Sunday check-in reminder", 16.sp, FontWeight.Medium)
                         HqText("Sunday 18:00, at most once a day", 12.sp, color = c.muted)
                     }
-                    androidx.compose.material3.Switch(checked = checkIn, onCheckedChange = {
+                    uk.woozy.fit.designsystem.HapticSwitch(checked = checkIn, onCheckedChange = {
                         checkIn = it
                         uk.woozy.fit.CheckInReminder.setEnabled(context, it)
                         if (it && android.os.Build.VERSION.SDK_INT >= 33) ask.launch(android.Manifest.permission.POST_NOTIFICATIONS)

@@ -122,7 +122,7 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
                         HqText("Back up every night", 16.sp, FontWeight.Medium)
                         HqText("Around 03:30. Keeps the last seven on the phone.", 12.sp, color = c.muted)
                     }
-                    Switch(checked = nightly, onCheckedChange = { nightly = it; BackupRunner.setNightly(context, it) })
+                    uk.woozy.fit.designsystem.HapticSwitch(checked = nightly, onCheckedChange = { nightly = it; BackupRunner.setNightly(context, it) })
                 }
                 HqText(folder?.let { "Copies go to the folder you chose." } ?: "Choose a folder (Google Drive, a USB drive, any folder) so a copy survives losing the phone.", 13.sp, color = c.muted)
                 HqPillButton(if (folder == null) "Choose folder" else "Change folder", style = PillStyle.Outline, onClick = { pickFolder.launch(null) })

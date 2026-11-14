@@ -36,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -98,6 +99,29 @@ fun GradientCard(
     val base = modifier
         .clip(RoundedCornerShape(if (c.flat) 22.dp else 18.dp))
         .background(Brush.linearGradient(listOf(c.gradientStart, c.gradientEnd)))
+        // A little texture, as on Everfit's top card: soft overlapping waves and circles.
+        .drawBehind {
+            val w = size.width
+            val h = size.height
+            val wave = androidx.compose.ui.graphics.Path().apply {
+                moveTo(w * 0.45f, 0f)
+                cubicTo(w * 0.62f, h * 0.30f, w * 0.80f, h * 0.02f, w, h * 0.34f)
+                lineTo(w, 0f)
+                close()
+            }
+            drawPath(wave, Color.White.copy(alpha = 0.07f))
+            val wave2 = androidx.compose.ui.graphics.Path().apply {
+                moveTo(0f, h * 0.78f)
+                cubicTo(w * 0.22f, h * 0.60f, w * 0.48f, h * 1.00f, w * 0.78f, h * 0.76f)
+                cubicTo(w * 0.90f, h * 0.68f, w * 0.96f, h * 0.70f, w, h * 0.66f)
+                lineTo(w, h)
+                lineTo(0f, h)
+                close()
+            }
+            drawPath(wave2, Color.Black.copy(alpha = 0.07f))
+            drawCircle(Color.White.copy(alpha = 0.06f), radius = h * 0.55f, center = androidx.compose.ui.geometry.Offset(w * 0.92f, h * 0.18f))
+            drawCircle(Color.White.copy(alpha = 0.04f), radius = h * 0.32f, center = androidx.compose.ui.geometry.Offset(w * 0.12f, h * 0.95f))
+        }
     Column(modifier = if (onClick != null) base.clickable(onClick = onClick) else base, content = content)
 }
 
@@ -344,6 +368,7 @@ fun SetRow(
     weightActive: Boolean = false,
     repsActive: Boolean = false,
 ) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val c = HqTheme.colors
     val value = if (done) c.primary else c.ink
     Row(
@@ -364,7 +389,10 @@ fun SetRow(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(if (done) (if (c.flat) c.primary else c.ink) else c.track)
-                .toggleable(value = done, role = Role.Checkbox, onValueChange = { onToggle() }),
+                .toggleable(value = done, role = Role.Checkbox, onValueChange = {
+                    haptic.performHapticFeedback(if (it) androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress else androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                    onToggle()
+                }),
             contentAlignment = Alignment.Center,
         ) {
             Icon(

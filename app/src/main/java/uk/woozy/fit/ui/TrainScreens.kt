@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -76,7 +79,58 @@ private val dayLine = DateTimeFormatter.ofPattern("EEE d MMM", Locale.UK)
 
 private fun ScheduledWorkoutEntity.localDate(): LocalDate = LocalDate.parse(date)
 
-/** Train: the week strip and upcoming list come from the calendar; tap a day to see the workout. */
+/** The Monday to Sunday strip: a circle per day (done, today, missed, planned). Tap a day to open its workout. */
+@Composable
+private fun WeekRow(monday: LocalDate, today: LocalDate, byDate: Map<String, List<ScheduledWorkoutEntity>>, doneDates: Set<String>, onOpen: (Long) -> Unit) {
+    val c = HqTheme.colors
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        (0..6).forEach { i ->
+            val day = monday.plusDays(i.toLong())
+            val isToday = day == today
+            val first = byDate[day.toString()].orEmpty().firstOrNull()
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .then(if (first != null) Modifier.clickable(role = Role.Button, onClickLabel = first.templateName) { onOpen(first.id) } else Modifier),
+            ) {
+                HqText(day.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.UK), 12.sp, FontWeight.Medium, if (isToday) c.primary else c.muted)
+                val isDone = first?.status == "done" || day.toString() in doneDates
+                val isMissed = !isDone && first != null && first.status == "planned" && day < today
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .then(
+                            when {
+                                isDone -> Modifier.background(if (c.flat) c.primary else c.protein)
+                                isToday -> Modifier.border(2.dp, c.primary, CircleShape)
+                                isMissed -> Modifier.border(2.dp, Color(0xFFE5484D), CircleShape)
+                                first != null -> Modifier.border(1.5.dp, c.primary.copy(alpha = 0.6f), CircleShape)
+                                else -> Modifier
+                            },
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    HqText(
+                        if (isDone) "\u2713" else day.dayOfMonth.toString(), 14.sp,
+                        if (isToday || isDone) FontWeight.Bold else FontWeight.Normal,
+                        when {
+                            isDone -> if (c.flat) c.onPrimary else Color.White
+                            isToday -> c.primary
+                            isMissed -> Color(0xFFE5484D)
+                            else -> c.ink
+                        },
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Train: kept short. The week card opens the full Training calendar; everything else is one tidy list. */
 @Composable
 fun TrainScreen(
     calendar: List<ScheduledWorkoutEntity>,
@@ -88,6 +142,7 @@ fun TrainScreen(
     onNewExercise: () -> Unit = {},
     onPast: () -> Unit = {},
     onProgrammes: () -> Unit = {},
+    onTraining: () -> Unit = {},
 ) {
     val c = HqTheme.colors
     val today = rememberToday()
@@ -104,57 +159,15 @@ fun TrainScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         ScreenTitle("Train")
-        HqCard(Modifier.fillMaxWidth()) {
+        HqCard(Modifier.fillMaxWidth(), onClick = onTraining) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    (0..6).forEach { i ->
-                        val day = monday.plusDays(i.toLong())
-                        val isToday = day == today
-                        val planned = byDate[day.toString()].orEmpty()
-                        val first = planned.firstOrNull()
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .then(if (first != null) Modifier.clickable(role = Role.Button, onClickLabel = first.templateName) { onOpen(first.id) } else Modifier),
-                        ) {
-                            HqText(day.dayOfWeek.getDisplayName(TextStyle.NARROW, Locale.UK), 12.sp, FontWeight.Medium, c.muted)
-                            val isDone = first?.status == "done" || day.toString() in doneDates
-                            val isMissed = !isDone && first != null && first.status == "planned" && day < today
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .then(
-                                        when {
-                                            isDone -> Modifier.background(if (c.flat) c.primary else c.protein)
-                                            isToday -> Modifier.border(2.dp, c.primary, CircleShape)
-                                            isMissed -> Modifier.border(2.dp, Color(0xFFE5484D), CircleShape)
-                                            first != null -> Modifier.border(1.5.dp, c.primary.copy(alpha = 0.6f), CircleShape)
-                                            else -> Modifier
-                                        },
-                                    ),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                HqText(
-                                    if (isDone) "\u2713" else day.dayOfMonth.toString(), 14.sp,
-                                    if (isToday || isDone) FontWeight.Bold else FontWeight.Normal,
-                                    when {
-                                        isDone -> if (c.flat) c.onPrimary else Color.White
-                                        isToday -> c.primary
-                                        isMissed -> Color(0xFFE5484D)
-                                        else -> c.ink
-                                    },
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    HqText("Training \uD83D\uDCAA", 18.sp, FontWeight.Bold, modifier = Modifier.weight(1f))
+                    HqText("\u203A", 22.sp, color = c.muted)
                 }
+                WeekRow(monday, today, byDate, doneDates, onOpen)
                 val weekAll = (0..6).flatMap { byDate[monday.plusDays(it.toLong()).toString()].orEmpty() }
                 val doneDays = (0..6).count { i -> val d = monday.plusDays(i.toLong()).toString(); d in doneDates || byDate[d].orEmpty().any { it.status == "done" } }
-                // A workout logged without a scheduled day still counts, so the total is days with a plan or a done workout.
                 val weekDays = (0..6).count { i -> val d = monday.plusDays(i.toLong()).toString(); d in doneDates || byDate[d].orEmpty().isNotEmpty() }
                 if (weekAll.isNotEmpty() || doneDays > 0) {
                     HqText("$doneDays of ${maxOf(weekDays, doneDays)} workouts done this week", 14.sp, FontWeight.Medium)
@@ -165,46 +178,115 @@ fun TrainScreen(
                 )
             }
         }
-
-        if (upcoming.isNotEmpty()) {
-            SectionLabel("Coming up")
-            HqCard(Modifier.fillMaxWidth()) {
-                upcoming.forEach { w ->
-                    val d = w.localDate()
-                    val moved = w.date != w.originalDate
-                    ListRow(
-                        icon = Icons.Rounded.FitnessCenter,
-                        title = w.templateName,
-                        caption = d.format(dayLine) + if (moved) " · moved from ${LocalDate.parse(w.originalDate).format(dayLine)}" else "",
-                        onClick = { onOpen(w.id) },
-                    )
-                }
-            }
-        }
-
-        if (c.flat) {
-            SectionLabel("Plan and history")
-            HqCard(Modifier.fillMaxWidth()) {
-                ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Pick the days for each workout and edit it", onClick = onProgrammes)
-                ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
-                ListRow(Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
-                ListRow(Icons.Rounded.CalendarMonth, "Past workouts", "Open one to fix a weight or rep", onClick = onPast)
-            }
-            SectionLabel("Build")
-            HqCard(Modifier.fillMaxWidth()) {
-                ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own and put it on the calendar", onClick = onNewWorkout)
-                ListRow(Icons.Rounded.FitnessCenter, "New exercise", "Add your own to the library", onClick = onNewExercise)
-            }
-        } else
         HqCard(Modifier.fillMaxWidth()) {
             ListRow(Icons.Rounded.CalendarMonth, "Programmes", "Pick the days for each workout and edit it", onClick = onProgrammes)
             ListRow(Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
             ListRow(Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
-            ListRow(Icons.Rounded.CalendarMonth, "Past workouts", "Open one to fix a weight or rep", onClick = onPast)
             ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own and put it on the calendar", onClick = onNewWorkout)
             ListRow(Icons.Rounded.FitnessCenter, "New exercise", "Add your own to the library", onClick = onNewExercise)
         }
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+/**
+ * The Training page, as in Everfit: the week strip, then every day with its workout card.
+ * Top right: reschedule (pick a missed or coming workout to move) and history (past workouts).
+ */
+@Composable
+fun TrainingScreen(
+    calendar: List<ScheduledWorkoutEntity>,
+    doneDates: Set<String>,
+    onBack: () -> Unit,
+    onOpen: (Long) -> Unit,
+    onHistory: () -> Unit,
+) {
+    val c = HqTheme.colors
+    val today = rememberToday()
+    val monday = remember(today) { today.with(DayOfWeek.MONDAY) }
+    val byDate = calendar.groupBy { it.date }
+    var menu by remember { mutableStateOf(false) }
+    val movable = calendar.filter { it.status == "planned" && it.localDate() >= today.minusDays(14) && it.localDate() <= today.plusDays(14) }.sortedBy { it.date }
+
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(c.track).clickable(role = Role.Button, onClickLabel = "Back", onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.ink, modifier = Modifier.size(22.dp)) }
+            Spacer(Modifier.weight(1f))
+            Box {
+                Box(
+                    Modifier.size(40.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "Reschedule") { menu = true },
+                    contentAlignment = Alignment.Center,
+                ) { androidx.compose.material3.Icon(Icons.Rounded.EventRepeat, contentDescription = "Reschedule", tint = c.primary, modifier = Modifier.size(26.dp)) }
+                androidx.compose.material3.DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    if (movable.isEmpty()) androidx.compose.material3.DropdownMenuItem(text = { HqText("Nothing to move", 14.sp, color = c.muted) }, onClick = { menu = false })
+                    movable.forEach { w ->
+                        val missed = w.localDate() < today
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { HqText(w.templateName + " \u00b7 " + w.localDate().format(dayLine) + if (missed) " (missed)" else "", 14.sp, color = if (missed) Color(0xFFE5484D) else c.ink) },
+                            onClick = { menu = false; onOpen(w.id) },
+                        )
+                    }
+                }
+            }
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).clickable(role = Role.Button, onClickLabel = "History", onClick = onHistory),
+                contentAlignment = Alignment.Center,
+            ) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.History, contentDescription = "History", tint = c.primary, modifier = Modifier.size(26.dp)) }
+        }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            ScreenTitle("Training")
+            HqCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { WeekRow(monday, today, byDate, doneDates, onOpen) } }
+            Spacer(Modifier.height(4.dp))
+            (0..20).forEach { i ->
+                val day = monday.plusDays(i.toLong())
+                val entries = byDate[day.toString()].orEmpty()
+                val loggedOnly = entries.isEmpty() && day.toString() in doneDates
+                Box(Modifier.fillMaxWidth().height(1.dp).background(c.hairline))
+                Row(Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(vertical = 10.dp), verticalAlignment = Alignment.Top) {
+                    Column(Modifier.width(56.dp)) {
+                        HqText(day.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.UK).uppercase(Locale.UK), 12.sp, FontWeight.SemiBold, if (day == today) c.primary else c.muted)
+                        HqText(day.format(DateTimeFormatter.ofPattern("dd", Locale.UK)), 16.sp, FontWeight.Medium, if (day == today) c.primary else c.muted)
+                    }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        entries.forEach { w ->
+                            val done = w.status == "done"
+                            val missed = !done && w.localDate() < today
+                            Row(
+                                Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                    .background(if (done) androidx.compose.ui.graphics.Brush.linearGradient(listOf(c.gradientStart, c.gradientEnd)) else androidx.compose.ui.graphics.Brush.linearGradient(listOf(c.track, c.track)))
+                                    .clickable(role = Role.Button) { onOpen(w.id) }.padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    SpacedTitle("\uD83C\uDFCB\uFE0F " + w.templateName, color = if (done) c.onGradient else c.ink, size = 15.sp)
+                                    HqText(
+                                        when { done -> "Completed"; missed -> "Missed"; w.date != w.originalDate -> "Moved from " + LocalDate.parse(w.originalDate).format(dayLine); else -> "Planned" },
+                                        13.sp, color = when { done -> c.onGradient.copy(alpha = 0.85f); missed -> Color(0xFFE5484D); else -> c.muted },
+                                    )
+                                }
+                                if (done) HqText("\u2713", 18.sp, FontWeight.Bold, c.onGradient)
+                            }
+                        }
+                        if (loggedOnly) Row(
+                            Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                .background(androidx.compose.ui.graphics.Brush.linearGradient(listOf(c.gradientStart, c.gradientEnd))).padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                SpacedTitle("\uD83C\uDFCB\uFE0F Workout", color = c.onGradient, size = 15.sp)
+                                HqText("Completed", 13.sp, color = c.onGradient.copy(alpha = 0.85f))
+                            }
+                            HqText("\u2713", 18.sp, FontWeight.Bold, c.onGradient)
+                        }
+                    }
+                }
+            }
+            Box(Modifier.fillMaxWidth().height(1.dp).background(c.hairline))
+            Spacer(Modifier.height(24.dp))
+        }
     }
 }
 

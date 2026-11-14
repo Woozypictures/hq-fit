@@ -183,7 +183,7 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     HqText("Remind me", 16.sp, FontWeight.Medium)
-                    Switch(checked = reminder.enabled, onCheckedChange = { saveReminder(reminder.copy(enabled = it)) })
+                    uk.woozy.fit.designsystem.HapticSwitch(checked = reminder.enabled, onCheckedChange = { saveReminder(reminder.copy(enabled = it)) })
                 }
                 val days = DayOfWeek.entries
                 SegmentedChoice(
