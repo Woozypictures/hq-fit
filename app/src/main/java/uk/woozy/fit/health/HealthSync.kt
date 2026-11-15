@@ -10,17 +10,9 @@ import java.time.Instant
 
 /** Sends HQ Fit weights, finished workouts, food and water to Health Connect and pulls other apps' weights in. */
 object HealthSync {
-    /**
-     * When a diary entry happened, for Health Connect. Normally the moment it was logged; but food added for another
-     * day (yesterday's dinner, typed in this morning) is placed on that day, at a usual time for the meal, so it
-     * counts towards the right day in Samsung Health and HQ.
-     */
-    internal fun mealTime(date: String, meal: String, createdMs: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Long {
-        val day = runCatching { java.time.LocalDate.parse(date) }.getOrNull() ?: return createdMs
-        if (Instant.ofEpochMilli(createdMs).atZone(zone).toLocalDate() == day) return createdMs
-        val hour = when (meal) { "breakfast" -> 8; "lunch" -> 13; "dinner" -> 19; else -> 16 }
-        return day.atTime(hour, 0).atZone(zone).toInstant().toEpochMilli()
-    }
+    /** See [uk.woozy.fit.model.MealTime]. */
+    internal fun mealTime(date: String, meal: String, createdMs: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): Long =
+        uk.woozy.fit.model.MealTime.at(date, meal, createdMs, zone)
 
     private fun prefs(c: Context) = c.getSharedPreferences("health", Context.MODE_PRIVATE)
 
