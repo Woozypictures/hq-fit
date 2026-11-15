@@ -41,6 +41,8 @@ data class WeightEntryEntity(
     val kg: Double,
     /** "manual", "scale" or "import". */
     val source: String,
+    /** Body fat %, when known (desktop weigh-ins can carry it). Added in schema 7. */
+    val fatPct: Double? = null,
 )
 
 @Entity(tableName = "water_entry", indices = [Index("epochMs")])

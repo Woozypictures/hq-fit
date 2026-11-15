@@ -6,6 +6,7 @@ import uk.woozy.fit.data.db.Diary
 import uk.woozy.fit.data.db.ExerciseEntity
 import uk.woozy.fit.data.db.FoodEntity
 import uk.woozy.fit.data.db.WaterEntryEntity
+import uk.woozy.fit.data.db.WeightEntryEntity
 import uk.woozy.fit.model.Meal
 import uk.woozy.fit.model.Nutrients
 import uk.woozy.fit.data.db.HqFitDatabase
@@ -95,6 +96,10 @@ object DeskSync {
         out.put("tmp", JSONObject().also { o -> tmpMap(db).forEach { (k, v) -> o.put(k, v) } })
         db.sessions().active()?.let { out.put("active", JSONObject().put("name", it.name).put("start", it.startedMs)) }
         out.put("nutrition", nutrition(db, nowMs, today, zone))
+        val wFrom = today.minusDays(400).atStartOfDay(zone).toInstant().toEpochMilli()
+        out.put("body", JSONObject().put("weights", JSONArray(db.weights().since(wFrom).map { w ->
+            JSONArray().put(w.epochMs).put(w.kg).put(w.fatPct ?: JSONObject.NULL).put(w.id).put(w.source)
+        })))
         return out
     }
 
@@ -182,6 +187,13 @@ object DeskSync {
                         Diary.changeAmount(db, eid, dblOrNull(op, "g") ?: e.grams ?: 0.0, Meal.fromKey(op.optString("meal", e.meal)))
                     }
                     "food.delete" -> db.diary().delete(op.getLong("eid"))
+                    "weight.add" -> {
+                        val kg = op.getDouble("kg"); require(kg in 20.0..400.0) { "weight out of range" }
+                        val at = op.optLong("t", nowMs)
+                        if (db.weights().countBetween(at - 60_000L, at + 60_000L) == 0)
+                            db.weights().insert(WeightEntryEntity(epochMs = at, kg = Math.round(kg * 10.0) / 10.0, source = "manual", fatPct = dblOrNull(op, "fat")))
+                    }
+                    "weight.delete" -> db.weights().delete(op.getLong("wid"))
                     "food.create" -> food(db, JSONObject().put("food", op.getJSONObject("food").put("src", "custom")), nowMs)
                     "water.add" -> {
                         val ml = op.getInt("ml")

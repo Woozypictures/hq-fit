@@ -95,6 +95,9 @@ interface WeightDao {
 
     @Query("DELETE FROM weight_entry WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM weight_entry WHERE epochMs >= :from ORDER BY epochMs")
+    suspend fun since(from: Long): List<WeightEntryEntity>
 }
 
 @Dao
