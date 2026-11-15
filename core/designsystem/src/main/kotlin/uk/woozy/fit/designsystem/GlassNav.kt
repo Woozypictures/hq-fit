@@ -41,6 +41,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -365,7 +366,10 @@ fun GlassTopFade(backdrop: GlassBackdrop, bg: Color, modifier: Modifier = Modifi
 
 /** Small frosted pop-up that appears briefly (for example "Last refreshed 18:27") and fades away. */
 @Composable
-fun GlassToast(text: String, visible: Boolean, backdrop: GlassBackdrop, style: GlassStyle, modifier: Modifier = Modifier) {
+fun GlassToast(
+    text: String, visible: Boolean, backdrop: GlassBackdrop, style: GlassStyle, modifier: Modifier = Modifier,
+    action: String? = null, onAction: () -> Unit = {},
+) {
     androidx.compose.animation.AnimatedVisibility(
         visible = visible, modifier = modifier,
         enter = androidx.compose.animation.fadeIn(tween(180)) + androidx.compose.animation.scaleIn(tween(180), initialScale = 0.92f),
@@ -378,7 +382,18 @@ fun GlassToast(text: String, visible: Boolean, backdrop: GlassBackdrop, style: G
                 .background(if (dark) Color(0xFFF2F2F0) else Color(0xFF1C1D1F)).padding(horizontal = 20.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = if (dark) Color(0xFF1C1D1F) else Color.White))
+            val fg = if (dark) Color(0xFF1C1D1F) else Color.White
+            if (action == null) Text(text, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = fg))
+            else androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Medium, color = fg))
+                androidx.compose.foundation.layout.Spacer(Modifier.size(14.dp))
+                Text(
+                    action, style = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold, color = fg),
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                        .then(Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onAction))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
         }
     }
 }

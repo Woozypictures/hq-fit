@@ -472,6 +472,7 @@ fun NumberKeypad(
     onKey: (KeypadKey) -> Unit,
     stepLabel: String,
     modifier: Modifier = Modifier,
+    showSteps: Boolean = true,
 ) {
     val c = HqTheme.colors
     Column(
@@ -495,9 +496,13 @@ fun NumberKeypad(
             KeyIcon(Icons.AutoMirrored.Rounded.Backspace, "Delete", Modifier.weight(1f)) { onKey(KeypadKey.Backspace) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            KeyIcon(Icons.Rounded.Remove, "Minus $stepLabel", Modifier.weight(1f)) { onKey(KeypadKey.Minus) }
-            KeyIcon(Icons.Rounded.Add, "Plus $stepLabel", Modifier.weight(1f)) { onKey(KeypadKey.Plus) }
-            HqPillButton("Done", onClick = { onKey(KeypadKey.Done) }, modifier = Modifier.weight(1f))
+            if (showSteps) {
+                KeyIcon(Icons.Rounded.Remove, "Minus $stepLabel", Modifier.weight(1f)) { onKey(KeypadKey.Minus) }
+                KeyIcon(Icons.Rounded.Add, "Plus $stepLabel", Modifier.weight(1f)) { onKey(KeypadKey.Plus) }
+                HqPillButton("Done", onClick = { onKey(KeypadKey.Done) }, modifier = Modifier.weight(1f))
+            } else {
+                HqPillButton("Done", onClick = { onKey(KeypadKey.Done) }, modifier = Modifier.fillMaxWidth())
+            }
         }
     }
 }

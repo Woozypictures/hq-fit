@@ -85,6 +85,9 @@
             android:name=".RestAlarmReceiver"
             android:exported="false" />
         <receiver
+            android:name=".RestActionReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".BackupReceiver"
             android:exported="false">
             <intent-filter>

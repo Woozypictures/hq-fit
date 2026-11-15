@@ -83,6 +83,7 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
     val c = HqTheme.colors
     var step by remember { mutableStateOf(WorkoutPrefs.weightStep(context)) }
     var auto by remember { mutableStateOf(WorkoutPrefs.autoRest(context)) }
+    var stepKeys by remember { mutableStateOf(WorkoutPrefs.stepKeys(context)) }
     SettingsPage("Workout", onBack) {
         SectionLabel("Weight step on the keypad")
         SegmentedChoice(
@@ -96,6 +97,15 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
                     HqText("Uses the rest time in the workout. Off means ticking a set starts nothing.", 12.sp, color = c.muted)
                 }
                 uk.woozy.fit.designsystem.HapticSwitch(checked = auto, onCheckedChange = { auto = it; WorkoutPrefs.setAutoRest(context, it) })
+            }
+        }
+        HqCard(Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    HqText("Show - and + on the keypad", 16.sp, FontWeight.Medium)
+                    HqText("Step the weight or reps up and down. Off keeps the keypad to numbers and Done.", 12.sp, color = c.muted)
+                }
+                uk.woozy.fit.designsystem.HapticSwitch(checked = stepKeys, onCheckedChange = { stepKeys = it; WorkoutPrefs.setStepKeys(context, it) })
             }
         }
     }

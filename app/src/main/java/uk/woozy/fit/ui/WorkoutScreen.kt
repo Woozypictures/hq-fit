@@ -117,6 +117,11 @@ private fun clock(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
+/** A short crisp tick (Android's CONFIRM where available), for finishing an exercise or a section. */
+internal fun tick(v: android.view.View) {
+    v.performHapticFeedback(if (Build.VERSION.SDK_INT >= 30) android.view.HapticFeedbackConstants.CONFIRM else android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+}
+
 private data class Editing(val setId: Long, val weight: Boolean, val buffer: String, val fresh: Boolean)
 
 /**
@@ -141,7 +146,7 @@ fun ActiveWorkoutScreen(
         view.keepScreenOn = true
         onDispose { view.keepScreenOn = false }
     }
-    BackHandler(onBack = onLeave)
+    var confirmLeave by remember { mutableStateOf(false) }
 
     val session by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, sessionId) { value = db.sessions().get(sessionId) }
     val setsFlow = remember(sessionId) { db.sessions().observeSets(sessionId) }
@@ -162,6 +167,7 @@ fun ActiveWorkoutScreen(
     }
     val context = LocalContext.current
     val weightStep = remember { WorkoutPrefs.weightStep(context) }
+    val stepKeys = remember { WorkoutPrefs.stepKeys(context) }
     var restEnd by remember { mutableLongStateOf(RestTimer.endMs(context).takeIf { it > System.currentTimeMillis() } ?: 0L) }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var asked by remember { mutableStateOf(false) }
@@ -203,6 +209,10 @@ fun ActiveWorkoutScreen(
     var confirmDiscard by remember { mutableStateOf(false) }
     var lastDeleted by remember { mutableStateOf<SetLogEntity?>(null) }
     val isDone = session?.status == "done"
+    BackHandler { if (isDone) onLeave() else confirmLeave = true }
+    var pendingDelete by remember { mutableStateOf<SetLogEntity?>(null) }
+    // The undo pill shows for a few seconds after a set is deleted, then goes.
+    LaunchedEffect(lastDeleted) { if (lastDeleted != null) { delay(4000); lastDeleted = null } }
 
     fun toggle(set: SetLogEntity) {
         scope.launch {
@@ -221,7 +231,20 @@ fun ActiveWorkoutScreen(
                         asked = true
                         askNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
-                    RestTimer.start(context, restEnd, set.exerciseName)
+                    // Tell the notification what comes next: the next unticked set (this exercise first), its weight and reps.
+                    val order = sets.sortedWith(compareBy({ it.position }, { it.setIndex }))
+                    val nx = order.firstOrNull { it.id != set.id && !it.done && it.position == set.position }
+                        ?: order.firstOrNull { it.id != set.id && !it.done && it.position > set.position }
+                    val nextLine = nx?.let { n ->
+                        val of = sets.count { it.position == n.position }
+                        val load = if (n.durationSec != null) formatDuration(n.durationSec!!)
+                            else listOfNotNull((n.weightKg ?: prevVals[n.exerciseId to n.setIndex]?.first ?: set.weightKg)?.let { "${NumberEntry.format(it)} kg" },
+                                (n.reps ?: prevVals[n.exerciseId to n.setIndex]?.second ?: n.targetRepsMax)?.let { "$it reps" }).joinToString(" x ")
+                        "Set ${n.setIndex} of $of" + (if (load.isNotEmpty()) " \u00b7 $load" else "")
+                    } ?: "Last set done. Finish when ready."
+                    val ticked = sets.count { it.done } + 1
+                    RestTimer.start(context, restEnd, nx?.exerciseName ?: set.exerciseName, next = nextLine,
+                        progress = "${session?.name ?: "Workout"} \u00b7 $ticked of ${sets.size} sets")
                 }
             }
         }
@@ -335,15 +358,15 @@ fun ActiveWorkoutScreen(
                         db.sessions().insertSet(last.copy(id = 0, setIndex = last.setIndex + 1, reps = null, done = false, doneAtMs = null))
                     }
                 },
-                onDeleteLast = { if (group.size > 1) scope.launch { db.sessions().deleteSet(group.last().id) } },
+                onDeleteLast = { if (group.size > 1) { val gone = group.last(); lastDeleted = gone; scope.launch { db.sessions().deleteSet(gone.id) } } },
                 onPick = { mode -> picking = first.position to mode },
-                onDeleteSet = { set -> lastDeleted = set; scope.launch { db.sessions().deleteSet(set.id) } },
+                onDeleteSet = { set -> pendingDelete = set },
                 onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
                 onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
                 onInfo = { infoFor = first.exerciseName },
                 onHistory = { onHistory(first.exerciseId) },
                 onNote = { noteFor = first.position to first.note },
-                onMarkAll = { scope.launch { markAllDone(db, group) } },
+                onMarkAll = { tick(view); scope.launch { markAllDone(db, group) } },
             )
         }
     }
@@ -396,14 +419,6 @@ fun ActiveWorkoutScreen(
             }
         }
 
-        lastDeleted?.let { gone ->
-            Row(Modifier.fillMaxWidth().background(c.card).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                HqText("Set deleted", 14.sp, color = c.muted, modifier = Modifier.weight(1f))
-                TextButton(onClick = { scope.launch { db.sessions().restoreSet(gone); lastDeleted = null } }) { HqText("Undo", 14.sp, FontWeight.SemiBold, c.primary) }
-                TextButton(onClick = { lastDeleted = null }) { HqText("Dismiss", 14.sp, color = c.muted) }
-            }
-        }
-
         androidx.compose.foundation.pager.HorizontalPager(
             state = pager,
             modifier = Modifier.weight(1f).glassSource(backdrop),
@@ -451,9 +466,19 @@ fun ActiveWorkoutScreen(
                                 val allDone = pg.all { g -> g.all { it.done } }
                                 var wasDone by remember { mutableStateOf(allDone) }
                                 LaunchedEffect(allDone) {
-                                    if (allDone && !wasDone && i < pages.lastIndex) {
+                                    if (allDone && !wasDone) {
+                                        tick(view)
                                         delay(500)
-                                        inner.animateScrollToPage(i + 1)
+                                        if (i < pages.lastIndex) inner.animateScrollToPage(i + 1)
+                                        else {
+                                            // Last exercise of the section done: complete it and glide on to the next section, already started.
+                                            phases[sec] = SectionPhase.COMPLETE
+                                            if (page < sectionKeys.lastIndex) {
+                                                delay(1200)
+                                                pager.animateScrollToPage(page + 1)
+                                                sectionKeys.getOrNull(page + 1)?.let { nx -> if (phases[nx] == SectionPhase.INTRO) phases[nx] = SectionPhase.ACTIVE }
+                                            }
+                                        }
                                     }
                                     wasDone = allDone
                                 }
@@ -464,7 +489,7 @@ fun ActiveWorkoutScreen(
                                     if (pg.size > 1) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
                                     pg.forEach { g -> androidx.compose.runtime.key(g.first().position) { ExerciseBlock(g) } }
                                     if (pg.size > 1 && !allDone) {
-                                        TextButton(onClick = { scope.launch { pg.forEach { g -> markAllDone(db, g) } } }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                                        TextButton(onClick = { tick(view); scope.launch { pg.forEach { g -> markAllDone(db, g) } } }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
                                             HqText("Mark all supersets", 14.sp, FontWeight.SemiBold, c.primary)
                                         }
                                     }
@@ -472,8 +497,12 @@ fun ActiveWorkoutScreen(
                                         HqPillButton(
                                             "Complete section",
                                             onClick = {
+                                                tick(view)
                                                 phases[sec] = SectionPhase.COMPLETE
-                                                if (page < sectionKeys.lastIndex) scope.launch { delay(1200); pager.animateScrollToPage(page + 1) }
+                                                if (page < sectionKeys.lastIndex) scope.launch {
+                                                    delay(1200); pager.animateScrollToPage(page + 1)
+                                                    sectionKeys.getOrNull(page + 1)?.let { nx -> if (phases[nx] == SectionPhase.INTRO) phases[nx] = SectionPhase.ACTIVE }
+                                                }
                                             },
                                             modifier = Modifier.fillMaxWidth(),
                                         )
@@ -514,7 +543,7 @@ fun ActiveWorkoutScreen(
                     )
                 }
             }
-            NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "${NumberEntry.format(weightStep)} kg" else "1 rep")
+            NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "${NumberEntry.format(weightStep)} kg" else "1 rep", showSteps = stepKeys)
         } else {
             Spacer(Modifier.navigationBarsPadding())
         }
@@ -529,6 +558,17 @@ fun ActiveWorkoutScreen(
                 modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars).padding(bottom = 16.dp),
             )
         }
+        // Same pill as "Last refreshed": a few seconds, Undo only.
+        var undoText by remember { mutableStateOf("Set deleted") }
+        lastDeleted?.let { undoText = "Set ${it.setIndex} deleted" }
+        val gStyleT = remember(c) { uk.woozy.fit.designsystem.glassStyle(c.dark, c.ink, c.muted) }
+        uk.woozy.fit.designsystem.GlassToast(
+            undoText, lastDeleted != null, backdrop, gStyleT,
+            Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
+                .padding(bottom = if (editing != null) 330.dp else if (restLeft > 0 && c.flat) 96.dp else 24.dp),
+            action = "Undo",
+            onAction = { lastDeleted?.let { gone -> scope.launch { db.sessions().restoreSet(gone) } }; lastDeleted = null },
+        )
     }
 
     picking?.let { (position, mode) ->
@@ -549,6 +589,29 @@ fun ActiveWorkoutScreen(
         )
     }
 
+    pendingDelete?.let { set ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { HqText("Delete set ${set.setIndex}?", 18.sp, FontWeight.SemiBold) },
+            text = { HqText(set.exerciseName, 14.sp, color = c.muted) },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDelete = null; lastDeleted = set
+                    scope.launch { db.sessions().deleteSet(set.id) }
+                }) { HqText("Delete", 15.sp, FontWeight.SemiBold, c.warn) }
+            },
+            dismissButton = { TextButton(onClick = { pendingDelete = null }) { HqText("Keep", 15.sp, color = c.muted) } },
+        )
+    }
+    if (confirmLeave) {
+        AlertDialog(
+            onDismissRequest = { confirmLeave = false },
+            title = { HqText("Leave the workout?", 18.sp, FontWeight.SemiBold) },
+            text = { HqText("It keeps running. Resume it from Today.", 14.sp, color = c.muted) },
+            confirmButton = { TextButton(onClick = { confirmLeave = false; onLeave() }) { HqText("Leave", 15.sp, FontWeight.SemiBold, c.primary) } },
+            dismissButton = { TextButton(onClick = { confirmLeave = false }) { HqText("Stay", 15.sp, color = c.muted) } },
+        )
+    }
     if (confirmFinish) {
         AlertDialog(
             onDismissRequest = { confirmFinish = false; scope.launch { pager.animateScrollToPage((finishIndex - 1).coerceAtLeast(0)) } },
@@ -620,17 +683,14 @@ private fun ExerciseCard(
                     if (target.isNotEmpty()) HqText(target, 13.sp, color = c.muted)
                 }
                 }
-                if (first.supersetGroup != null) HqText("Superset", 12.sp, FontWeight.SemiBold, c.primary)
             }
             ExerciseIconRow(
                 hasNote = first.note.isNotBlank(),
                 onHistory = onHistory, onNote = onNote,
                 onReplace = { onPick(PickMode.REPLACE) },
                 onAdd = onPick, onInfo = onInfo, onMarkAll = onMarkAll,
+                onAddSet = onAddSet, onRemoveSet = if (group.size > 1 && first.durationSec == null) onDeleteLast else null,
             )
-            if (first.note.isNotBlank()) {
-                HqText(first.note, 13.sp, color = c.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 2.dp))
-            }
             if (first.durationSec != null) {
                 group.forEach { set -> TimedRow(set, onToggle) }
             } else {
@@ -641,7 +701,8 @@ private fun ExerciseCard(
                         val e = editing?.takeIf { it.setId == set.id }
                         var setMenu by remember { mutableStateOf(false) }
                         val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
-                            if (v == SwipeToDismissBoxValue.EndToStart && group.size > 1) { onDeleteSet(set); true } else false
+                            if (v == SwipeToDismissBoxValue.EndToStart && group.size > 1) onDeleteSet(set)
+                                false // the card springs back; a dialog asks before anything is deleted
                         })
                         SwipeToDismissBox(
                             state = dismiss,
@@ -681,10 +742,6 @@ private fun ExerciseCard(
                             }
                         }
                     }
-                }
-                Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = onAddSet) { HqText("Add set", 14.sp, FontWeight.SemiBold, c.primary) }
-                    if (group.size > 1) TextButton(onClick = onDeleteLast) { HqText("Delete last set", 14.sp, color = c.muted) }
                 }
             }
             if (group.any { !it.done }) {
@@ -748,22 +805,30 @@ private fun TimedRow(set: SetLogEntity, onToggle: (SetLogEntity) -> Unit) {
     }
 }
 
-/** After finishing: how long, how much, any records, and how it felt. */
+/** After finishing (Everfit style): how it felt on a slider first, then time, volume, records and the sets. */
 @Composable
 fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit, onEdit: () -> Unit = {}) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
+    val view = LocalView.current
     val summary by produceState<SessionSummary?>(null, sessionId) { value = Sessions.summary(db, sessionId, System.currentTimeMillis()) }
-    var feeling by remember { mutableStateOf<Int?>(null) }
+    val session by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, sessionId) { value = db.sessions().get(sessionId) }
+    var feeling by remember { mutableStateOf<Float?>(null) }
+    LaunchedEffect(session) { if (feeling == null) session?.feeling?.let { feeling = it.toFloat() } }
     val sets by produceState(emptyList<SetLogEntity>(), sessionId) { value = db.sessions().sets(sessionId).filter { it.done } }
     BackHandler(onBack = onDone)
+    val zone = java.time.ZoneId.systemDefault()
+    val started = session?.startedMs?.let { java.time.Instant.ofEpochMilli(it).atZone(zone) }
 
     Column(Modifier.fillMaxSize()) {
         GradientHeader {
             Column(Modifier.statusBarsPadding().padding(horizontal = 20.dp, vertical = 24.dp)) {
-                HqText("WORKOUT COMPLETE", 12.sp, FontWeight.SemiBold, c.onGradient)
+                HqText(
+                    (started?.format(java.time.format.DateTimeFormatter.ofPattern("EEEE, d MMM", java.util.Locale.UK)) ?: "Workout complete").uppercase(),
+                    12.sp, FontWeight.SemiBold, c.onGradient.copy(alpha = 0.8f), letterSpacing = 1.sp,
+                )
                 Spacer(Modifier.height(6.dp))
-                SpacedTitle(summary?.name ?: "", color = c.onGradient, size = 20.sp)
+                SpacedTitle(summary?.name ?: "", color = c.onGradient, size = 22.sp)
             }
         }
         val s = summary
@@ -773,10 +838,55 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
         ) {
             if (s != null) {
                 HqCard(Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Stat("Time", clock(s.durationMs))
-                        Stat("Sets", "${s.setsDone}/${s.setsTotal}")
-                        Stat("Volume", "${formatWhole(s.volumeKg)} kg")
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
+                        HqText("How was the workout?", 17.sp, FontWeight.SemiBold)
+                        val v = feeling ?: 3f
+                        val words = listOf("Very easy", "Easy", "Just right", "Hard", "All out")
+                        Spacer(Modifier.height(6.dp))
+                        HqText(if (feeling == null) "Slide to rate" else words[(v.toInt() - 1).coerceIn(0, 4)], 14.sp, FontWeight.Medium, if (feeling == null) c.muted else c.primary)
+                        androidx.compose.material3.Slider(
+                            value = v,
+                            onValueChange = { nv ->
+                                if (feeling?.toInt() != nv.toInt()) view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                                feeling = nv
+                            },
+                            onValueChangeFinished = { feeling?.let { f -> scope.launch { db.sessions().setFeeling(sessionId, f.toInt()) } } },
+                            valueRange = 1f..5f, steps = 3,
+                            colors = androidx.compose.material3.SliderDefaults.colors(
+                                thumbColor = c.primary, activeTrackColor = c.primary, inactiveTrackColor = c.track,
+                                activeTickColor = c.onPrimary.copy(alpha = 0.6f), inactiveTickColor = c.muted.copy(alpha = 0.5f),
+                            ),
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            HqText("Easy", 12.sp, color = c.muted); HqText("All out", 12.sp, color = c.muted)
+                        }
+                    }
+                }
+                HqCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(vertical = 18.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            HqText("${s.durationMs / 60_000}", 34.sp, FontWeight.Bold)
+                            Spacer(Modifier.width(10.dp))
+                            HqText("Training min", 15.sp, color = c.muted)
+                        }
+                        if (started != null) {
+                            val end = session?.endedMs?.let { java.time.Instant.ofEpochMilli(it).atZone(zone) }
+                            val hm = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+                            Spacer(Modifier.height(6.dp))
+                            HqText(started.format(java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.UK)) + "  \u00b7  " + started.format(hm) + (end?.let { " - " + it.format(hm) } ?: ""), 14.sp, color = c.muted)
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        Row(Modifier.fillMaxWidth().padding(horizontal = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Stat("Sets", "${s.setsDone}/${s.setsTotal}")
+                            Stat("Exercises", "${sets.map { it.position }.distinct().size}")
+                            Stat("Records", "${s.records.size}")
+                        }
+                    }
+                }
+                if (s.volumeKg > 0) HqCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                        HqText("You lifted ${formatWhole(s.volumeKg)} kg", 18.sp, FontWeight.Bold, c.primary)
+                        HqText(liftedLike(s.volumeKg), 14.sp, color = c.muted)
                     }
                 }
                 if (s.records.isNotEmpty()) {
@@ -786,15 +896,13 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
                             Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                                 HqText(r.exerciseName, 16.sp, FontWeight.SemiBold, maxLines = 2)
                                 HqText(
-                                    r.records.joinToString(" · ") { it.label } +
+                                    r.records.joinToString(" \u00b7 ") { it.label } +
                                         "  (${NumberEntry.format(r.best.weightKg)} kg x ${r.best.reps})",
                                     13.sp, color = c.primary,
                                 )
                             }
                         }
                     }
-                } else {
-                    HqText("No new records this time. The first session of a lift sets the baseline.", 14.sp, color = c.muted)
                 }
                 if (sets.isNotEmpty()) {
                     SectionLabel("Workout details")
@@ -804,7 +912,7 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
                                 Column(Modifier.padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     HqText(group.first().exerciseName, 15.sp, FontWeight.SemiBold)
                                     HqText(
-                                        group.joinToString("  ·  ") { st ->
+                                        group.joinToString("  \u00b7  ") { st ->
                                             val secs = st.durationSec
                                             if (secs != null) "${secs / 60} min"
                                             else "${NumberEntry.format(st.weightKg ?: 0.0)} kg x ${st.reps ?: 0}"
@@ -816,15 +924,6 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
                         }
                     }
                 }
-                SectionLabel("How was it?")
-                SegmentedChoice(
-                    options = listOf("1", "2", "3", "4", "5"),
-                    selectedIndex = (feeling ?: 0) - 1,
-                    onSelect = {
-                        feeling = it + 1
-                        scope.launch { db.sessions().setFeeling(sessionId, it + 1) }
-                    },
-                )
             }
         }
         Column(Modifier.navigationBarsPadding().padding(16.dp)) {
@@ -832,6 +931,14 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
             HqPillButton("Edit sets", onClick = onEdit, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), style = PillStyle.Outline)
         }
     }
+}
+
+/** A light comparison for the volume line, like Everfit's huskies. */
+private fun liftedLike(kg: Double): String {
+    val things = listOf(5000.0 to "elephant", 1500.0 to "family car", 450.0 to "grand piano", 230.0 to "vending machine", 20.0 to "Siberian husky")
+    val (w, name) = things.firstOrNull { kg >= it.first * 2 } ?: things.last()
+    val n = kotlin.math.round(kg / w).toInt().coerceAtLeast(1)
+    return "That's about $n ${if (n == 1) name else if (name.endsWith("y") && !name.endsWith("ey")) name.dropLast(1) + "ies" else name + "s"}."
 }
 
 @Composable
@@ -1004,6 +1111,8 @@ private fun ExerciseIconRow(
     onAdd: (PickMode) -> Unit,
     onInfo: () -> Unit,
     onMarkAll: () -> Unit,
+    onAddSet: () -> Unit,
+    onRemoveSet: (() -> Unit)?,
 ) {
     val c = HqTheme.colors
     var addMenu by remember { mutableStateOf(false) }
@@ -1022,11 +1131,13 @@ private fun ExerciseIconRow(
         Box {
             Tool(Icons.Rounded.Add, "Add exercise", onClick = { addMenu = true })
             DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                DropdownMenuItem(text = { HqText("Add set", 15.sp) }, onClick = { addMenu = false; onAddSet() })
                 listOf("Add exercise before" to PickMode.BEFORE, "Add exercise after" to PickMode.AFTER, "Add superset" to PickMode.SUPERSET).forEach { (label, mode) ->
                     DropdownMenuItem(text = { HqText(label, 15.sp) }, onClick = { addMenu = false; onAdd(mode) })
                 }
             }
         }
+        if (onRemoveSet != null) Tool(androidx.compose.material.icons.Icons.Rounded.Remove, "Remove last set", onClick = onRemoveSet)
         Box {
             Tool(Icons.Rounded.MoreVert, "More options", onClick = { moreMenu = true })
             DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {

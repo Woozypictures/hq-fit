@@ -36,10 +36,15 @@ object RestTimer {
     fun startMs(c: Context): Long = prefs(c).getLong("start", 0L)
 
     /** [extend] is +15s on a running rest (keeps the start); a new rest from a ticked set always restarts the progress line. */
-    fun start(c: Context, endMs: Long, exercise: String, extend: Boolean = false) {
+    fun start(c: Context, endMs: Long, exercise: String, extend: Boolean = false, next: String? = null, progress: String? = null) {
         val now = System.currentTimeMillis()
         val running = extend && endMs(c) > now
-        val ed = prefs(c).edit().putLong("end", endMs)
+        val p = prefs(c)
+        // +15s keeps what the notification said about the next set.
+        val title = if (running) p.getString("ex", exercise) ?: exercise else exercise
+        val nextLine = if (running && next == null) p.getString("next", null) else next
+        val progLine = if (running && progress == null) p.getString("prog", null) else progress
+        val ed = p.edit().putLong("end", endMs).putString("ex", title).putString("next", nextLine).putString("prog", progLine)
         if (!running) ed.putLong("start", now)
         ed.apply()
         ensureChannels(c)
@@ -50,8 +55,13 @@ object RestTimer {
         )
         val n = NotificationCompat.Builder(c, CHANNEL_COUNT)
             .setSmallIcon(R.drawable.ic_notify)
-            .setContentTitle("Rest")
-            .setContentText(exercise)
+            .setContentTitle("Rest · next: $title")
+            .setContentText(nextLine ?: "Next set when the timer ends")
+            .setSubText(progLine)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(listOfNotNull(nextLine, progLine).joinToString("\n").ifEmpty { "Next set when the timer ends" }))
+            .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
+            .addAction(0, "+15s", action(c, "add"))
+            .addAction(0, "Skip rest", action(c, "skip"))
             .setUsesChronometer(true)
             .setChronometerCountDown(true)
             .setWhen(endMs)
@@ -85,8 +95,8 @@ object RestTimer {
         )
         val n = NotificationCompat.Builder(c, CHANNEL_DONE)
             .setSmallIcon(R.drawable.ic_notify)
-            .setContentTitle("Rest over")
-            .setContentText("Next set")
+            .setContentTitle("Rest over: ${prefs(c).getString("ex", null) ?: "next set"}")
+            .setContentText(prefs(c).getString("next", null) ?: "Time for the next set")
             .setAutoCancel(true)
             .setTimeoutAfter(15_000)
             .setContentIntent(open)
@@ -96,6 +106,12 @@ object RestTimer {
         (c.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
             ?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 250, 120, 250), -1))
     }
+
+    private fun action(c: Context, what: String): PendingIntent =
+        PendingIntent.getBroadcast(
+            c, if (what == "add") 2 else 3, Intent(c, RestActionReceiver::class.java).setAction("uk.woozy.fit.rest.$what"),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
 
     private fun alarmIntent(c: Context): PendingIntent =
         PendingIntent.getBroadcast(
@@ -113,6 +129,19 @@ object RestTimer {
             NotificationChannel(CHANNEL_DONE, "Rest over", NotificationManager.IMPORTANCE_HIGH)
                 .apply { description = "Tells you the rest is finished" },
         )
+    }
+}
+
+/** +15s and Skip rest from the notification. The screen's timer re-reads the end time from preferences. */
+class RestActionReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        when (intent.action) {
+            "uk.woozy.fit.rest.add" -> {
+                val end = RestTimer.endMs(context).takeIf { it > System.currentTimeMillis() } ?: return
+                RestTimer.start(context, end + 15_000, "", extend = true)
+            }
+            "uk.woozy.fit.rest.skip" -> RestTimer.cancel(context)
+        }
     }
 }
 

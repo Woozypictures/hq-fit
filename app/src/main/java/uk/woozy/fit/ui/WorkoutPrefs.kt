@@ -9,6 +9,9 @@ object WorkoutPrefs {
 
     fun weightStep(c: Context): Double = p(c).getFloat("step", 2.5f).toDouble()
     fun setWeightStep(c: Context, v: Double) = p(c).edit().putFloat("step", v.toFloat()).apply()
+    /** The - and + step keys on the workout keypad. Off by default. */
+    fun stepKeys(c: Context): Boolean = p(c).getBoolean("step_keys", false)
+    fun setStepKeys(c: Context, v: Boolean) = p(c).edit().putBoolean("step_keys", v).apply()
     fun autoRest(c: Context): Boolean = p(c).getBoolean("auto_rest", true)
     fun setAutoRest(c: Context, v: Boolean) = p(c).edit().putBoolean("auto_rest", v).apply()
 }

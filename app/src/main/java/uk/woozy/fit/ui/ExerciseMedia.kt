@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import coil.compose.AsyncImage
@@ -111,10 +112,7 @@ fun ExerciseDetailSheet(db: HqFitDatabase, name: String, onDismiss: () -> Unit) 
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             HqText(name, 20.sp, FontWeight.SemiBold, maxLines = 3)
-            entity?.let { e ->
-                val line = listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · ")
-                if (line.isNotEmpty()) HqText(line, 14.sp, color = c.muted)
-            }
+            entity?.equipment?.takeIf { it.isNotBlank() }?.let { HqText(it.replaceFirstChar { ch -> ch.uppercase() }, 14.sp, color = c.muted) }
             if (id != null) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExerciseMedia.urls(id).forEach { url ->
@@ -123,11 +121,19 @@ fun ExerciseDetailSheet(db: HqFitDatabase, name: String, onDismiss: () -> Unit) 
                         }
                     }
                 }
-                HqText("Pictures: free-exercise-db (Unlicense). Needs a connection the first time.", 11.sp, color = c.muted)
             }
-            val steps = entity?.instructions.orEmpty()
-            if (steps.isNotBlank()) HqText(steps, 15.sp)
-            else if (id == null) HqText("No picture or notes for this exercise yet.", 14.sp, color = c.muted)
+            val info = ExerciseInfo.of(name, entity?.instructions.orEmpty(), entity?.muscle.orEmpty())
+            if (info != null) {
+                if (info.what.isNotBlank()) HqText(info.what, 15.sp)
+                if (info.works.isNotBlank()) Column {
+                    HqText("WORKS", 11.sp, FontWeight.SemiBold, c.muted, letterSpacing = 0.06.em)
+                    HqText(info.works, 15.sp, FontWeight.Medium)
+                }
+                if (info.why.isNotBlank()) Column {
+                    HqText("WHY", 11.sp, FontWeight.SemiBold, c.muted, letterSpacing = 0.06.em)
+                    HqText(info.why, 15.sp)
+                }
+            } else if (id == null) HqText("No picture or notes for this exercise yet.", 14.sp, color = c.muted)
         }
     }
 }

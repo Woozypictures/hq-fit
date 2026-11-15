@@ -1,5 +1,7 @@
 package uk.woozy.fit.ui
 
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -175,24 +177,23 @@ fun CardColumn(
     var dragging by remember { mutableStateOf<String?>(null) }
     var offset by remember { mutableStateOf(0f) }
     val gap = with(LocalDensity.current) { 16.dp.toPx() }
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    fun settle() {
+        scope.launch {
+            androidx.compose.animation.core.animate(offset, 0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)) { v, _ -> offset = v }
+            dragging = null
+        }
+    }
 
     @Composable
     fun one(key: String) {
         val isDragging = dragging == key
-        // Wiggle only while rearranging; an always-on infinite transition kept every card requesting 120Hz frames.
-        val phase = (key.hashCode() and 3) * 40
-        val wig = androidx.compose.runtime.remember { androidx.compose.animation.core.Animatable(0f) }
-        androidx.compose.runtime.LaunchedEffect(editing && !isDragging) {
-            if (editing && !isDragging) while (true) {
-                wig.animateTo(0.9f, tween(130 + phase, easing = LinearEasing)); wig.animateTo(-0.9f, tween(130 + phase, easing = LinearEasing))
-            } else wig.snapTo(0f)
-        }
+        // No wiggle: the card you pick up lifts and tilts, the others glide out of the way on springs.
         Box(
             Modifier.onSizeChanged { heights[key] = it.height }
-                .graphicsLayer {
-                    if (editing && !isDragging) rotationZ = wig.value
-                    if (isDragging) { translationY = offset; scaleX = 1.03f; scaleY = 1.03f; shadowElevation = 24f }
-                }
+                .animatePlacement(editing && !isDragging)
+                .liftWhileDragging(isDragging) { if (dragging == key) offset else 0f }
                 .zIndex(if (isDragging) 1f else 0f)
                 .then(if (!editing) Modifier.onLongPress { onEditing(true) } else Modifier),
         ) {
@@ -208,9 +209,9 @@ fun CardColumn(
                 Box(
                     Modifier.size(44.dp).clip(CircleShape).background(c.card.copy(alpha = 0.92f)).pointerInput(key) {
                         detectDragGestures(
-                            onDragStart = { dragging = key; offset = 0f },
-                            onDragEnd = { dragging = null; offset = 0f },
-                            onDragCancel = { dragging = null; offset = 0f },
+                            onDragStart = { dragging = key; offset = 0f; haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) },
+                            onDragEnd = { settle() },
+                            onDragCancel = { settle() },
                         ) { change, drag ->
                             change.consume()
                             offset += drag.y
@@ -229,6 +230,7 @@ fun CardColumn(
                                     o.removeAt(a); o.add(b, key)
                                     prefs.saveOrder(o)
                                     offset += if (offset > 0) -oh else oh
+                                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                                 }
                             }
                         }
@@ -239,12 +241,10 @@ fun CardColumn(
         }
     }
 
+    FloatingDonePill(editing, c.dark, uk.woozy.fit.designsystem.LocalGlassInset.current.let { if (it > 0.dp) it - androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else 0.dp }) { onEditing(false) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (editing) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                HqText("Drag the handle to move a card. Tap the eye to hide one.", 12.sp, color = c.muted, modifier = Modifier.weight(1f))
-                HqPillButton("Done", onClick = { onEditing(false) })
-            }
+            HqText("Drag the handle to move a card. Tap the eye to hide one. Tap Done when finished.", 12.sp, color = c.muted)
         }
         if (isWide() && !editing) {
             // Two columns, filled left, right, left... so the order still reads top to bottom.

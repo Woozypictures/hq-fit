@@ -246,6 +246,10 @@ fun HqFitRoot(
     val waterFlow = remember(db, dayFrom) { db.water().observeTotal(dayFrom, dayTo) }
     val waterToday by waterFlow.collectAsState(initial = 0)
     val todays = calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
+    // A workout finished today keeps its card (marked complete) instead of turning the day into a rest day.
+    val doneToday by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, route, dayFrom, calendar) {
+        value = db.sessions().doneSince(dayFrom).lastOrNull { it.startedMs < dayTo }
+    }
     val missed = calendar.count { it.status == "planned" && it.date < today.toString() && it.date >= today.minusDays(7).toString() }
     val weighedToday by produceState(false, route, dayFrom) {
         value = db.weights().observeAllOnce().any { it.epochMs in dayFrom until dayTo }
@@ -279,9 +283,11 @@ fun HqFitRoot(
                     onStartWorkout = {
                         val a = active
                         if (a != null) nav.navigate("${Routes.WORKOUT}/${a.id}")
-                        else todays?.let { nav.navigate("${Routes.PREVIEW}/${it.id}") }
+                        else if (todays != null) nav.navigate("${Routes.PREVIEW}/${todays.id}")
+                        else doneToday?.let { nav.navigate("${Routes.SUMMARY}/${it.id}") }
                     },
-                    workoutTitle = active?.name ?: todays?.templateName,
+                    workoutTitle = active?.name ?: todays?.templateName ?: doneToday?.name,
+                    workoutDone = active == null && todays == null && doneToday != null,
                     eaten = eatenToday,
                     waterMl = waterToday,
                     onAddWater = { scope.launch { db.water().insert(WaterEntryEntity(epochMs = System.currentTimeMillis(), ml = targets.waterGlassMl)) } },
@@ -323,9 +329,10 @@ fun HqFitRoot(
                     ).map { (k, l) -> CheckInRow(k, l, ticks.any { it.item == k && it.done }) } else null,
                     onToggleCheckIn = { k, v -> scope.launch { db.checkIns().put(uk.woozy.fit.data.db.CheckInEntity(sundayDate, k, v)) } },
                     targets = targets,
-                    buttonLabel = if (active != null) "Resume workout" else "View workout",
+                    buttonLabel = if (active != null) "Resume workout" else if (todays == null && doneToday != null) "View summary" else "View workout",
                     workoutCaption = when {
                         active != null -> "In progress"
+                        todays == null && doneToday != null -> "Completed today" + (next?.let { n -> ". Next: ${n.templateName}, " + LocalDate.parse(n.date).format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.UK)) } ?: "")
                         todays != null -> "Scheduled for today"
                         next != null -> "Next: ${next.templateName}, " +
                             LocalDate.parse(next.date).format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.UK))

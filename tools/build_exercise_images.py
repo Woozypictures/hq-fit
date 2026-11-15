@@ -14,6 +14,7 @@ OVERRIDES = {
     "machine lateral raise": "Side Lateral Raise",
     "decline chest press machine": "Leverage Decline Chest Press",
     "machine fly": "Butterfly",
+    "machine assisted pull up": "Pullups",
 }
 
 def norm(s):

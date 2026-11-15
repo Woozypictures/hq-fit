@@ -71,6 +71,7 @@ fun TodayScreen(
     onSettings: () -> Unit,
     onStartWorkout: () -> Unit,
     workoutTitle: String?,
+    workoutDone: Boolean = false,
     workoutCaption: String,
     buttonLabel: String,
     eaten: Double,
@@ -185,7 +186,7 @@ fun TodayScreen(
                     when (key) {
                         "workout" -> GradientCard(modifier = Modifier.fillMaxWidth(), onClick = if (workoutTitle == null) onRestDay else onStartWorkout) {
                             Column(Modifier.padding(20.dp)) {
-                                HqText(if (workoutTitle == null) "REST DAY" else "TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.04.em)
+                                HqText(if (workoutTitle == null) "REST DAY" else if (workoutDone) "WORKOUT COMPLETE \u2713" else "TODAY'S WORKOUT", 12.sp, FontWeight.SemiBold, c.onGradient, letterSpacing = 0.04.em)
                                 Spacer(Modifier.height(6.dp))
                                 if (workoutTitle == null) HqText(restLine, 18.sp, FontWeight.SemiBold, c.onGradient)
                                 else SpacedTitle("\uD83C\uDFCB\uFE0F $workoutTitle", color = c.onGradient, size = 20.sp)
