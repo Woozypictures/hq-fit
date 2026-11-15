@@ -431,6 +431,15 @@ interface FoodDao {
     @Query("SELECT COUNT(*) FROM food")
     suspend fun count(): Int
 
+    @Query("SELECT * FROM food WHERE name = :name AND source = :source LIMIT 1")
+    suspend fun byNameSource(name: String, source: String): FoodEntity?
+
+    @Query("SELECT * FROM food WHERE source IN ('custom', 'cronometer', 'off') ORDER BY createdMs DESC LIMIT :limit")
+    suspend fun own(limit: Int): List<FoodEntity>
+
+    @Query("SELECT f.* FROM food f JOIN diary_entry d ON d.foodId = f.id GROUP BY f.id ORDER BY MAX(d.createdMs) DESC LIMIT :limit")
+    suspend fun recentlyLogged(limit: Int): List<FoodEntity>
+
     @Query("SELECT COUNT(*) FROM food WHERE name = :name AND source = 'custom'")
     suspend fun countCustom(name: String): Int
 }

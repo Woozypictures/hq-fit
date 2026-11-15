@@ -2,7 +2,12 @@ package uk.woozy.fit.data.share
 
 import org.json.JSONArray
 import org.json.JSONObject
+import uk.woozy.fit.data.db.Diary
 import uk.woozy.fit.data.db.ExerciseEntity
+import uk.woozy.fit.data.db.FoodEntity
+import uk.woozy.fit.data.db.WaterEntryEntity
+import uk.woozy.fit.model.Meal
+import uk.woozy.fit.model.Nutrients
 import uk.woozy.fit.data.db.HqFitDatabase
 import uk.woozy.fit.data.db.MetaEntity
 import uk.woozy.fit.data.db.ScheduledWorkoutEntity
@@ -89,7 +94,43 @@ object DeskSync {
         out.put("applied", JSONArray(appliedIds(db)))
         out.put("tmp", JSONObject().also { o -> tmpMap(db).forEach { (k, v) -> o.put(k, v) } })
         db.sessions().active()?.let { out.put("active", JSONObject().put("name", it.name).put("start", it.startedMs)) }
+        out.put("nutrition", nutrition(db, nowMs, today, zone))
         return out
+    }
+
+    private val KEYS = listOf(Nutrients.ENERGY, Nutrients.PROTEIN, Nutrients.CARBS, Nutrients.FIBRE, Nutrients.FAT, Nutrients.SUGARS, Nutrients.SAT_FAT, Nutrients.SODIUM)
+    private fun slim(per: String): String = Nutrients.decode(per).filterKeys { it in KEYS }.let { Nutrients.encode(it) }
+
+    /** Diary for the last 14 days, targets, water, and your own and recent foods for the desktop food log. */
+    private suspend fun nutrition(db: HqFitDatabase, nowMs: Long, today: LocalDate, zone: ZoneId): JSONObject {
+        val o = JSONObject()
+        val sum = HqSummaryBuilder.build(db, nowMs, zone)
+        o.put("targets", JSONObject().put("kcal", sum.kcalTarget ?: JSONObject.NULL).put("protein", sum.proteinTarget ?: JSONObject.NULL)
+            .put("netCarbs", sum.netCarbsTarget ?: JSONObject.NULL).put("fat", sum.fatTarget ?: JSONObject.NULL)
+            .put("water", db.targets().get("water")?.value ?: 2500.0))
+        val from = today.minusDays(13)
+        val days = JSONObject()
+        db.diary().between(from.toString(), today.toString()).forEach { e ->
+            val arr = days.optJSONArray(e.date) ?: JSONArray().also { days.put(e.date, it) }
+            arr.put(JSONObject().put("id", e.id).put("meal", e.meal).put("name", e.name).put("g", e.grams ?: JSONObject.NULL)
+                .put("f", e.foodId ?: JSONObject.NULL).put("n", slim(e.nutrients)).put("rep", e.recurringId != null))
+        }
+        o.put("diary", days)
+        val water = JSONObject()
+        for (i in 0..13) {
+            val d = today.minusDays(i.toLong())
+            val a = d.atStartOfDay(zone).toInstant().toEpochMilli(); val b = d.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+            val ml = db.water().totalBetween(a, b); if (ml > 0) water.put(d.toString(), ml)
+        }
+        o.put("water", water)
+        val foods = LinkedHashMap<Long, FoodEntity>()
+        db.foods().recentlyLogged(150).forEach { foods[it.id] = it }
+        db.foods().own(150).forEach { foods.putIfAbsent(it.id, it) }
+        o.put("foods", JSONArray(foods.values.map { f ->
+            JSONObject().put("id", f.id).put("name", f.name).put("brand", f.brand).put("src", f.source)
+                .put("sg", f.servingG ?: JSONObject.NULL).put("sl", f.servingLabel).put("n", slim(f.per100))
+        }))
+        return o
     }
 
     private suspend fun appliedIds(db: HqFitDatabase): List<String> {
@@ -126,6 +167,30 @@ object DeskSync {
                     "sch.move" -> db.schedule().move(op.getLong("sid"), op.getString("date"))
                     "sch.remove" -> db.schedule().deletePlannedById(op.getLong("sid"))
                     "ses.log" -> logSession(db, op, tmpIds)
+                    "food.log" -> {
+                        val food = food(db, op, nowMs)
+                        Diary.log(db, food, op.getDouble("g"), op.getString("date"), Meal.fromKey(op.optString("meal")), nowMs)
+                    }
+                    "food.quick" -> {
+                        val n = LinkedHashMap<String, Double>()
+                        listOf(Nutrients.ENERGY, Nutrients.PROTEIN, Nutrients.CARBS, Nutrients.FAT, Nutrients.FIBRE).forEach { k -> dblOrNull(op, k)?.let { n[k] = it } }
+                        Diary.quickAdd(db, op.optString("name").ifBlank { "Quick add" }, n, op.getString("date"), Meal.fromKey(op.optString("meal")), nowMs)
+                    }
+                    "food.edit" -> {
+                        val eid = op.getLong("eid")
+                        val e = db.diary().get(eid) ?: error("entry not found")
+                        Diary.changeAmount(db, eid, dblOrNull(op, "g") ?: e.grams ?: 0.0, Meal.fromKey(op.optString("meal", e.meal)))
+                    }
+                    "food.delete" -> db.diary().delete(op.getLong("eid"))
+                    "food.create" -> food(db, JSONObject().put("food", op.getJSONObject("food").put("src", "custom")), nowMs)
+                    "water.add" -> {
+                        val ml = op.getInt("ml")
+                        val date = LocalDate.parse(op.optString("date", LocalDate.now().toString()))
+                        val zone = ZoneId.systemDefault()
+                        val at = if (date == LocalDate.now()) nowMs else date.atTime(12, 0).atZone(zone).toInstant().toEpochMilli()
+                        if (ml > 0) db.water().insert(WaterEntryEntity(epochMs = at, ml = ml))
+                        else { val a = date.atStartOfDay(zone).toInstant().toEpochMilli(); db.water().deleteLatestBetween(a, a + 86_400_000L) }
+                    }
                     else -> error("unknown op")
                 }
                 done += id; seen += id; applied.put(id)
@@ -139,6 +204,21 @@ object DeskSync {
         val ids = JSONObject(); tmpIds.entries.toList().takeLast(200).forEach { (k, v) -> ids.put(k, v) }
         db.meta().put(MetaEntity(TMP_KEY, ids.toString()))
         return JSONObject().put("applied", applied).put("errors", errors).put("ids", ids)
+    }
+
+    /** A logged food: one of yours by id, else a CoFID food by name, else a new custom food from the desktop's figures. */
+    private suspend fun food(db: HqFitDatabase, op: JSONObject, nowMs: Long): FoodEntity {
+        if (op.has("f") && !op.isNull("f")) db.foods().get(op.getLong("f"))?.let { return it }
+        val f = op.getJSONObject("food")
+        val name = f.getString("name").trim()
+        val src = f.optString("src", "custom")
+        if (src == "cofid") db.foods().byNameSource(name, "cofid")?.let { return it }
+        if (src == "custom") db.foods().byNameSource(name, "custom")?.let { if (it.per100 == f.optString("n")) return it }
+        val row = FoodEntity(
+            name = name, brand = f.optString("brand"), source = if (src == "cofid") "cofid" else "custom",
+            servingG = dblOrNull(f, "sg"), servingLabel = f.optString("sl"), per100 = f.optString("n"), createdMs = nowMs,
+        )
+        return row.copy(id = db.foods().insert(row))
     }
 
     private fun templateId(op: JSONObject, key: String, tmp: Map<String, Long>): Long? {
