@@ -221,7 +221,7 @@ fun TodayScreen(
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                                     EnergyRing("Consumed", formatWhole(uk.woozy.fit.designsystem.countUp(eaten)), (eaten / target).toFloat().coerceIn(0f, 1f), c.primary)
                                     // Like HQ: the burned ring is full once there is a reading, and empty without one.
-                                    EnergyRing("Active", burnedKcal?.takeIf { it > 0 }?.let { formatWhole(uk.woozy.fit.designsystem.countUp(it)) } ?: "-", if ((burnedKcal ?: 0.0) > 0) 1f else 0f, c.protein)
+                                    EnergyRing("Active", burnedKcal?.let { formatWhole(uk.woozy.fit.designsystem.countUp(it)) } ?: "-", if ((burnedKcal ?: 0.0) > 0) 1f else 0f, c.protein)
                                     val left = target - eaten
                                     EnergyRing(if (left < 0) "Over" else "Remaining", formatWhole(uk.woozy.fit.designsystem.countUp(kotlin.math.abs(left))), (left / target).toFloat().coerceIn(0f, 1f), c.fat)
                                 }

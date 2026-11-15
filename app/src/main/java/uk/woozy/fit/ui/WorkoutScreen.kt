@@ -708,7 +708,7 @@ private fun TimedRow(set: SetLogEntity, onToggle: (SetLogEntity) -> Unit) {
         }
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .clip(CircleShape)
                 .background(if (set.done) c.ink else c.track)
                 .toggleable(value = set.done, role = Role.Checkbox, onValueChange = { onToggle(set) }),

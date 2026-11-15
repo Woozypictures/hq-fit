@@ -148,7 +148,7 @@ fun EverfitWeek(
                     if (isToday) FontWeight.Bold else FontWeight.Medium, if (isToday) c.primary else c.muted,
                 )
                 Box(
-                    Modifier.size(38.dp).clip(CircleShape).then(
+                    Modifier.size(44.dp).clip(CircleShape).then(
                         when {
                             isSel -> Modifier.background(grey)
                             selected == null && isDone -> Modifier.background(grey)

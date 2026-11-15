@@ -77,7 +77,7 @@ fun SettingsScreen(
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
             androidx.compose.foundation.layout.Box(
-                Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button) { if (open.isNotEmpty()) open = "" else onBack() },
+                Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button) { if (open.isNotEmpty()) open = "" else onBack() },
                 contentAlignment = androidx.compose.ui.Alignment.Center,
             ) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.ink, modifier = Modifier.size(24.dp)) }
             Spacer(Modifier.width(8.dp))

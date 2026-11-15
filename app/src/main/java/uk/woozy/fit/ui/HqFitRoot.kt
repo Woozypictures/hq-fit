@@ -297,8 +297,8 @@ fun HqFitRoot(
                             refreshToast = System.currentTimeMillis()
                         }
                     },
-                    steps = health?.steps,
-                    burnedKcal = health?.activeKcal,
+                    steps = if (problem == null) health?.let { it.steps ?: 0L } else health?.steps,
+                    burnedKcal = if (problem == null) health?.let { it.activeKcal ?: 0.0 } else health?.activeKcal,
                     watchLastMs = health?.watchLastMs,
                     proteinG = dayTotals[Nutrients.PROTEIN] ?: 0.0,
                     netCarbsG = Nutrients.netCarbs(dayTotals),

@@ -371,7 +371,7 @@ private fun EditableCell(text: String, color: Color, active: Boolean, onClick: (
         modifier = Modifier
             .width(72.dp)
             .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(if (active) c.track else Color.Transparent)
             .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
@@ -435,7 +435,7 @@ fun SetRow(
         Spacer(Modifier.width(8.dp))
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(44.dp)
                 .graphicsLayer { scaleX = tick.value; scaleY = tick.value }
                 .clip(CircleShape)
                 .background(if (done) (if (c.flat) c.primary else c.ink) else c.track)
