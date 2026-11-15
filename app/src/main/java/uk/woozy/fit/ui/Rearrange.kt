@@ -79,7 +79,7 @@ fun Modifier.liftWhileDragging(dragging: Boolean, offsetY: () -> Float): Modifie
         val s = 1f + 0.02f * lift
         scaleX = s; scaleY = s
         rotationZ = -1.2f * lift
-        shadowElevation = 28f * lift
+        shadowElevation = if (lift > 0.02f) 24f else 0f // not animated: shadows are the expensive part
         shape = RoundedCornerShape(22.dp)
         clip = false
     }

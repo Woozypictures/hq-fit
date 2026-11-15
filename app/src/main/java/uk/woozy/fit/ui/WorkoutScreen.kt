@@ -201,7 +201,7 @@ fun ActiveWorkoutScreen(
     LaunchedEffect(restEnd) {
         if (restEnd > 0) {
             delay((restEnd - System.currentTimeMillis()).coerceAtLeast(0))
-            if (restEnd > 0) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            if (restEnd > 0) uk.woozy.fit.designsystem.restOverPulse(context)
         }
     }
 

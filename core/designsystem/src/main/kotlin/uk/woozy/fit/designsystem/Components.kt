@@ -88,7 +88,7 @@ fun HqCard(
     } else {
         modifier.clip(shape).background(c.card).border(1.dp, c.hairline, shape)
     }
-    Column(modifier = if (onClick != null) base.clickable(onClick = onClick) else base, content = content)
+    Column(modifier = if (onClick != null) base.pressable(onClick = onClick) else base, content = content)
 }
 
 /** Everfit's blue gradient card, used for today's workout. */
@@ -125,7 +125,7 @@ fun GradientCard(
             drawCircle(Color.White.copy(alpha = 0.06f), radius = h * 0.55f, center = androidx.compose.ui.geometry.Offset(w * 0.92f, h * 0.18f))
             drawCircle(Color.White.copy(alpha = 0.04f), radius = h * 0.32f, center = androidx.compose.ui.geometry.Offset(w * 0.12f, h * 0.95f))
         }
-    Column(modifier = if (onClick != null) base.clickable(onClick = onClick) else base, content = content)
+    Column(modifier = if (onClick != null) base.pressable(onClick = onClick) else base, content = content)
 }
 
 /** Full-width blue header with rounded bottom corners, for the workout screens. The caller adds status-bar padding. */
@@ -193,7 +193,7 @@ fun HqPillButton(
             .clip(CircleShape)
             .background(background)
             .then(outline)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .pressable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -402,6 +402,7 @@ fun SetRow(
     divider: Boolean = false,
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val view = androidx.compose.ui.platform.LocalView.current
     val c = HqTheme.colors
     val value = if (done) c.primary else c.ink
     // Done rows wash in the accent; the next set to do sits on the inset tone so the eye lands on it.
@@ -440,7 +441,7 @@ fun SetRow(
                 .clip(CircleShape)
                 .background(if (done) (if (c.flat) c.primary else c.ink) else c.track)
                 .toggleable(value = done, role = Role.Checkbox, onValueChange = {
-                    haptic.performHapticFeedback(if (it) androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress else androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                    crispTick(view)
                     onToggle()
                 }),
             contentAlignment = Alignment.Center,

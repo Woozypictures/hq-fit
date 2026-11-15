@@ -185,6 +185,7 @@ fun CardColumn(
         scope.launch {
             androidx.compose.animation.core.animate(offset, 0f, animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)) { v, _ -> offset = v }
             dragging = null
+            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
         }
     }
 

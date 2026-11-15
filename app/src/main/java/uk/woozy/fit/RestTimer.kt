@@ -102,9 +102,7 @@ object RestTimer {
             .setContentIntent(open)
             .build()
         runCatching { nm.notify(ID_DONE, n) }
-        @Suppress("DEPRECATION")
-        (c.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator)
-            ?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 250, 120, 250), -1))
+        uk.woozy.fit.designsystem.restOverPulse(c)
     }
 
     private fun action(c: Context, what: String): PendingIntent =
