@@ -21,7 +21,7 @@ import java.time.ZoneId
 object BackupRunner {
     private fun prefs(c: Context) = c.getSharedPreferences("backup", Context.MODE_PRIVATE)
 
-    fun nightlyOn(c: Context) = prefs(c).getBoolean("nightly", false)
+    fun nightlyOn(c: Context) = prefs(c).getBoolean("nightly", true)
     fun setNightly(c: Context, on: Boolean) { prefs(c).edit().putBoolean("nightly", on).apply(); BackupAlarm.schedule(c) }
     fun folder(c: Context): Uri? = prefs(c).getString("folder", null)?.let(Uri::parse)
     fun setFolder(c: Context, uri: Uri) = prefs(c).edit().putString("folder", uri.toString()).apply()

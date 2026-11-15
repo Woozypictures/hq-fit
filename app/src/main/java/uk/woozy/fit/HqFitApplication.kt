@@ -19,5 +19,7 @@ class HqFitApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        // Nightly backup is on unless switched off; re-arm the alarm on every start (safe to repeat).
+        runCatching { BackupAlarm.schedule(this) }
     }
 }

@@ -165,6 +165,30 @@ fun ActiveWorkoutScreen(
     var restEnd by remember { mutableLongStateOf(RestTimer.endMs(context).takeIf { it > System.currentTimeMillis() } ?: 0L) }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var asked by remember { mutableStateOf(false) }
+    // Once, on the first workout: ask Android to let the rest timer and sync run on time with the screen locked.
+    var batteryAsk by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        val pm = context.getSystemService(android.os.PowerManager::class.java)
+        val seen = context.getSharedPreferences("battery", android.content.Context.MODE_PRIVATE).getBoolean("asked", false)
+        if (!seen && pm != null && !pm.isIgnoringBatteryOptimizations(context.packageName)) batteryAsk = true
+    }
+    if (batteryAsk) {
+        val done = { batteryAsk = false; context.getSharedPreferences("battery", android.content.Context.MODE_PRIVATE).edit().putBoolean("asked", true).apply() }
+        AlertDialog(
+            onDismissRequest = done,
+            title = { HqText("Keep the rest timer on time", 18.sp, FontWeight.SemiBold) },
+            text = { HqText("Let Woozy Fit run without battery limits, so the rest alarm and sync are not delayed when the screen is locked between sets.", 14.sp, color = HqTheme.colors.muted) },
+            confirmButton = {
+                TextButton(onClick = {
+                    done()
+                    runCatching {
+                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:" + context.packageName)))
+                    }
+                }) { HqText("Allow", 15.sp, FontWeight.SemiBold, HqTheme.colors.primary) }
+            },
+            dismissButton = { TextButton(onClick = done) { HqText("Not now", 15.sp, color = HqTheme.colors.muted) } },
+        )
+    }
     var picking by remember { mutableStateOf<Pair<Int, PickMode>?>(null) }
     val restLeft = (restEnd - now).coerceAtLeast(0)
     LaunchedEffect(restEnd) {
