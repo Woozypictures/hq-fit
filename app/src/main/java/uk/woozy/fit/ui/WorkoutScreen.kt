@@ -33,6 +33,7 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -1137,7 +1138,7 @@ private fun ExerciseIconRow(
                 }
             }
         }
-        if (onRemoveSet != null) Tool(androidx.compose.material.icons.Icons.Rounded.Remove, "Remove last set", onClick = onRemoveSet)
+        if (onRemoveSet != null) Tool(Icons.Rounded.Remove, "Remove last set", onClick = onRemoveSet)
         Box {
             Tool(Icons.Rounded.MoreVert, "More options", onClick = { moreMenu = true })
             DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {

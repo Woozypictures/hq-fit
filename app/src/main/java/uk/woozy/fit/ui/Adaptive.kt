@@ -1,5 +1,7 @@
 package uk.woozy.fit.ui
 
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.WindowInsets
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.animation.core.LinearEasing
@@ -241,7 +243,7 @@ fun CardColumn(
         }
     }
 
-    FloatingDonePill(editing, c.dark, uk.woozy.fit.designsystem.LocalGlassInset.current.let { if (it > 0.dp) it - androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else 0.dp }) { onEditing(false) }
+    FloatingDonePill(editing, c.dark, uk.woozy.fit.designsystem.LocalGlassInset.current.let { if (it > 0.dp) it - WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() else 0.dp }) { onEditing(false) }
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         if (editing) {
             HqText("Drag the handle to move a card. Tap the eye to hide one. Tap Done when finished.", 12.sp, color = c.muted)
