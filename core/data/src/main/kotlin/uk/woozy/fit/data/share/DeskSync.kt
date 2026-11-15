@@ -27,6 +27,13 @@ import java.time.ZoneId
 object DeskSync {
     private const val APPLIED_KEY = "desk_applied"
     private const val KEEP_APPLIED = 400
+    private const val TMP_KEY = "desk_tmp"
+
+    private suspend fun tmpMap(db: HqFitDatabase): HashMap<String, Long> {
+        val out = HashMap<String, Long>()
+        db.meta().get(TMP_KEY)?.let { raw -> runCatching { val o = JSONObject(raw); o.keys().forEach { out[it] = o.getLong(it) } } }
+        return out
+    }
 
     suspend fun export(db: HqFitDatabase, nowMs: Long, zone: ZoneId = ZoneId.systemDefault()): JSONObject {
         val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
@@ -80,6 +87,7 @@ object DeskSync {
         }
         out.put("last", last)
         out.put("applied", JSONArray(appliedIds(db)))
+        out.put("tmp", JSONObject().also { o -> tmpMap(db).forEach { (k, v) -> o.put(k, v) } })
         db.sessions().active()?.let { out.put("active", JSONObject().put("name", it.name).put("start", it.startedMs)) }
         return out
     }
@@ -94,7 +102,7 @@ object DeskSync {
         val ops = JSONArray(opsJson)
         val done = appliedIds(db).toMutableList()
         val seen = done.toHashSet()
-        val tmpIds = HashMap<String, Long>()
+        val tmpIds = tmpMap(db)
         val applied = JSONArray()
         val errors = JSONObject()
         for (k in 0 until ops.length()) {
@@ -128,7 +136,8 @@ object DeskSync {
             }
         }
         db.meta().put(MetaEntity(APPLIED_KEY, JSONArray(done.takeLast(KEEP_APPLIED)).toString()))
-        val ids = JSONObject(); tmpIds.forEach { (k, v) -> ids.put(k, v) }
+        val ids = JSONObject(); tmpIds.entries.toList().takeLast(200).forEach { (k, v) -> ids.put(k, v) }
+        db.meta().put(MetaEntity(TMP_KEY, ids.toString()))
         return JSONObject().put("applied", applied).put("errors", errors).put("ids", ids)
     }
 
