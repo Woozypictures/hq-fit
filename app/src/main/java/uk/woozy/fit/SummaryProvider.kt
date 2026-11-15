@@ -5,6 +5,9 @@ import android.content.ContentValues
 import android.content.UriMatcher
 import android.database.Cursor
 import android.database.MatrixCursor
+import android.content.pm.PackageManager
+import android.os.Bundle
+import uk.woozy.fit.data.share.DeskSync
 import android.net.Uri
 import kotlinx.coroutines.runBlocking
 import uk.woozy.fit.data.share.HqSummary
@@ -56,6 +59,25 @@ class SummaryProvider : ContentProvider() {
         s.stepsTarget,
     )
 
+    /**
+     * Desktop sync for HQ: `desk_export` returns routines, calendar and recent training as JSON; `desk_apply` runs the
+     * desktop's queued changes (extras "ops", a JSON array). Same signature permission as the summary.
+     */
+    override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
+        val ctx = context ?: return null
+        if (ctx.checkCallingPermission(PERMISSION) != PackageManager.PERMISSION_GRANTED) throw SecurityException("not allowed")
+        val container = (ctx.applicationContext as HqFitApplication).container
+        synchronized(LOCK) { if (container.database.db == null) runBlocking { container.database.start() } }
+        val db = container.database.db ?: return Bundle().apply { putString("error", "locked") }
+        val now = System.currentTimeMillis()
+        val json = when (method) {
+            "desk_export" -> runBlocking { DeskSync.export(db, now) }.toString()
+            "desk_apply" -> runBlocking { DeskSync.apply(db, extras?.getString("ops") ?: "[]", now) }.toString()
+            else -> return null
+        }
+        return Bundle().apply { putString("json", json) }
+    }
+
     override fun getType(uri: Uri): String? = if (matcher.match(uri) != UriMatcher.NO_MATCH) "vnd.android.cursor.item/vnd.uk.woozy.fit.summary" else null
     override fun insert(uri: Uri, values: ContentValues?): Uri? = throw UnsupportedOperationException("read-only")
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = throw UnsupportedOperationException("read-only")
@@ -63,6 +85,7 @@ class SummaryProvider : ContentProvider() {
 
     companion object {
         const val AUTHORITY = "uk.woozy.fit.summary"
+        private const val PERMISSION = "uk.woozy.fit.permission.READ_SUMMARY"
         private const val TODAY = 1
         private const val HISTORY = 2
         private const val WEIGHTS = 3

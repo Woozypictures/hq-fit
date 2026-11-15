@@ -205,6 +205,12 @@ interface TemplateDao {
 
     @Query("UPDATE workout_template SET name = :name WHERE id = :id")
     suspend fun rename(id: Long, name: String)
+
+    @Query("UPDATE workout_template SET focus = :focus WHERE id = :id")
+    suspend fun setFocus(id: Long, focus: String)
+
+    @Query("DELETE FROM template_item WHERE templateId = :templateId")
+    suspend fun deleteItems(templateId: Long)
 }
 
 @Dao
@@ -249,6 +255,13 @@ interface ScheduleDao {
     /** Upcoming planned days for these workouts; done and skipped days are never touched. */
     @Query("DELETE FROM scheduled_workout WHERE status = 'planned' AND date >= :from AND templateId IN (:templateIds)")
     suspend fun deletePlanned(from: String, templateIds: List<Long>)
+
+    @Insert
+    suspend fun insert(row: ScheduledWorkoutEntity): Long
+
+    /** Removes one planned day (desktop planner). Done or skipped days are history and stay. */
+    @Query("DELETE FROM scheduled_workout WHERE id = :id AND status = 'planned'")
+    suspend fun deletePlannedById(id: Long)
 }
 
 /** The best a lift has done, from finished sessions. */
