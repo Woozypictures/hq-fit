@@ -341,6 +341,8 @@ fun LibraryScreen(db: HqFitDatabase, onBack: () -> Unit) {
     val equipments by produceState(emptyList<String>()) { value = db.exercises().equipments() }
     var results by remember { mutableStateOf(emptyList<ExerciseEntity>()) }
     LaunchedEffect(text, muscle, equipment) { results = db.exercises().searchFiltered(text.trim(), muscle, equipment) }
+    var open by remember { mutableStateOf<String?>(null) }
+    open?.let { ExerciseDetailSheet(db, it, onDismiss = { open = null }) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Exercise library", onBack) }
@@ -365,7 +367,7 @@ fun LibraryScreen(db: HqFitDatabase, onBack: () -> Unit) {
         LazyColumn(Modifier.weight(1f)) {
             items(results, key = { it.id }) { e ->
                 if (c.flat) androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(0.5.dp).background(c.hairline))
-                Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = androidx.compose.ui.semantics.Role.Button) { open = e.name }.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     HqText(e.name, 16.sp, FontWeight.Medium, maxLines = 2)
                     HqText(listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · "), 13.sp, color = c.muted)
                 }

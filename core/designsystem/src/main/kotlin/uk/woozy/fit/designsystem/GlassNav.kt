@@ -44,6 +44,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -759,5 +761,80 @@ fun GlassRestPill(
                 .selectable(selected = false, role = Role.Button, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = NoIndication, onClick = onSkip)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) { Text("Skip", style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = style.ink)) }
+    }
+}
+
+/** Places a menu under its anchor, right edges lined up, flipping above when there is no room below. */
+private class BelowAnchorPosition(private val gapPx: Int) : androidx.compose.ui.window.PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: androidx.compose.ui.unit.IntRect, windowSize: androidx.compose.ui.unit.IntSize,
+        layoutDirection: androidx.compose.ui.unit.LayoutDirection, popupContentSize: androidx.compose.ui.unit.IntSize,
+    ): androidx.compose.ui.unit.IntOffset {
+        val x = (anchorBounds.right - popupContentSize.width).coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0))
+        var y = anchorBounds.bottom + gapPx
+        if (y + popupContentSize.height > windowSize.height) y = (anchorBounds.top - gapPx - popupContentSize.height).coerceAtLeast(0)
+        return androidx.compose.ui.unit.IntOffset(x, y)
+    }
+}
+
+/**
+ * The pill-style menu used everywhere a ⋮ or long-press menu opens (iOS-like, matching the + menu): a frosted
+ * rounded panel that springs out of its anchor, items with hairlines between them and a light tick on tap.
+ * Drop-in for Material's DropdownMenu: put it next to the button inside the same Box.
+ */
+@Composable
+fun GlassDropdownMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    if (!expanded) return
+    val c = HqTheme.colors
+    val style = remember(c) { glassStyle(c.dark, c.ink, c.muted) }
+    val reduce = rememberReduceMotion()
+    val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 6.dp.roundToPx() }
+    val shown = remember { androidx.compose.animation.core.MutableTransitionState(false) }.apply { targetState = true }
+    androidx.compose.ui.window.Popup(
+        popupPositionProvider = remember(gap) { BelowAnchorPosition(gap) },
+        onDismissRequest = onDismissRequest,
+        properties = androidx.compose.ui.window.PopupProperties(focusable = true),
+    ) {
+        androidx.compose.animation.AnimatedVisibility(
+            visibleState = shown,
+            enter = androidx.compose.animation.fadeIn(tween(140)) + androidx.compose.animation.scaleIn(
+                androidx.compose.animation.core.spring(dampingRatio = 0.75f, stiffness = 600f),
+                initialScale = if (reduce) 1f else 0.85f, transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0f),
+            ),
+        ) {
+            Column(
+                Modifier.padding(horizontal = 8.dp).widthIn(min = 220.dp, max = 300.dp)
+                    .shadow(18.dp, RoundedCornerShape(24.dp))
+                    .solidGlass(style, RoundedCornerShape(24.dp))
+                    .padding(vertical = 6.dp),
+            ) {
+                val counter = remember { IntArray(1) }
+                counter[0] = 0
+                androidx.compose.runtime.CompositionLocalProvider(LocalGlassMenuStyle provides style, LocalGlassMenuCount provides counter) { content() }
+            }
+        }
+    }
+}
+
+internal val LocalGlassMenuStyle = androidx.compose.runtime.staticCompositionLocalOf<GlassStyle?> { null }
+internal val LocalGlassMenuCount = androidx.compose.runtime.staticCompositionLocalOf<IntArray?> { null }
+
+/** One row in a [GlassDropdownMenu]. [text] is usually an HqText; [danger] colours it as a warning. */
+@Composable
+fun GlassDropdownItem(text: @Composable () -> Unit, onClick: () -> Unit) {
+    val haptic = LocalHapticFeedback.current
+    val style = LocalGlassMenuStyle.current
+    val counter = LocalGlassMenuCount.current
+    val first = remember { counter?.let { it[0]++ == 0 } ?: true }
+    Column {
+        if (!first && style != null) Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(0.5.dp).background(style.outline))
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .selectable(selected = false, role = Role.Button, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick()
+                }
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) { text() }
     }
 }

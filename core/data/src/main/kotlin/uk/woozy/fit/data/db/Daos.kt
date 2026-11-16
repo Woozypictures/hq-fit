@@ -71,6 +71,10 @@ interface ExerciseDao {
 
     @Query("SELECT * FROM exercise WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun findByName(name: String): ExerciseEntity?
+
+    /** Other exercises for the same muscle, same equipment first, for "Similar" on the exercise page. */
+    @Query("SELECT * FROM exercise WHERE muscle = :muscle COLLATE NOCASE AND id != :id ORDER BY (equipment = :equipment) DESC, name LIMIT :limit")
+    suspend fun similar(muscle: String, equipment: String, id: Long, limit: Int = 6): List<ExerciseEntity>
 }
 
 @Dao

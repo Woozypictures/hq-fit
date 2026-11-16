@@ -95,45 +95,137 @@ fun ExerciseHero(name: String, onClick: () -> Unit, modifier: Modifier = Modifie
     )
 }
 
-/** Both stills (start and end position), the muscle and equipment, and the written steps. */
+/**
+ * The exercise page, all in one sheet (GymMane style): pictures, main muscle and equipment, your note, the next
+ * target with its settings, how to do it as numbered steps, what it works and why, your recent history and
+ * similar exercises (tap one to look at it here). Opens from a workout's picture or ⋮ menu and from the library.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExerciseDetailSheet(db: HqFitDatabase, name: String, onDismiss: () -> Unit) {
+fun ExerciseDetailSheet(
+    db: HqFitDatabase,
+    name: String,
+    onDismiss: () -> Unit,
+    note: String? = null,
+    onEditNote: (() -> Unit)? = null,
+    repsMin: Int? = null,
+    repsMax: Int? = null,
+) {
     val c = HqTheme.colors
-    val id = rememberImageId(name)
-    val entity by produceState<uk.woozy.fit.data.db.ExerciseEntity?>(null, name) { value = db.exercises().findByName(name) }
+    val context = LocalContext.current
+    var current by androidx.compose.runtime.saveable.rememberSaveable(name) { androidx.compose.runtime.mutableStateOf(name) }
+    val isOwn = current == name
+    val id = rememberImageId(current)
+    val entity by produceState<uk.woozy.fit.data.db.ExerciseEntity?>(null, current) { value = db.exercises().findByName(current) }
+    var settingsOpen by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var tick by remember { androidx.compose.runtime.mutableStateOf(0) }
+    val next by produceState<uk.woozy.fit.model.Progression.Target?>(null, entity, tick) {
+        val e = entity ?: return@produceState
+        value = uk.woozy.fit.data.db.Coach.next(db, e.id, if (isOwn) repsMin else null, if (isOwn) repsMax else null, WorkoutPrefs.weightStep(context))
+    }
+    val history by produceState(emptyList<List<uk.woozy.fit.data.db.HistoryRow>>(), entity) {
+        val e = entity ?: return@produceState
+        value = db.sessions().exerciseHistory(e.id).groupBy { it.sessionId }.values.take(5).toList()
+    }
+    val similar by produceState(emptyList<uk.woozy.fit.data.db.ExerciseEntity>(), entity) {
+        val e = entity ?: return@produceState
+        value = if (e.muscle.isBlank()) emptyList() else db.exercises().similar(e.muscle, e.equipment, e.id, 5)
+    }
+    @Composable fun Label(t: String) = HqText(t, 11.sp, FontWeight.SemiBold, c.muted, letterSpacing = 0.06.em)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = c.card,
     ) {
         Column(
-            Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            Modifier.navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            HqText(name, 20.sp, FontWeight.SemiBold, maxLines = 3)
-            entity?.equipment?.takeIf { it.isNotBlank() }?.let { HqText(it.replaceFirstChar { ch -> ch.uppercase() }, 14.sp, color = c.muted) }
+            if (!isOwn) HqText("\u2190 Back to $name", 14.sp, FontWeight.SemiBold, c.primary, Modifier.clip(RoundedCornerShape(12.dp)).clickable { current = name }.padding(vertical = 4.dp))
+            HqText(current, 22.sp, FontWeight.Bold, maxLines = 3)
             if (id != null) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ExerciseMedia.urls(id).forEach { url ->
-                        Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(12.dp)).background(c.track)) {
-                            AsyncImage(model = url, contentDescription = "$name, start and end position", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
+                        Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(c.track)) {
+                            AsyncImage(model = url, contentDescription = "$current, start and end position", contentScale = ContentScale.Crop, modifier = Modifier.fillMaxWidth().aspectRatio(1f))
                         }
                     }
                 }
             }
-            val info = ExerciseInfo.of(name, entity?.instructions.orEmpty(), entity?.muscle.orEmpty())
-            if (info != null) {
-                if (info.what.isNotBlank()) HqText(info.what, 15.sp)
-                if (info.works.isNotBlank()) Column {
-                    HqText("WORKS", 11.sp, FontWeight.SemiBold, c.muted, letterSpacing = 0.06.em)
-                    HqText(info.works, 15.sp, FontWeight.Medium)
+            val e = entity
+            if (e != null && (e.muscle.isNotBlank() || e.equipment.isNotBlank())) Row(Modifier.fillMaxWidth()) {
+                if (e.muscle.isNotBlank()) Column(Modifier.weight(1f)) { Label("MAIN MUSCLE"); HqText(e.muscle.replaceFirstChar { it.uppercase() }, 15.sp, FontWeight.Medium) }
+                if (e.equipment.isNotBlank()) Column(Modifier.weight(1f)) { Label("EQUIPMENT"); HqText(e.equipment.replaceFirstChar { it.uppercase() }, 15.sp, FontWeight.Medium) }
+            }
+            if (isOwn && (onEditNote != null || !note.isNullOrBlank())) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.track.copy(alpha = 0.5f))
+                        .then(if (onEditNote != null) Modifier.clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Edit note", onClick = onEditNote) else Modifier)
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Label("YOUR NOTE")
+                    HqText(note?.takeIf { it.isNotBlank() } ?: "Add a note: seat height, grip, how it felt", 15.sp, color = if (note.isNullOrBlank()) c.muted else c.ink)
                 }
-                if (info.why.isNotBlank()) Column {
-                    HqText("WHY", 11.sp, FontWeight.SemiBold, c.muted, letterSpacing = 0.06.em)
-                    HqText(info.why, 15.sp)
+            }
+            if (e != null) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.track.copy(alpha = 0.5f))
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Settings for this exercise") { settingsOpen = true }
+                        .padding(14.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Label("NEXT")
+                        HqText(next?.let { uk.woozy.fit.model.Progression.label(it) } ?: "Log it once to get a target", 17.sp, FontWeight.Bold)
+                        next?.let { HqText(it.why, 13.sp, color = c.primary) }
+                    }
+                    HqText("Settings", 14.sp, FontWeight.SemiBold, c.primary)
                 }
+            }
+            val info = ExerciseInfo.of(current, e?.instructions.orEmpty(), e?.muscle.orEmpty())
+            val steps = e?.instructions.orEmpty().split(Regex("\\n+|(?<=[.!?])\\s+(?=[A-Z])")).map { it.trim() }.filter { it.length > 2 }
+            if (info != null || steps.size >= 2) {
+                Label("HOW TO")
+                if (info != null && info.what.isNotBlank() && (steps.size < 2 || info.what != e?.instructions)) HqText(info.what, 15.sp)
+                if (steps.size >= 2) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    steps.forEachIndexed { i, step ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Box(Modifier.size(24.dp).clip(androidx.compose.foundation.shape.CircleShape).background(c.primary.copy(alpha = 0.14f)), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                                HqText("${i + 1}", 12.sp, FontWeight.SemiBold, c.primary)
+                            }
+                            HqText(step, 15.sp, modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+                if (info != null && info.works.isNotBlank()) Column { Label("WORKS"); HqText(info.works, 15.sp, FontWeight.Medium) }
+                if (info != null && info.why.isNotBlank()) Column { Label("WHY"); HqText(info.why, 15.sp) }
             } else if (id == null) HqText("No picture or notes for this exercise yet.", 14.sp, color = c.muted)
+            if (history.isNotEmpty()) {
+                Label("HISTORY")
+                val fmt = java.time.format.DateTimeFormatter.ofPattern("d MMM", java.util.Locale.UK)
+                history.forEach { rows ->
+                    val top = rows.maxByOrNull { it.weightKg }
+                    Row(Modifier.fillMaxWidth()) {
+                        HqText(java.time.Instant.ofEpochMilli(rows.first().startedMs).atZone(java.time.ZoneId.systemDefault()).format(fmt), 14.sp, modifier = Modifier.weight(1f))
+                        HqText("${rows.size} sets" + (top?.let { " \u00b7 ${uk.woozy.fit.model.NumberEntry.format(it.weightKg)} \u00d7 ${it.reps}" } ?: ""), 14.sp, FontWeight.Medium)
+                    }
+                }
+            }
+            if (similar.isNotEmpty()) {
+                Label("SIMILAR")
+                similar.forEach { s ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = androidx.compose.ui.semantics.Role.Button) { current = s.name }.padding(vertical = 8.dp),
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        HqText(s.name, 15.sp, FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 1)
+                        HqText(s.equipment.replaceFirstChar { it.uppercase() }, 13.sp, color = c.muted)
+                    }
+                }
+            }
         }
     }
+    val e = entity
+    if (settingsOpen && e != null) ExerciseSettingsSheet(db, e.id, e.name, if (isOwn) repsMin else null, if (isOwn) repsMax else null) { settingsOpen = false; tick++ }
 }

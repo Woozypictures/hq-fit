@@ -45,8 +45,6 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -204,19 +202,18 @@ fun ActiveWorkoutScreen(
     }
     if (batteryAsk) {
         val done = { batteryAsk = false; context.getSharedPreferences("battery", android.content.Context.MODE_PRIVATE).edit().putBoolean("asked", true).apply() }
-        AlertDialog(
+        SheetDialog(
             onDismissRequest = done,
-            title = { HqText("Keep the rest timer on time", 18.sp, FontWeight.SemiBold) },
-            text = { HqText("Let Woozy Fit run without battery limits, so the rest alarm and sync are not delayed when the screen is locked between sets.", 14.sp, color = HqTheme.colors.muted) },
-            confirmButton = {
-                TextButton(onClick = {
-                    done()
-                    runCatching {
-                        context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:" + context.packageName)))
-                    }
-                }) { HqText("Allow", 15.sp, FontWeight.SemiBold, HqTheme.colors.primary) }
+            title = "Keep the rest timer on time",
+            message = "Let Woozy Fit run without battery limits, so the rest alarm and sync are not delayed when the screen is locked between sets.",
+            confirm = "Allow",
+            onConfirm = {
+                done()
+                runCatching {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, android.net.Uri.parse("package:" + context.packageName)))
+                }
             },
-            dismissButton = { TextButton(onClick = done) { HqText("Not now", 15.sp, color = HqTheme.colors.muted) } },
+            dismiss = "Not now",
         )
     }
     var picking by remember { mutableStateOf<Pair<Int, PickMode>?>(null) }
@@ -453,8 +450,8 @@ fun ActiveWorkoutScreen(
                             Icons.Rounded.MoreVert, contentDescription = "Workout options", tint = c.onGradient,
                             modifier = Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Button) { menu = true }.padding(8.dp),
                         )
-                        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            DropdownMenuItem(
+                        uk.woozy.fit.designsystem.GlassDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            uk.woozy.fit.designsystem.GlassDropdownItem(
                                 text = { HqText(if (isDone) "Save and close" else "Finish workout now", 15.sp) },
                                 onClick = {
                                     menu = false
@@ -462,8 +459,8 @@ fun ActiveWorkoutScreen(
                                     else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
                                 },
                             )
-                            if (!isDone) DropdownMenuItem(text = { HqText("Lock screen", 15.sp) }, onClick = { menu = false; locked = true })
-                            if (!isDone) DropdownMenuItem(text = { HqText("Discard workout", 15.sp) }, onClick = { menu = false; confirmDiscard = true })
+                            if (!isDone) uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Lock screen", 15.sp) }, onClick = { menu = false; locked = true })
+                            if (!isDone) uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Discard workout", 15.sp) }, onClick = { menu = false; confirmDiscard = true })
                         }
                     }
                 }
@@ -584,16 +581,23 @@ fun ActiveWorkoutScreen(
                 }
             }
         }
-        infoFor?.let { ExerciseDetailSheet(db, it) { infoFor = null } }
+        infoFor?.let { n ->
+            val f = sets.firstOrNull { it.exerciseName == n }
+            ExerciseDetailSheet(
+                db, n, onDismiss = { infoFor = null },
+                note = f?.note, onEditNote = f?.let { s -> { noteFor = s.position to s.note } },
+                repsMin = f?.targetRepsMin, repsMax = f?.targetRepsMax,
+            )
+        }
         noteFor?.let { (pos, current) ->
             var text by remember(pos) { mutableStateOf(current) }
-            AlertDialog(
+            SheetDialog(
                 onDismissRequest = { noteFor = null },
-                title = { HqText("Exercise note", 18.sp, FontWeight.SemiBold) },
-                text = { OutlinedTextField(value = text, onValueChange = { text = it }, placeholder = { HqText("Seat height, grip, how it felt", 14.sp, color = c.muted) }, modifier = Modifier.fillMaxWidth()) },
-                confirmButton = { TextButton(onClick = { scope.launch { db.sessions().updateNote(sessionId, pos, text.trim()) }; noteFor = null }) { HqText("Save", 15.sp, FontWeight.SemiBold, c.primary) } },
-                dismissButton = { TextButton(onClick = { noteFor = null }) { HqText("Cancel", 15.sp, color = c.muted) } },
-            )
+                title = "Exercise note",
+                message = "Shows when you open the exercise's picture, and carries over to next time.",
+                confirm = "Save",
+                onConfirm = { scope.launch { db.sessions().updateNote(sessionId, pos, text.trim()) }; noteFor = null },
+            ) { OutlinedTextField(value = text, onValueChange = { text = it }, placeholder = { HqText("Seat height, grip, how it felt", 14.sp, color = c.muted) }, modifier = Modifier.fillMaxWidth()) }
         }
 
         if (editing != null) {
@@ -697,17 +701,16 @@ fun ActiveWorkoutScreen(
     }
 
     pendingDelete?.let { set ->
-        AlertDialog(
+        SheetDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { HqText("Delete set ${set.setIndex}?", 18.sp, FontWeight.SemiBold) },
-            text = { HqText(set.exerciseName, 14.sp, color = c.muted) },
-            confirmButton = {
-                TextButton(onClick = {
-                    pendingDelete = null; lastDeleted = set
-                    scope.launch { db.sessions().deleteSet(set.id) }
-                }) { HqText("Delete", 15.sp, FontWeight.SemiBold, c.warn) }
+            title = "Delete set ${set.setIndex}?",
+            message = set.exerciseName,
+            confirm = "Delete",
+            onConfirm = {
+                pendingDelete = null; lastDeleted = set
+                scope.launch { db.sessions().deleteSet(set.id) }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { HqText("Keep", 15.sp, color = c.muted) } },
+            dismiss = "Keep",
         )
     }
     settingsFor?.let { f ->
@@ -734,40 +737,39 @@ fun ActiveWorkoutScreen(
         }
     }
     if (confirmLeave) {
-        AlertDialog(
+        SheetDialog(
             onDismissRequest = { confirmLeave = false },
-            title = { HqText("Leave the workout?", 18.sp, FontWeight.SemiBold) },
-            text = { HqText("It keeps running. Resume it from Today.", 14.sp, color = c.muted) },
-            confirmButton = { TextButton(onClick = { confirmLeave = false; onLeave() }) { HqText("Leave", 15.sp, FontWeight.SemiBold, c.primary) } },
-            dismissButton = { TextButton(onClick = { confirmLeave = false }) { HqText("Stay", 15.sp, color = c.muted) } },
+            title = "Leave the workout?",
+            message = "It keeps running. Resume it from Today.",
+            confirm = "Leave",
+            onConfirm = { confirmLeave = false; onLeave() },
+            dismiss = "Stay",
         )
     }
     if (confirmFinish) {
-        AlertDialog(
+        SheetDialog(
             onDismissRequest = { confirmFinish = false; scope.launch { pager.animateScrollToPage((finishIndex - 1).coerceAtLeast(0)) } },
-            title = { HqText("Finish workout?", 18.sp, FontWeight.SemiBold) },
-            text = { HqText("$notTicked sets are not ticked. They will not count.", 14.sp, color = c.muted) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmFinish = false
-                    scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
-                }) { HqText("Finish", 15.sp, FontWeight.SemiBold, c.primary) }
+            title = "Finish workout?",
+            message = "$notTicked sets are not ticked. They will not count.",
+            confirm = "Finish",
+            onConfirm = {
+                confirmFinish = false
+                scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
             },
-            dismissButton = { TextButton(onClick = { confirmFinish = false; scope.launch { pager.animateScrollToPage((finishIndex - 1).coerceAtLeast(0)) } }) { HqText("Keep going", 15.sp, color = c.muted) } },
+            dismiss = "Keep going",
         )
     }
     if (confirmDiscard) {
-        AlertDialog(
+        SheetDialog(
             onDismissRequest = { confirmDiscard = false },
-            title = { HqText("Discard this workout?", 18.sp, FontWeight.SemiBold) },
-            text = { HqText("Everything logged in it is deleted. The day stays on your calendar.", 14.sp, color = c.muted) },
-            confirmButton = {
-                TextButton(onClick = {
-                    confirmDiscard = false
-                    scope.launch { RestTimer.cancel(context); Sessions.discard(db, sessionId); onDiscarded() }
-                }) { HqText("Discard", 15.sp, FontWeight.SemiBold, c.primary) }
+            title = "Discard this workout?",
+            message = "Everything logged in it is deleted. The day stays on your calendar.",
+            confirm = "Discard",
+            onConfirm = {
+                confirmDiscard = false
+                scope.launch { RestTimer.cancel(context); Sessions.discard(db, sessionId); onDiscarded() }
             },
-            dismissButton = { TextButton(onClick = { confirmDiscard = false }) { HqText("Cancel", 15.sp, color = c.muted) } },
+            danger = true,
         )
     }
 }
@@ -816,7 +818,6 @@ private fun ExerciseCard(
                         else -> ""
                     }
                     if (target.isNotEmpty()) HqText(target, 13.sp, color = c.muted)
-                    if (first.note.isNotBlank()) HqText("Note: ${first.note}", 13.sp, color = c.primary, maxLines = 2)
                 }
                 }
             }
@@ -873,14 +874,14 @@ private fun ExerciseCard(
                                     current = set.id == currentId,
                                     divider = idx > 0,
                                 )
-                                DropdownMenu(expanded = setMenu, onDismissRequest = { setMenu = false }) {
+                                uk.woozy.fit.designsystem.GlassDropdownMenu(expanded = setMenu, onDismissRequest = { setMenu = false }) {
                                     listOf("normal" to "Normal set", "warmup" to "Warm-up set", "drop" to "Drop set", "failure" to "Failure set").forEach { (k, label) ->
-                                        DropdownMenuItem(text = { HqText(label, 15.sp) }, onClick = { setMenu = false; onSetType(set, k) })
+                                        uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText(label, 15.sp) }, onClick = { setMenu = false; onSetType(set, k) })
                                     }
                                     listOf(6.0, 7.0, 8.0, 9.0, 10.0).forEach { r ->
-                                        DropdownMenuItem(text = { HqText("RPE ${r.toInt()}", 15.sp) }, onClick = { setMenu = false; onSetRpe(set, r) })
+                                        uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("RPE ${r.toInt()}", 15.sp) }, onClick = { setMenu = false; onSetRpe(set, r) })
                                     }
-                                    DropdownMenuItem(text = { HqText("Clear RPE", 15.sp) }, onClick = { setMenu = false; onSetRpe(set, null) })
+                                    uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Clear RPE", 15.sp) }, onClick = { setMenu = false; onSetRpe(set, null) })
                                 }
                             }
                         }
@@ -1133,24 +1134,17 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
     }
     if (naming) {
         var text by remember { mutableStateOf(session?.name.orEmpty()) }
-        AlertDialog(
+        SheetDialog(
             onDismissRequest = { naming = false },
-            title = { HqText("Save as a workout", 18.sp, FontWeight.SemiBold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HqText("The exercises, sets, reps and weights you did, ready to plan again.", 13.sp, color = c.muted)
-                    OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                }
+            title = "Save as a workout",
+            message = "The exercises, sets, reps and weights you did, ready to plan again.",
+            confirm = "Save",
+            onConfirm = {
+                naming = false
+                val name = text.trim().ifEmpty { "Saved workout" }
+                scope.launch { if (Sessions.saveAsTemplate(db, sessionId, name) != null) savedAs = name }
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    naming = false
-                    val name = text.trim().ifEmpty { "Saved workout" }
-                    scope.launch { if (Sessions.saveAsTemplate(db, sessionId, name) != null) savedAs = name }
-                }) { HqText("Save", 15.sp, FontWeight.SemiBold, c.primary) }
-            },
-            dismissButton = { TextButton(onClick = { naming = false }) { HqText("Cancel", 15.sp, color = c.muted) } },
-        )
+        ) { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, modifier = Modifier.fillMaxWidth()) }
     }
 }
 
@@ -1376,20 +1370,20 @@ private fun ExerciseIconRow(
         Tool(Icons.Rounded.SwapHoriz, "Replace exercise", onClick = onReplace)
         Box {
             Tool(Icons.Rounded.Add, "Add exercise", onClick = { addMenu = true })
-            DropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
-                DropdownMenuItem(text = { HqText("Add set", 15.sp) }, onClick = { addMenu = false; onAddSet() })
+            uk.woozy.fit.designsystem.GlassDropdownMenu(expanded = addMenu, onDismissRequest = { addMenu = false }) {
+                uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Add set", 15.sp) }, onClick = { addMenu = false; onAddSet() })
                 listOf("Add exercise before" to PickMode.BEFORE, "Add exercise after" to PickMode.AFTER, "Add superset" to PickMode.SUPERSET).forEach { (label, mode) ->
-                    DropdownMenuItem(text = { HqText(label, 15.sp) }, onClick = { addMenu = false; onAdd(mode) })
+                    uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText(label, 15.sp) }, onClick = { addMenu = false; onAdd(mode) })
                 }
             }
         }
         if (onRemoveSet != null) Tool(Icons.Rounded.Remove, "Remove last set", onClick = onRemoveSet)
         Box {
             Tool(Icons.Rounded.MoreVert, "More options", onClick = { moreMenu = true })
-            DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
-                DropdownMenuItem(text = { HqText("How to do it", 15.sp) }, onClick = { moreMenu = false; onInfo() })
-                DropdownMenuItem(text = { HqText("Settings for this exercise", 15.sp) }, onClick = { moreMenu = false; onSettings() })
-                DropdownMenuItem(text = { HqText("Mark all complete", 15.sp) }, onClick = { moreMenu = false; onMarkAll() })
+            uk.woozy.fit.designsystem.GlassDropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
+                uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("How to do it", 15.sp) }, onClick = { moreMenu = false; onInfo() })
+                uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Settings for this exercise", 15.sp) }, onClick = { moreMenu = false; onSettings() })
+                uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Mark all complete", 15.sp) }, onClick = { moreMenu = false; onMarkAll() })
             }
         }
     }

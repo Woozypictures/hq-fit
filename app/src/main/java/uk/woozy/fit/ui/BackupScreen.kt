@@ -218,26 +218,25 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
 
     val uri = restoreUri
     if (uri != null) {
-        AlertDialog(
+        SheetDialog(
             onDismissRequest = { restoreUri = null },
-            title = { HqText("Replace all data?", 18.sp, FontWeight.SemiBold) },
-            text = { HqText("Everything on this phone is replaced by the backup. This cannot be undone.", 14.sp) },
-            confirmButton = {
-                TextButton(onClick = {
-                    restoreUri = null
-                    scope.launch {
-                        try {
-                            context.contentResolver.openInputStream(uri)!!.use { container.database.restoreFrom(it) }
-                            (context as? Activity)?.recreate()
-                        } catch (e: InvalidBackupException) {
-                            message = e.message
-                        } catch (e: Exception) {
-                            message = "Restore failed: ${e.javaClass.simpleName}"
-                        }
+            title = "Replace all data?",
+            message = "Everything on this phone is replaced by the backup.",
+            confirm = "Replace",
+            danger = true,
+            onConfirm = {
+                restoreUri = null
+                scope.launch {
+                    try {
+                        context.contentResolver.openInputStream(uri)!!.use { container.database.restoreFrom(it) }
+                        (context as? Activity)?.recreate()
+                    } catch (e: InvalidBackupException) {
+                        message = e.message
+                    } catch (e: Exception) {
+                        message = "Restore failed: ${e.javaClass.simpleName}"
                     }
-                }) { HqText("Replace", 15.sp, FontWeight.SemiBold, HqTheme.colors.primary) }
+                }
             },
-            dismissButton = { TextButton(onClick = { restoreUri = null }) { HqText("Cancel", 15.sp) } },
         )
     }
 }
