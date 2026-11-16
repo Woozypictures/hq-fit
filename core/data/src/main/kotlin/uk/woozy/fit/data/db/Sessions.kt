@@ -114,6 +114,29 @@ object Sessions {
         return ramp.size
     }
 
+    /**
+     * Makes a workout (template) from what you actually did in a session: each exercise with its working-set count,
+     * the rep range you hit, the last weight, rest, superset and note. Warm-ups are left out. Returns the new id.
+     */
+    suspend fun saveAsTemplate(db: HqFitDatabase, sessionId: Long, name: String): Long? {
+        val sets = db.sessions().sets(sessionId).filter { it.setType != "warmup" }
+        if (sets.isEmpty()) return null
+        val templateId = db.templates().insert(WorkoutTemplateEntity(name = name.ifBlank { "Saved workout" }))
+        val items = sets.groupBy { it.position }.toSortedMap().values.mapIndexed { i, g ->
+            val f = g.first()
+            val done = g.filter { it.done }.ifEmpty { g }
+            val reps = done.mapNotNull { it.reps }
+            TemplateItemEntity(
+                templateId = templateId, section = f.section, position = i, exerciseId = f.exerciseId, sets = g.size,
+                repsMin = reps.minOrNull() ?: f.targetRepsMin, repsMax = reps.maxOrNull() ?: f.targetRepsMax,
+                durationSec = f.durationSec, weightKg = done.lastOrNull { it.weightKg != null }?.weightKg,
+                restSec = g.maxOf { it.restSec }, supersetGroup = f.supersetGroup, note = f.note,
+            )
+        }
+        db.templates().insertItems(items)
+        return templateId
+    }
+
     /** Swaps the exercise in a position for another. Weights stay, ticks and reps are cleared. */
     suspend fun replace(db: HqFitDatabase, sessionId: Long, position: Int, exercise: ExerciseEntity) =
         db.sessions().replaceExercise(sessionId, position, exercise.id, exercise.name)

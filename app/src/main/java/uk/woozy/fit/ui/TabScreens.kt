@@ -92,6 +92,9 @@ private data class ProgressData(
     val weekDone: List<Double>,
     val weekPlanned: List<Int>,
     val weekVolume: List<Double>,
+    /** Consistency map: 12 weeks from a Monday, one value per day (volume lifted; 1 for a workout with no weights). */
+    val heatStart: LocalDate = LocalDate.now(),
+    val heat: List<Double> = emptyList(),
     /** Feelfit-style changes: since the first weigh-in, over 30 days, over 7 days (null when there is no reading that far back). */
     val firstKg: Double? = null, val firstDate: LocalDate? = null, val kg30: Double? = null, val kg7: Double? = null, val lastDate: LocalDate? = null,
 )
@@ -126,10 +129,17 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
     val sched = db.schedule().between(weeks.first().toString(), weeks.last().plusDays(6).toString())
     val sessions = db.sessions().doneSince(weeks.first().atStartOfDay(zone).toInstant().toEpochMilli())
     val sets = sessions.flatMap { s -> db.sessions().sets(s.id).filter { it.done && it.setType != "warmup" && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }.map { s to it } }
+    val heatStart = monday.minusWeeks(11)
+    val heatSessions = db.sessions().doneSince(heatStart.atStartOfDay(zone).toInstant().toEpochMilli())
+    val heatByDay = heatSessions.groupBy { java.time.Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate() }.mapValues { (_, ss) ->
+        ss.sumOf { s -> db.sessions().sets(s.id).filter { it.done && it.setType != "warmup" }.sumOf { (it.weightKg ?: 0.0) * (it.reps ?: 0) } }.coerceAtLeast(1.0)
+    }
+    val heat = (0 until 84).map { heatByDay[heatStart.plusDays(it.toLong())] ?: 0.0 }
     val oldest = all.lastOrNull()
     // A change over N days needs a weigh-in inside the window as well as one before it; otherwise it shows a dash.
     fun kgAt(daysAgo: Long): Double? { val t = today.minusDays(daysAgo).atStartOfDay(zone).toInstant().toEpochMilli(); if ((all.firstOrNull()?.epochMs ?: 0L) <= t) return null; return all.firstOrNull { it.epochMs <= t }?.kg }
     return ProgressData(
+        heatStart = heatStart, heat = heat,
         firstKg = oldest?.kg, firstDate = oldest?.let { java.time.Instant.ofEpochMilli(it.epochMs).atZone(zone).toLocalDate() },
         kg30 = kgAt(30), kg7 = kgAt(7), lastDate = all.firstOrNull()?.let { java.time.Instant.ofEpochMilli(it.epochMs).atZone(zone).toLocalDate() },
         weights = weights, latestKg = latest, slopePerDay = slope, goalDate = goalDate,
@@ -184,11 +194,11 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
             }
         }
 
-        val cards = rememberCardPrefs("progress", listOf("weight", "calories", "training", "strength"))
+        val cards = rememberCardPrefs("progress", listOf("weight", "calories", "training", "consistency", "strength"))
         var editing by remember { mutableStateOf(false) }
         androidx.activity.compose.BackHandler(editing) { editing = false }
         CardColumn(
-            cards, mapOf("weight" to "Weight", "calories" to "Calories", "training" to "Training", "strength" to "Strength"),
+            cards, mapOf("weight" to "Weight", "calories" to "Calories", "training" to "Training", "consistency" to "Consistency", "strength" to "Strength"),
             editing = editing, onEditing = { editing = it },
         ) { key ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -294,6 +304,25 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                     }
                                 }
                     }
+                    "consistency" -> {
+                                SectionLabel("Consistency, last 12 weeks")
+                                HqCard(Modifier.fillMaxWidth()) {
+                                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        ConsistencyMap(d.heatStart, d.heat)
+                                        val today = LocalDate.now()
+                                        val trainedDays = d.heat.indices.filter { d.heat[it] > 0 }.map { d.heatStart.plusDays(it.toLong()) }.toSet()
+                                        // Weeks in a row with at least one workout, counting this week only once it has one.
+                                        var w = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                                        if ((0..6).none { w.plusDays(it.toLong()) in trainedDays }) w = w.minusWeeks(1)
+                                        var streak = 0
+                                        while (!w.isBefore(d.heatStart) && (0..6).any { w.plusDays(it.toLong()) in trainedDays }) { streak++; w = w.minusWeeks(1) }
+                                        Row(Modifier.fillMaxWidth()) {
+                                            HqText(if (streak == 1) "1-week streak" else "$streak-week streak", 14.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                                            HqText("${trainedDays.size} days trained", 13.sp, color = c.muted)
+                                        }
+                                    }
+                                }
+                    }
                     "strength" -> {
                                 SectionLabel("Strength")
                                 HqCard(Modifier.fillMaxWidth()) {
@@ -304,6 +333,36 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                     }
                                 }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** GitHub-style map: one column per week (Monday at the top), darker for more volume lifted that day. */
+@Composable
+private fun ConsistencyMap(start: LocalDate, values: List<Double>) {
+    val c = HqTheme.colors
+    val today = LocalDate.now()
+    val top = values.filter { it > 0 }.sorted().let { v -> if (v.isEmpty()) 1.0 else v[(v.size * 0.9).toInt().coerceAtMost(v.lastIndex)] }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf("M", "", "W", "", "F", "", "S").forEach { HqText(it, 9.sp, color = c.muted, modifier = Modifier.height(14.dp)) }
+        }
+        (0 until 12).forEach { wk ->
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                (0 until 7).forEach { dow ->
+                    val i = wk * 7 + dow
+                    val v = values.getOrElse(i) { 0.0 }
+                    val day = start.plusDays(i.toLong())
+                    val color = when {
+                        day.isAfter(today) -> androidx.compose.ui.graphics.Color.Transparent
+                        v <= 0 -> c.track
+                        else -> c.primary.copy(alpha = (0.35f + 0.65f * (v / top).toFloat()).coerceIn(0.35f, 1f))
+                    }
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.fillMaxWidth().height(14.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(3.dp)).background(color),
+                    )
                 }
             }
         }

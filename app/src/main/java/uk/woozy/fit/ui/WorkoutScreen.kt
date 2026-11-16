@@ -967,6 +967,30 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
     val sets by produceState(emptyList<SetLogEntity>(), sessionId) { value = db.sessions().sets(sessionId).filter { it.done } }
     BackHandler(onBack = onDone)
     val zone = java.time.ZoneId.systemDefault()
+    var sleep by remember { mutableStateOf<Int?>(null) }
+    var energy by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(session) { session?.let { if (sleep == null) sleep = it.sleep; if (energy == null) energy = it.energy } }
+    fun saveRatings() { scope.launch { db.sessions().setSleepEnergy(sessionId, sleep, energy) } }
+    var naming by remember { mutableStateOf(false) }
+    var savedAs by remember { mutableStateOf<String?>(null) }
+    // Headline extras: weeks in a row with a workout, and volume against the last time you did this workout.
+    val extra by produceState<Pair<Int, String?>>(0 to null, sessionId, summary) {
+        val sm = summary ?: return@produceState
+        val me = db.sessions().get(sessionId) ?: return@produceState
+        val done = db.sessions().doneSince(me.startedMs - 400L * 86_400_000)
+        val monday = { ms: Long -> java.time.Instant.ofEpochMilli(ms).atZone(zone).toLocalDate().with(java.time.DayOfWeek.MONDAY) }
+        val weeks = done.map { monday(it.startedMs) }.toSet() + monday(me.startedMs)
+        var w = monday(me.startedMs); var n = 0
+        while (w in weeks) { n++; w = w.minusWeeks(1) }
+        val prev = done.filter { it.id != sessionId && it.name == me.name && it.startedMs < me.startedMs }.maxByOrNull { it.startedMs }
+        val line = prev?.let { p ->
+            Sessions.summary(db, p.id, System.currentTimeMillis())?.volumeKg?.takeIf { it > 0 && sm.volumeKg > 0 }?.let { pv ->
+                val pct = Math.round((sm.volumeKg - pv) / pv * 100).toInt()
+                "Volume ${if (pct >= 0) "+" else ""}$pct% vs last ${me.name}"
+            }
+        }
+        value = n to line
+    }
     val started = session?.startedMs?.let { java.time.Instant.ofEpochMilli(it).atZone(zone) }
 
     Column(Modifier.fillMaxSize()) {
@@ -986,6 +1010,27 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (s != null) {
+                val (head, sub) = when {
+                    s.records.isNotEmpty() -> "New personal record" to "You beat your best on ${s.records.size} exercise${if (s.records.size == 1) "" else "s"}."
+                    extra.first >= 2 -> "Streak alive" to "${extra.first} weeks in a row with a workout."
+                    else -> "Another one in the bank" to "Logged and counted. Turning up is what moves the numbers."
+                }
+                HqCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        HqText("WORKOUT LOGGED", 12.sp, FontWeight.SemiBold, c.muted, letterSpacing = 1.sp)
+                        HqText(head, 24.sp, FontWeight.Bold, letterSpacing = (-0.4).sp)
+                        HqText(sub, 14.sp, color = c.muted)
+                        extra.second?.let { HqText(it, 14.sp, FontWeight.SemiBold, c.primary) }
+                    }
+                }
+                HqCard(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        HqText("How did you show up?", 17.sp, FontWeight.SemiBold)
+                        HqText("Optional. Over time it shows whether sleep and energy change your lifts.", 12.sp, color = c.muted)
+                        RatingBars("Sleep", sleep, c.primary) { sleep = it; saveRatings() }
+                        RatingBars("Energy", energy, c.warn) { energy = it; saveRatings() }
+                    }
+                }
                 HqCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(horizontal = 20.dp, vertical = 18.dp)) {
                         HqText("How was the workout?", 17.sp, FontWeight.SemiBold)
@@ -1078,6 +1123,57 @@ fun WorkoutSummaryScreen(db: HqFitDatabase, sessionId: Long, onDone: () -> Unit,
         Column(Modifier.navigationBarsPadding().padding(16.dp)) {
             HqPillButton("Done", onClick = onDone, modifier = Modifier.fillMaxWidth(), style = PillStyle.Filled)
             HqPillButton("Edit sets", onClick = onEdit, modifier = Modifier.fillMaxWidth().padding(top = 8.dp), style = PillStyle.Outline)
+            HqText(
+                savedAs?.let { "Saved as \u201c$it\u201d. Schedule it in Programmes." } ?: "Save as a workout",
+                14.sp, FontWeight.SemiBold, if (savedAs == null) c.primary else c.muted,
+                Modifier.align(Alignment.CenterHorizontally).padding(top = 10.dp).clip(CircleShape)
+                    .clickable(enabled = savedAs == null, role = Role.Button) { naming = true }.padding(horizontal = 12.dp, vertical = 8.dp),
+            )
+        }
+    }
+    if (naming) {
+        var text by remember { mutableStateOf(session?.name.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { naming = false },
+            title = { HqText("Save as a workout", 18.sp, FontWeight.SemiBold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HqText("The exercises, sets, reps and weights you did, ready to plan again.", 13.sp, color = c.muted)
+                    OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    naming = false
+                    val name = text.trim().ifEmpty { "Saved workout" }
+                    scope.launch { if (Sessions.saveAsTemplate(db, sessionId, name) != null) savedAs = name }
+                }) { HqText("Save", 15.sp, FontWeight.SemiBold, c.primary) }
+            },
+            dismissButton = { TextButton(onClick = { naming = false }) { HqText("Cancel", 15.sp, color = c.muted) } },
+        )
+    }
+}
+
+/** Five tappable bars with a word (GymMane's sleep and energy rating). Tapping the current value clears it. */
+@Composable
+private fun RatingBars(label: String, value: Int?, color: androidx.compose.ui.graphics.Color, onChange: (Int?) -> Unit) {
+    val c = HqTheme.colors
+    val words = listOf("Awful", "Poor", "Okay", "Good", "Great")
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.fillMaxWidth()) {
+            HqText(label, 14.sp, FontWeight.Medium, modifier = Modifier.weight(1f))
+            HqText(value?.let { words[(it - 1).coerceIn(0, 4)] } ?: "Optional", 13.sp, if (value != null) FontWeight.SemiBold else FontWeight.Normal, if (value != null) color else c.muted)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            (1..5).forEach { i ->
+                Box(
+                    Modifier.weight(1f).height(28.dp).clip(RoundedCornerShape(8.dp))
+                        .clickable(role = Role.Button, onClickLabel = "$label ${words[i - 1]}") { onChange(if (value == i) null else i) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)).background(if (value != null && i <= value) color else c.track))
+                }
+            }
         }
     }
 }
