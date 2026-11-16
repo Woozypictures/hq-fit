@@ -84,8 +84,10 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             HqText("Ready-made plans", 20.sp, FontWeight.SemiBold)
-            HqText("Classic programmes built from your library. Adding one makes its workouts here, ready to give days to and change.", 13.sp, color = c.muted)
-            uk.woozy.fit.data.db.ReadyPlans.all.forEach { plan ->
+            HqText("Built from your library. Adding one makes its workouts here, ready to give days to and change. Modern plans: stop each hard set with 1-2 reps left.", 13.sp, color = c.muted)
+            uk.woozy.fit.data.db.ReadyPlans.all.groupBy { it.group }.forEach { (group, plans) ->
+              SectionLabel(group, Modifier.padding(top = 8.dp))
+              plans.forEach { plan ->
                 HqCard(Modifier.fillMaxWidth()) {
                     androidx.compose.foundation.layout.Row(Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -102,6 +104,7 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
                         }, style = PillStyle.Outline)
                     }
                 }
+              }
             }
         }
     }
