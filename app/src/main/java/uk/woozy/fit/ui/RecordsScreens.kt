@@ -1,5 +1,6 @@
 package uk.woozy.fit.ui
 
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.items
@@ -69,7 +70,7 @@ fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
             if (rows.isEmpty()) {
                 item { EmptyCard(if (allRows.isEmpty()) "No records yet" else "Nothing matches", if (allRows.isEmpty()) "Finish a workout and your best lifts appear here." else "Try a different name.", emoji = if (allRows.isEmpty()) "\uD83C\uDFC6" else "\uD83D\uDD0D") }
             } else {
-                    androidx.compose.foundation.lazy.itemsIndexed(rows, key = { _, r -> r.exerciseId }) { i, r ->
+                    itemsIndexed(rows, key = { _, r -> r.exerciseId }) { i, r ->
                         val shape = androidx.compose.foundation.shape.RoundedCornerShape(
                             topStart = if (i == 0) 22.dp else 0.dp, topEnd = if (i == 0) 22.dp else 0.dp,
                             bottomStart = if (i == rows.lastIndex) 22.dp else 0.dp, bottomEnd = if (i == rows.lastIndex) 22.dp else 0.dp,
