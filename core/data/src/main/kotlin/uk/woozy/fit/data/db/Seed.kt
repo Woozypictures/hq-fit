@@ -81,6 +81,14 @@ object Seed {
             db.targets().upsertAll(targets().filter { it.key !in have })
             db.meta().put(MetaEntity("seed", VERSION))
         }
+        // One-off: a past-day log discarded during testing on 16 Nov 2026 left a planned "Fullbody A" on 13 Nov.
+        // Remove only that row (no programme, still planned, with no session against it), once.
+        if (db.meta().get("cleanup_1113") == null) {
+            db.schedule().between("2026-11-13", "2026-11-13")
+                .filter { it.programmeId == null && it.status == "planned" && it.templateName == "Fullbody A" }
+                .forEach { db.schedule().deletePlannedById(it.id) }
+            db.meta().put(MetaEntity("cleanup_1113", "1"))
+        }
         if (catalogue != null && db.meta().get("exercises") == null) {
             db.exercises().insertAll(ExerciseCatalogue.parse(catalogue()))
             db.meta().put(MetaEntity("exercises", "1"))
