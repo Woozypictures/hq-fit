@@ -1,5 +1,7 @@
 package uk.woozy.fit.designsystem
 
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import android.os.Build
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -727,8 +729,24 @@ fun GlassRestPill(
     val frac = if (totalMs > 0) (leftMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
     val shown by androidx.compose.animation.core.animateFloatAsState(frac, tween(300), label = "rest")
     val sec = ((leftMs + 999) / 1000).toInt()
+    // Swipe the pill sideways to skip the rest (GymMane), as well as the Skip button. Transform-only, springs back.
+    val drag = remember { androidx.compose.animation.core.Animatable(0f) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val skipPx = with(androidx.compose.ui.platform.LocalDensity.current) { 96.dp.toPx() }
     Row(
-        modifier.height(56.dp)
+        modifier
+            .graphicsLayer { translationX = drag.value; alpha = 1f - (kotlin.math.abs(drag.value) / (skipPx * 2.2f)).coerceIn(0f, 0.6f) }
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        if (kotlin.math.abs(drag.value) > skipPx) { onSkip(); scope.launch { drag.snapTo(0f) } }
+                        else scope.launch { drag.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 500f)) }
+                    },
+                    onDragCancel = { scope.launch { drag.animateTo(0f) } },
+                    onHorizontalDrag = { _, dx -> scope.launch { drag.snapTo(drag.value + dx) } },
+                )
+            }
+            .height(56.dp)
             .then(if (solid) Modifier.solidGlass(style, shape) else Modifier.glass(backdrop, style, shape))
             .drawWithContent {
                 drawContent()

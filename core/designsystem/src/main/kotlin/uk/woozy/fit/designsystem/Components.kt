@@ -400,6 +400,8 @@ fun SetRow(
     repsGhost: String = "",
     current: Boolean = false,
     divider: Boolean = false,
+    /** Tap last time's numbers to copy them into this set (GymMane's one-tap previous). */
+    onPreviousClick: (() -> Unit)? = null,
 ) {
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -430,7 +432,17 @@ fun SetRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         HqText(number, 15.sp, FontWeight.SemiBold, if (current && !done) c.primary else c.muted, Modifier.width(36.dp))
-        HqText(previous, 13.sp, FontWeight.Normal, c.muted, Modifier.weight(1f))
+        if (onPreviousClick != null && previous.isNotBlank() && !done) {
+            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                HqText(
+                    previous, 13.sp, FontWeight.Medium, c.muted,
+                    Modifier.clip(RoundedCornerShape(8.dp)).background(c.track.copy(alpha = 0.6f))
+                        .clickable(role = Role.Button, onClickLabel = "Use last time's numbers") { crispTick(view); onPreviousClick() }
+                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                    maxLines = 1,
+                )
+            }
+        } else HqText(previous, 13.sp, FontWeight.Normal, c.muted, Modifier.weight(1f))
         EditableCell(weight, value, weightActive, onWeightClick, if (done) "" else weightGhost)
         EditableCell(reps, value, repsActive, onRepsClick, if (done) "" else repsGhost)
         Spacer(Modifier.width(8.dp))

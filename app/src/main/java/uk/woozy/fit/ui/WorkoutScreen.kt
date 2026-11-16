@@ -230,6 +230,9 @@ fun ActiveWorkoutScreen(
     var confirmFinish by remember { mutableStateOf(false) }
     var confirmDiscard by remember { mutableStateOf(false) }
     var lastDeleted by remember { mutableStateOf<SetLogEntity?>(null) }
+    var lastDup by remember { mutableStateOf<SetLogEntity?>(null) }
+    LaunchedEffect(lastDup) { if (lastDup != null) { delay(4000); lastDup = null } }
+    var plateFor by remember { mutableStateOf<Double?>(null) }
     val isDone = session?.status == "done"
     BackHandler { if (locked) Unit else if (isDone) onLeave() else confirmLeave = true }
     var pendingDelete by remember { mutableStateOf<SetLogEntity?>(null) }
@@ -404,7 +407,22 @@ fun ActiveWorkoutScreen(
                 },
                 onDeleteLast = { if (group.size > 1) { val gone = group.last(); lastDeleted = gone; scope.launch { db.sessions().deleteSet(gone.id) } } },
                 onPick = { mode -> picking = first.position to mode },
-                onDeleteSet = { set -> pendingDelete = set },
+                onDeleteSet = { set -> lastDup = null; lastDeleted = set; scope.launch { db.sessions().deleteSet(set.id) } },
+                onDuplicateSet = { set ->
+                    // Warm-ups are numbered below zero and come from the ramp, so they are not duplicated.
+                    if (set.setType == "warmup") toast = "Warm-ups come from Add warm-up" else scope.launch {
+                        db.sessions().shiftSets(sessionId, set.position, set.setIndex, 1)
+                        val id = db.sessions().insertSet(set.copy(id = 0, setIndex = set.setIndex + 1, done = false, doneAtMs = null))
+                        lastDeleted = null; lastDup = set.copy(id = id, setIndex = set.setIndex + 1)
+                    }
+                },
+                onCopyPrevious = { set ->
+                    prevVals[set.exerciseId to set.setIndex]?.let { (w, r) ->
+                        scope.launch { db.sessions().updateValues(set.id, w, r ?: set.reps) }
+                        toast = "Last time copied"
+                    }
+                },
+                onPlates = loadSet?.weightKg?.let { w -> { plateFor = w } },
                 onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
                 onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
                 onInfo = { infoFor = first.exerciseName },
@@ -655,6 +673,18 @@ fun ActiveWorkoutScreen(
             action = "Undo",
             onAction = { lastDeleted?.let { gone -> scope.launch { db.sessions().restoreSet(gone) } }; lastDeleted = null },
         )
+        var dupText by remember { mutableStateOf("Set duplicated") }
+        lastDup?.let { dupText = "Set ${it.setIndex} added" }
+        uk.woozy.fit.designsystem.GlassToast(
+            dupText, lastDup != null, backdrop, gStyleT,
+            Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
+                .padding(bottom = if (editing != null) 330.dp else if (restLeft > 0 && c.flat) 96.dp else 24.dp),
+            action = "Undo",
+            onAction = {
+                lastDup?.let { copy -> scope.launch { db.sessions().deleteSet(copy.id); db.sessions().shiftSets(sessionId, copy.position, copy.setIndex, -1) } }
+                lastDup = null
+            },
+        )
         var toastText by remember { mutableStateOf("") }
         toast?.let { toastText = it }
         uk.woozy.fit.designsystem.GlassToast(
@@ -700,6 +730,7 @@ fun ActiveWorkoutScreen(
         ExercisePickerSheet(
             db = db,
             onDismiss = { picking = null },
+            swapFor = if (mode == PickMode.REPLACE) sets.firstOrNull { it.position == position }?.exerciseId else null,
             onPick = { exercise ->
                 picking = null
                 scope.launch {
@@ -727,6 +758,7 @@ fun ActiveWorkoutScreen(
             dismiss = "Keep",
         )
     }
+    plateFor?.let { kg -> PlateSheet(kg, barKg) { plateFor = null } }
     settingsFor?.let { f ->
         ExerciseSettingsSheet(db, f.exerciseId, f.exerciseName, f.targetRepsMin, f.targetRepsMax) { settingsFor = null; prefsTick++ }
     }
@@ -813,6 +845,9 @@ private fun ExerciseCard(
     nextLine: String? = null,
     onUseTarget: (() -> Unit)? = null,
     onSettings: () -> Unit = {},
+    onCopyPrevious: (SetLogEntity) -> Unit = {},
+    onDuplicateSet: (SetLogEntity) -> Unit = {},
+    onPlates: (() -> Unit)? = null,
 ) {
     val c = HqTheme.colors
     val first = group.first()
@@ -858,16 +893,21 @@ private fun ExerciseCard(
                     androidx.compose.runtime.key(set.id) {
                         val e = editing?.takeIf { it.setId == set.id }
                         var setMenu by remember { mutableStateOf(false) }
+                        // GymMane: swipe right to duplicate the set, left to delete it. Both undo from the toast; the row springs back.
                         val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
-                            if (v == SwipeToDismissBoxValue.EndToStart && group.size > 1) onDeleteSet(set)
-                                false // the card springs back; a dialog asks before anything is deleted
+                            when (v) {
+                                SwipeToDismissBoxValue.EndToStart -> if (group.size > 1) onDeleteSet(set)
+                                SwipeToDismissBoxValue.StartToEnd -> onDuplicateSet(set)
+                                else -> Unit
+                            }
+                            false
                         })
                         SwipeToDismissBox(
                             state = dismiss,
-                            enableDismissFromStartToEnd = false,
                             backgroundContent = {
-                                Box(Modifier.fillMaxSize().background(c.track), contentAlignment = Alignment.CenterEnd) {
-                                    HqText("Delete", 14.sp, FontWeight.SemiBold, c.muted, Modifier.padding(end = 20.dp))
+                                val dup = dismiss.dismissDirection == SwipeToDismissBoxValue.StartToEnd
+                                Box(Modifier.fillMaxSize().background(if (dup) c.primary.copy(alpha = 0.14f) else c.track), contentAlignment = if (dup) Alignment.CenterStart else Alignment.CenterEnd) {
+                                    HqText(if (dup) "Duplicate" else "Delete", 14.sp, FontWeight.SemiBold, if (dup) c.primary else c.muted, Modifier.padding(horizontal = 20.dp))
                                 }
                             },
                         ) {
@@ -887,6 +927,7 @@ private fun ExerciseCard(
                                     repsGhost = (prevVals[set.exerciseId to set.setIndex]?.second ?: set.targetRepsMax ?: set.targetRepsMin)?.toString().orEmpty(),
                                     current = set.id == currentId,
                                     divider = idx > 0,
+                                    onPreviousClick = if (prevVals[set.exerciseId to set.setIndex]?.first != null) ({ onCopyPrevious(set) }) else null,
                                 )
                                 uk.woozy.fit.designsystem.GlassDropdownMenu(expanded = setMenu, onDismissRequest = { setMenu = false }) {
                                     listOf("normal" to "Normal set", "warmup" to "Warm-up set", "drop" to "Drop set", "failure" to "Failure set").forEach { (k, label) ->
@@ -904,7 +945,10 @@ private fun ExerciseCard(
             }
             if (plates != null || onWarmup != null) {
                 Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    HqText(plates.orEmpty(), 13.sp, color = c.muted, modifier = Modifier.weight(1f))
+                    HqText(
+                        plates.orEmpty(), 13.sp, color = if (onPlates != null) c.primary else c.muted,
+                        modifier = Modifier.weight(1f).then(if (onPlates != null && plates != null) Modifier.clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClickLabel = "Plate calculator", onClick = onPlates).padding(vertical = 6.dp) else Modifier),
+                    )
                     if (onWarmup != null) TextButton(onClick = onWarmup) { HqText("Add warm-up", 14.sp, FontWeight.SemiBold, c.primary) }
                 }
             }
@@ -1207,11 +1251,18 @@ private enum class PickMode { REPLACE, BEFORE, AFTER, SUPERSET }
 /** Search the library and pick one exercise. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, onPick: (ExerciseEntity) -> Unit) {
+internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, swapFor: Long? = null, onPick: (ExerciseEntity) -> Unit) {
     val c = HqTheme.colors
     var text by remember { mutableStateOf("") }
     var results by remember { mutableStateOf(emptyList<ExerciseEntity>()) }
     LaunchedEffect(text) { results = db.exercises().searchFiltered(text.trim(), "", "") }
+    // Replacing: same-muscle swaps first (GymMane), ones you have done before at the top, then same equipment.
+    var swaps by remember { mutableStateOf(emptyList<ExerciseEntity>()) }
+    LaunchedEffect(swapFor) {
+        val from = swapFor?.let { db.exercises().findById(it) } ?: return@LaunchedEffect
+        val pool = db.exercises().similar(from.muscle, from.equipment, from.id, 40)
+        swaps = pool.sortedByDescending { e -> (if (db.sessions().latestRow(e.id) != null) 2 else 0) + (if (e.equipment == from.equipment) 1 else 0) }.take(8)
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -1226,6 +1277,22 @@ internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, onPic
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
             LazyColumn(Modifier.heightIn(max = 480.dp)) {
+                if (text.isBlank() && swaps.isNotEmpty()) {
+                    item(key = "swaps") { uk.woozy.fit.designsystem.SectionLabel("Suggested swaps", Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)) }
+                    items(swaps, key = { "s" + it.id }) { e ->
+                        Row(
+                            Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onPick(e) }.padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            ExerciseThumb(e.name, 40.dp, Modifier.padding(end = 12.dp))
+                            Column {
+                                HqText(e.name, 16.sp, FontWeight.Medium, maxLines = 2)
+                                HqText(listOf(e.muscle, e.equipment).filter { it.isNotBlank() }.joinToString(" · "), 13.sp, color = c.muted)
+                            }
+                        }
+                    }
+                    item(key = "all") { uk.woozy.fit.designsystem.SectionLabel("All exercises", Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)) }
+                }
                 items(results, key = { it.id }) { e ->
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onPick(e) }
@@ -1399,6 +1466,49 @@ private fun ExerciseIconRow(
                 uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Settings for this exercise", 15.sp) }, onClick = { moreMenu = false; onSettings() })
                 uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Mark all complete", 15.sp) }, onClick = { moreMenu = false; onMarkAll() })
             }
+        }
+    }
+}
+
+
+/**
+ * Plate calculator (GymMane's plate sheet): the plates for each side of the bar, drawn as a loaded bar, with - and +
+ * to try other weights and a choice of bar. Opened by tapping "Per side" under a barbell lift.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun PlateSheet(startKg: Double, startBar: Double, onDismiss: () -> Unit) {
+    val c = HqTheme.colors
+    var kg by remember { mutableStateOf(startKg) }
+    var bar by remember { mutableStateOf(startBar) }
+    val side = uk.woozy.fit.model.Plates.perSide(kg, bar)
+    ModalBottomSheet(onDismissRequest = onDismiss, containerColor = c.card) {
+        Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            HqText("Plate calculator", 20.sp, FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                uk.woozy.fit.designsystem.HqPillButton("-2.5", onClick = { kg = (kg - 2.5).coerceAtLeast(bar) }, style = uk.woozy.fit.designsystem.PillStyle.Outline)
+                HqText("${NumberEntry.format(kg)} kg", 34.sp, FontWeight.Bold)
+                uk.woozy.fit.designsystem.HqPillButton("+2.5", onClick = { kg += 2.5 }, style = uk.woozy.fit.designsystem.PillStyle.Outline)
+            }
+            // The loaded bar: sleeve, then each plate sized by its weight.
+            Row(Modifier.fillMaxWidth().height(110.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                Box(Modifier.width(60.dp).height(10.dp).clip(RoundedCornerShape(3.dp)).background(c.muted.copy(alpha = 0.5f)))
+                Box(Modifier.width(8.dp).height(30.dp).clip(RoundedCornerShape(2.dp)).background(c.muted))
+                side.orEmpty().forEach { p ->
+                    val h = (40 + p * 2.6).dp
+                    Box(Modifier.padding(start = 2.dp).width(if (p >= 10) 16.dp else 11.dp).height(h).clip(RoundedCornerShape(4.dp)).background(c.primary.copy(alpha = (0.45 + p / 50.0).toFloat().coerceAtMost(1f))))
+                }
+                Box(Modifier.width(26.dp).height(10.dp).clip(RoundedCornerShape(3.dp)).background(c.muted.copy(alpha = 0.5f)))
+            }
+            HqText(
+                when {
+                    kg <= bar -> "Just the bar"
+                    side == null -> "Can't be made exactly with 25 to 1.25 kg plates"
+                    else -> "Each side: ${uk.woozy.fit.model.Plates.label(side)} kg"
+                },
+                16.sp, FontWeight.SemiBold,
+            )
+            uk.woozy.fit.designsystem.SegmentedChoice(listOf("10 kg bar", "15 kg bar", "20 kg bar"), listOf(10.0, 15.0, 20.0).indexOf(bar).coerceAtLeast(0), onSelect = { bar = listOf(10.0, 15.0, 20.0)[it] })
         }
     }
 }

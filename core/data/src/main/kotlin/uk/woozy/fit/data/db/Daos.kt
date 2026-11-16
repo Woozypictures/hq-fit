@@ -337,6 +337,10 @@ interface SessionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun restoreSet(row: SetLogEntity)
 
+    /** Makes room for a duplicated set: working sets after [afterIndex] move down one (warm-ups keep their numbers). */
+    @Query("UPDATE set_log SET setIndex = setIndex + :by WHERE sessionId = :sessionId AND position = :position AND setIndex > :afterIndex AND setType != 'warmup'")
+    suspend fun shiftSets(sessionId: Long, position: Int, afterIndex: Int, by: Int)
+
     @Query("UPDATE set_log SET exerciseId = :exerciseId, exerciseName = :name, done = 0, doneAtMs = NULL, reps = NULL WHERE sessionId = :sessionId AND position = :position")
     suspend fun replaceExercise(sessionId: Long, position: Int, exerciseId: Long, name: String)
 
