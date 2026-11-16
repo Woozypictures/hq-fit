@@ -23,6 +23,7 @@ class SummaryProvider : ContentProvider() {
     private val matcher = UriMatcher(UriMatcher.NO_MATCH).apply { addURI(AUTHORITY, "today", TODAY)
         addURI(AUTHORITY, "history", HISTORY)
         addURI(AUTHORITY, "weights", WEIGHTS)
+        addURI(AUTHORITY, "muscles", MUSCLES)
     }
 
     override fun onCreate(): Boolean = true
@@ -37,6 +38,20 @@ class SummaryProvider : ContentProvider() {
         if (kind == HISTORY) {
             val c = MatrixCursor(arrayOf("date", "kcal", "protein_g", "version"))
             if (db != null) runBlocking { HqHistoryBuilder.days(db, System.currentTimeMillis()) }.forEach { c.addRow(arrayOf<Any?>(it.date, it.kcal, it.proteinG, 1)) }
+            return c
+        }
+        if (kind == MUSCLES) {
+            // Muscle map for HQ: working sets per region over 7 and 30 days, and when each was last worked.
+            val c = MatrixCursor(arrayOf("region", "name", "week_sets", "month_sets", "last_hit_ms", "version"))
+            if (db != null) {
+                val sec = uk.woozy.fit.ui.MuscleCatalog.get(ctx)
+                val now = System.currentTimeMillis()
+                val week = runBlocking { uk.woozy.fit.data.Muscles.load(db, now - 7 * 86_400_000L, sec) }
+                val month = runBlocking { uk.woozy.fit.data.Muscles.load(db, now - 30 * 86_400_000L, sec) }
+                uk.woozy.fit.data.Muscles.REGIONS.forEach { r ->
+                    c.addRow(arrayOf<Any?>(r.key, r.name, week.sets[r.key] ?: 0.0, month.sets[r.key] ?: 0.0, month.lastHit[r.key], 1))
+                }
+            }
             return c
         }
         if (kind == WEIGHTS) {
@@ -89,6 +104,7 @@ class SummaryProvider : ContentProvider() {
         private const val TODAY = 1
         private const val HISTORY = 2
         private const val WEIGHTS = 3
+        private const val MUSCLES = 4
         internal val LOCK = Any()
 
         /** Column names HQ should read. [version] lets HQ ignore a layout it does not know. */
