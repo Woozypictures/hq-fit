@@ -70,6 +70,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -496,7 +497,24 @@ fun ActiveWorkoutScreen(
                     }
                 }
                 if (restLeft > 0 && !c.flat) {
-                    Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Same as the floating rest pill: swipe the rest row sideways to skip it.
+                    val drag = remember { androidx.compose.animation.core.Animatable(0f) }
+                    val skipPx = with(androidx.compose.ui.platform.LocalDensity.current) { 96.dp.toPx() }
+                    Row(
+                        Modifier.graphicsLayer { translationX = drag.value; alpha = 1f - (kotlin.math.abs(drag.value) / (skipPx * 2.2f)).coerceIn(0f, 0.6f) }
+                            .pointerInput(Unit) {
+                                androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                                    onDragEnd = {
+                                        if (kotlin.math.abs(drag.value) > skipPx) { restEnd = 0; RestTimer.cancel(context); scope.launch { drag.snapTo(0f) } }
+                                        else scope.launch { drag.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 500f)) }
+                                    },
+                                    onDragCancel = { scope.launch { drag.animateTo(0f) } },
+                                    onHorizontalDrag = { _, dx -> scope.launch { drag.snapTo(drag.value + dx) } },
+                                )
+                            }
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         HqText("Rest ${clock(restLeft + 999)}", if (c.flat) 24.sp else 15.sp, FontWeight.Bold, c.onGradient, Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = "Change rest") { restSheet = true }, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                         HqText(
                             "Skip", 14.sp, FontWeight.SemiBold, c.onGradient,
