@@ -168,3 +168,10 @@ Orange #5, #7, #8 (run 150, v0.150):
 - Progress: Consistency card (12-week map, week streak, days trained); new card key "consistency".
 
 Not done from the list: muscle map, rotation, mini player, logging a past day from the calendar, light session, ready-made plans, home card preview, PDF report. None of tonight's work has been checked on the phone.
+
+## 18. 16 Nov 2026 (midday): navigation and settings round (run 152)
+- Shrinking titles: `BackBar` is now a round back button over a big title that folds into a small centred title as the page scrolls. One `TitleCollapse` at the NavHost listens with nested scroll and resets per route; pages whose bar scrolls with the content pass `collapse = false` (Backup, Health, Scale, New exercise, Scan). Tab pages keep their own headers.
+- Settings: search field (matches titles, captions and keywords for settings inside pages), groups Your app / You and targets / Data and help, Appearance, Notifications and About and design as pages. Workout settings split into Rest and While you train.
+- Today: MORE folder tiles (Programmes, History, Records, Library, Scale) under the cards, hidden while rearranging.
+- Fixed: the History route still opened the Everfit timeline, so last night's calendar was unreachable. Routes.PAST now opens the calendar (Calendar | Timeline switch); `timeline` route keeps the old screen.
+- HQ has not had the same Settings or title change yet (parity rule).
