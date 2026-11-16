@@ -116,6 +116,23 @@ private object Routes {
 }
 
 /** Today, Train, (+), Diary, Progress. The + sits between the second and third tab. */
+/** Last good Health Connect numbers for a day, kept in prefs so a cold start paints them before Health Connect answers. */
+private object HealthCache {
+    private fun p(c: android.content.Context) = c.getSharedPreferences("health_cache", android.content.Context.MODE_PRIVATE)
+    fun load(c: android.content.Context, date: String): uk.woozy.fit.health.HealthSnapshot? {
+        val pr = p(c)
+        if (pr.getString("date", null) != date) return null
+        fun l(k: String) = if (pr.contains(k)) pr.getLong(k, 0) else null
+        return uk.woozy.fit.health.HealthSnapshot(l("steps"), l("sleep"), l("rhr"), if (pr.contains("kcal")) pr.getFloat("kcal", 0f).toDouble() else null, l("watch"))
+    }
+    fun save(c: android.content.Context, date: String, h: uk.woozy.fit.health.HealthSnapshot) {
+        p(c).edit().clear().putString("date", date).apply {
+            h.steps?.let { putLong("steps", it) }; h.sleepMinutes?.let { putLong("sleep", it) }; h.restingHr?.let { putLong("rhr", it) }
+            h.activeKcal?.let { putFloat("kcal", it.toFloat()) }; h.watchLastMs?.let { putLong("watch", it) }
+        }.apply()
+    }
+}
+
 private val tabRoutes = listOf(Routes.TODAY, Routes.TRAIN, Routes.DIARY, Routes.PROGRESS)
 
 /**
@@ -210,13 +227,14 @@ fun HqFitRoot(
         }
     }
     val today = rememberToday()
-    val health by androidx.compose.runtime.produceState<uk.woozy.fit.health.HealthSnapshot?>(null, db, refreshTick, today) {
-        value = runCatching {
+    // Stale-while-revalidate: today's last good steps/kcal show instantly (also after a restart), and a refresh only
+    // replaces them when it succeeds, so the cards never drop back to "-" and jump.
+    var health by remember(today) { mutableStateOf(HealthCache.load(syncContext, today.toString())) }
+    androidx.compose.runtime.LaunchedEffect(db, refreshTick, today) {
+        runCatching {
             val g = uk.woozy.fit.health.HealthGateway(syncContext)
-            if (!g.available) null else g.snapshot(
-                today.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant(), java.time.Instant.now(),
-            )
-        }.getOrNull()
+            if (!g.available) null else g.snapshot(today.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant(), java.time.Instant.now())
+        }.getOrNull()?.let { health = it; HealthCache.save(syncContext, today.toString(), it) }
     }
     // One line on Today when Health Connect needs attention; nothing at all when it is fine (as in HQ).
     val problem by androidx.compose.runtime.produceState<String?>(null, db, refreshTick) {

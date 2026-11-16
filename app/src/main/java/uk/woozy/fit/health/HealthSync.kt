@@ -65,7 +65,10 @@ object HealthSync {
             val lastImp = prefs(c).getLong("imp", 0L)
             val impFrom = if (full || lastImp == 0L) nowMs - 3L * 365 * 86_400_000L else lastImp - 2L * 86_400_000L
             hc.importedWeights(Instant.ofEpochMilli(impFrom), Instant.ofEpochMilli(nowMs)).forEach {
-                if (db.weights().countBetween(it.epochMs - 60_000, it.epochMs + 60_000) == 0) {
+                // Same weigh-in from another app (Feelfit saving a reading the scale screen already logged, or a late
+                // writer): anything within a minute, or within 15 minutes and 0.5 kg, is the same weigh-in. Own entries win.
+                val near = db.weights().since(it.epochMs - 900_000).any { w -> kotlin.math.abs(w.epochMs - it.epochMs) <= 900_000 && kotlin.math.abs(w.kg - it.kg) <= 0.5 }
+                if (!near && db.weights().countBetween(it.epochMs - 60_000, it.epochMs + 60_000) == 0) {
                     db.weights().insert(WeightEntryEntity(epochMs = it.epochMs, kg = Math.round(it.kg * 10.0) / 10.0, source = "import"))
                     imported++
                 }
