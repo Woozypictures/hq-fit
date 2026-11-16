@@ -600,7 +600,7 @@ fun ActiveWorkoutScreen(
             ExerciseDetailSheet(
                 db, n, onDismiss = { infoFor = null },
                 note = f?.note, onEditNote = f?.let { s -> { noteFor = s.position to s.note } },
-                repsMin = f?.targetRepsMin, repsMax = f?.targetRepsMax,
+                repsMin = f?.targetRepsMin, repsMax = f?.targetRepsMax, timed = f?.durationSec != null,
             )
         }
         noteFor?.let { (pos, current) ->

@@ -87,7 +87,8 @@ object Muscles {
                 val at = l.doneAtMs ?: s.startedMs
                 share.forEach { (r, v) ->
                     sets[r] = (sets[r] ?: 0.0) + v
-                    if (at > (last[r] ?: 0L)) last[r] = at
+                    // Recovery follows the main muscle only: a helper doing half the work is not "just trained".
+                    if (v >= 1.0 && at > (last[r] ?: 0L)) last[r] = at
                 }
             }
         }

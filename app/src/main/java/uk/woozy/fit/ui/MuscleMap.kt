@@ -79,7 +79,7 @@ fun MuscleCard(db: HqFitDatabase) {
                 d.week.lastHit.mapValues { (_, at) -> (1f - (now - at) / (72f * 3_600_000f)).coerceIn(0f, 1f) }
             } else load.sets.mapValues { (_, v) -> (v / full).toFloat().coerceIn(0f, 1f) }
             val hot = if (tab == 2) c.warn else c.primary
-            BodyMap(values, hot, Modifier.fillMaxWidth().aspectRatio(2.2f))
+            BodyMap(values, hot, Modifier.fillMaxWidth().aspectRatio(1.3f))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 HqText("Front", 12.sp, color = c.muted); HqText("Back", 12.sp, color = c.muted)
             }

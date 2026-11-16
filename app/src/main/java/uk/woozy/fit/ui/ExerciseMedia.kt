@@ -111,6 +111,8 @@ fun ExerciseDetailSheet(
     onEditNote: (() -> Unit)? = null,
     repsMin: Int? = null,
     repsMax: Int? = null,
+    /** Timed sets (cardio, stretches) have no weight target, so NEXT is left out. */
+    timed: Boolean = false,
 ) {
     val c = HqTheme.colors
     val context = LocalContext.current
@@ -169,7 +171,7 @@ fun ExerciseDetailSheet(
                     HqText(note?.takeIf { it.isNotBlank() } ?: "Add a note: seat height, grip, how it felt", 15.sp, color = if (note.isNullOrBlank()) c.muted else c.ink)
                 }
             }
-            if (e != null) {
+            if (e != null && !(timed && isOwn) && !e.muscle.contains("cardio", ignoreCase = true)) {
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(c.track.copy(alpha = 0.5f))
                         .clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Settings for this exercise") { settingsOpen = true }
