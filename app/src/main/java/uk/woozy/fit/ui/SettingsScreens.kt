@@ -1,5 +1,8 @@
 package uk.woozy.fit.ui
 
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.runtime.mutableStateOf
 
 import androidx.compose.runtime.setValue

@@ -1,5 +1,10 @@
 package uk.woozy.fit.ui
 
+import androidx.compose.material.icons.rounded.MonitorWeight
+import androidx.compose.material.icons.rounded.FitnessCenter
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.CalendarMonth
 import uk.woozy.fit.designsystem.LocalGlassInset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
