@@ -1,5 +1,8 @@
 package uk.woozy.fit.ui
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -60,14 +63,19 @@ fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
             label = { HqText("Search exercise", 13.sp, color = c.muted) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         )
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Lazy: only the rows on screen are built, however many lifts the records grow to. Each row is drawn as a slice
+        // of one card (rounded top on the first, bottom on the last).
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)) {
             if (rows.isEmpty()) {
-                EmptyCard(if (allRows.isEmpty()) "No records yet" else "Nothing matches", if (allRows.isEmpty()) "Finish a workout and your best lifts appear here." else "Try a different name.", emoji = if (allRows.isEmpty()) "\uD83C\uDFC6" else "\uD83D\uDD0D")
+                item { EmptyCard(if (allRows.isEmpty()) "No records yet" else "Nothing matches", if (allRows.isEmpty()) "Finish a workout and your best lifts appear here." else "Try a different name.", emoji = if (allRows.isEmpty()) "\uD83C\uDFC6" else "\uD83D\uDD0D") }
             } else {
-                HqCard(Modifier.fillMaxWidth()) {
-                    rows.forEach { r ->
+                    androidx.compose.foundation.lazy.itemsIndexed(rows, key = { _, r -> r.exerciseId }) { i, r ->
+                        val shape = androidx.compose.foundation.shape.RoundedCornerShape(
+                            topStart = if (i == 0) 22.dp else 0.dp, topEnd = if (i == 0) 22.dp else 0.dp,
+                            bottomStart = if (i == rows.lastIndex) 22.dp else 0.dp, bottomEnd = if (i == rows.lastIndex) 22.dp else 0.dp,
+                        )
                         Row(
-                            Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button) { onOpen(r.exerciseId) }
+                            Modifier.fillMaxWidth().clip(shape).background(c.card).heightIn(min = 64.dp).clickable(role = Role.Button) { onOpen(r.exerciseId) }
                                 .padding(horizontal = 16.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -82,7 +90,6 @@ fun RecordsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit)
                             }
                         }
                     }
-                }
             }
         }
     }
@@ -95,7 +102,7 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
     val name by produceState("") { value = db.exercises().findById(exerciseId)?.name.orEmpty() }
     val history by produceState(emptyList<HistoryRow>(), exerciseId) { value = db.sessions().exerciseHistory(exerciseId) }
     // Everfit-style: newest first, each session with its workout name, estimated 1RM and volume.
-    val bySession = history.groupBy { it.sessionId }.values.toList()
+    val bySession = remember(history) { history.groupBy { it.sessionId }.values.toList() }
     val context = androidx.compose.ui.platform.LocalContext.current
     var prefsTick by remember { mutableStateOf(0) }
     var settingsOpen by remember { mutableStateOf(false) }
@@ -105,12 +112,16 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
     }
     if (settingsOpen) ExerciseSettingsSheet(db, exerciseId, name, row?.targetRepsMin, row?.targetRepsMax) { settingsOpen = false; prefsTick++ }
     var range by remember { mutableStateOf(HistoryRange.MONTHS_2) }
-    val cutoff = range.days?.let { System.currentTimeMillis() - it * 86_400_000L } ?: Long.MIN_VALUE
-    val chart = bySession.filter { it.first().startedMs >= cutoff }
-        .map { s -> DayValue(s.first().startedMs / 86_400_000.0, s.maxOf { it.weightKg }) }
+    val cutoff = remember(range) { range.days?.let { System.currentTimeMillis() - it * 86_400_000L } ?: Long.MIN_VALUE }
+    // Memoised: only rebuilt when the sets or the range change, not on every recomposition.
+    val chart = remember(bySession, cutoff) {
+        bySession.filter { it.first().startedMs >= cutoff }.map { s -> DayValue(s.first().startedMs / 86_400_000.0, s.maxOf { it.weightKg }) }
+    }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar(name.ifEmpty { "History" }, onBack) }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Lazy: one item per workout, so six months of sessions scroll without building them all.
+        androidx.compose.foundation.lazy.LazyColumn(Modifier.weight(1f).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp)) {
+            item(key = "next") {
             HqCard(Modifier.fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -121,9 +132,11 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
                     HqText("Settings", 14.sp, FontWeight.SemiBold, c.primary, Modifier.clickable(role = Role.Button) { settingsOpen = true }.padding(8.dp))
                 }
             }
+            }
             if (bySession.isEmpty()) {
-                EmptyCard("No history yet", "It appears after your first workout with this exercise.", emoji = "\uD83D\uDCC8")
+                item(key = "empty") { EmptyCard("No history yet", "It appears after your first workout with this exercise.", emoji = "\uD83D\uDCC8") }
             } else {
+                item(key = "chart") {
                 HqCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         HqText("Heaviest set per workout", 15.sp, FontWeight.Medium)
@@ -138,11 +151,14 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
                         else LineChart(chart, goal = null, unit = "kg")
                     }
                 }
+                }
             }
-            bySession.forEach { sets ->
+            items(bySession.size, key = { bySession[it].first().sessionId }) { idx ->
+                val sets = bySession[idx]
                 val first = sets.first()
                 val points = sets.map { SetPoint(it.weightKg, it.reps) }
                 val e1rm = points.maxOf { Strength.e1rm(it) }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel(dateFmt.format(Instant.ofEpochMilli(first.startedMs)) + if (first.sessionName.isNotBlank()) "  ·  ${first.sessionName}" else "")
                 HqCard(Modifier.fillMaxWidth()) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -155,6 +171,7 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
                             HqText("${NumberEntry.format(s.weightKg)} kg x ${s.reps}", 16.sp, FontWeight.Medium)
                         }
                     }
+                }
                 }
             }
         }

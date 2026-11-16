@@ -609,11 +609,15 @@ fun HqFitRoot(
         }
         // Rest timer on every tab while it runs (Everfit keeps it in reach): time left, +15s and Skip.
         var restLeft by remember { mutableStateOf(0L) }
-        LaunchedEffect(route, refreshTick) {
-            while (true) {
-                val end = uk.woozy.fit.RestTimer.endMs(syncContext)
-                restLeft = (end - System.currentTimeMillis()).coerceAtLeast(0)
-                kotlinx.coroutines.delay(if (restLeft > 0) 250 else 1500)
+        // Only while the app is on screen: the time left is worked out from the stored end time (and the system
+        // alarm rings at zero), so pausing the loop in the background loses nothing and saves wake-ups.
+        LaunchedEffect(route, refreshTick, lifecycleOwner) {
+            lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+                while (true) {
+                    val end = uk.woozy.fit.RestTimer.endMs(syncContext)
+                    restLeft = (end - System.currentTimeMillis()).coerceAtLeast(0)
+                    kotlinx.coroutines.delay(if (restLeft > 0) 250 else 1500)
+                }
             }
         }
         if (route in tabRoutes && restLeft > 0) uk.woozy.fit.designsystem.GlassRestPill(
@@ -628,7 +632,9 @@ fun HqFitRoot(
         active?.let { a ->
             if (route in tabRoutes) {
                 var tickNow by remember { mutableStateOf(System.currentTimeMillis()) }
-                androidx.compose.runtime.LaunchedEffect(a.id) { while (true) { tickNow = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }
+                androidx.compose.runtime.LaunchedEffect(a.id, lifecycleOwner) {
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) { while (true) { tickNow = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }
+                }
                 val mc = uk.woozy.fit.designsystem.HqTheme.colors
                 val elapsed = ((tickNow - a.startedMs) / 1000).coerceAtLeast(0)
                 val past = elapsed > 12 * 3600

@@ -1,5 +1,6 @@
 package uk.woozy.fit.ui
 
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -163,10 +164,14 @@ fun ActiveWorkoutScreen(
     }
     val previous = prevVals.mapValues { (_, v) -> "${NumberEntry.format(v.first ?: 0.0)} x ${v.second ?: 0}" }
 
-    val now by produceState(System.currentTimeMillis()) {
-        while (true) {
-            value = System.currentTimeMillis()
-            delay(1000)
+    // The workout clock ticks only while the screen is in front; times come from timestamps, so nothing drifts.
+    val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    val now by produceState(System.currentTimeMillis(), life) {
+        life.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            while (true) {
+                value = System.currentTimeMillis()
+                delay(1000)
+            }
         }
     }
     val context = LocalContext.current

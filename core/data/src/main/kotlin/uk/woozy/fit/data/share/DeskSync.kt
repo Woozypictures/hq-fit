@@ -77,6 +77,19 @@ object DeskSync {
                 .put("ex", JSONArray(sets.map { it.exerciseName }.distinct())))
         }
         out.put("sessions", ses)
+        // New records in the last 7 days (for the desktop Weekly Review): best estimated 1RM per lift this week that
+        // beats every earlier session. Warm-ups and timed sets are left out.
+        val weekStart = nowMs - 7 * 86_400_000L
+        val prs = JSONArray()
+        db.sessions().doneSince(weekStart).flatMap { db.sessions().sets(it.id).filter { s -> s.done && s.setType != "warmup" && s.durationSec == null && (s.weightKg ?: 0.0) > 0 && (s.reps ?: 0) in 1..20 } }
+            .groupBy { it.exerciseId }.forEach { (exId, sets) ->
+                val best = sets.maxByOrNull { uk.woozy.fit.model.Strength.e1rm(uk.woozy.fit.model.SetPoint(it.weightKg!!, it.reps!!)) } ?: return@forEach
+                val e = uk.woozy.fit.model.Strength.e1rm(uk.woozy.fit.model.SetPoint(best.weightKg!!, best.reps!!))
+                val before = db.sessions().exerciseHistory(exId).filter { it.startedMs < weekStart }
+                val prior = before.maxOfOrNull { uk.woozy.fit.model.Strength.e1rm(uk.woozy.fit.model.SetPoint(it.weightKg, it.reps)) }
+                if (prior != null && e > prior + 0.01) prs.put(JSONObject().put("x", best.exerciseName).put("w", best.weightKg).put("r", best.reps).put("e1", Math.round(e * 10) / 10.0).put("prev", Math.round(prior * 10) / 10.0))
+            }
+        out.put("prs", prs)
 
         // Last time's sets per exercise (by set number), for the desktop logger's "previous" column.
         val last = JSONObject()
