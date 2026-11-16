@@ -59,8 +59,23 @@ object Sessions {
     /** Marks the session done and its scheduled day done. Unticked sets stay as they were, not counted. */
     suspend fun finish(db: HqFitDatabase, sessionId: Long, nowMs: Long, feeling: Int? = null) {
         val s = db.sessions().get(sessionId) ?: return
-        db.sessions().finish(sessionId, nowMs, feeling)
+        // A workout logged for a past day (started more than 12 hours ago) gets a nominal hour, not days.
+        val end = if (nowMs - s.startedMs > 12 * 3_600_000L) s.startedMs + 3_600_000L else nowMs
+        db.sessions().finish(sessionId, end, feeling)
         s.scheduledId?.let { db.schedule().setStatus(it, "done") }
+    }
+
+    /**
+     * Logs a workout for a past day (GymMane's "Log a workout" on the calendar): plans [templateId] on [date],
+     * starts it at 18:00 that day and returns the session to fill in. Finishing gives it an hour.
+     */
+    suspend fun startPast(db: HqFitDatabase, templateId: Long, date: java.time.LocalDate, stepKg: Double, barKg: Double): Long? {
+        val t = db.templates().get(templateId) ?: return null
+        val d = date.toString()
+        val sid = db.schedule().insert(ScheduledWorkoutEntity(programmeId = null, templateId = t.id, templateName = t.name, date = d, originalDate = d))
+        val sched = db.schedule().get(sid) ?: return null
+        val at = date.atTime(18, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return start(db, sched, at, stepKg, barKg)
     }
 
     /** Throws the session away (a started-by-mistake workout). The calendar day stays planned. */

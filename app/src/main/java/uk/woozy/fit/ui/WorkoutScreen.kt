@@ -149,7 +149,8 @@ fun ActiveWorkoutScreen(
     }
     var confirmLeave by remember { mutableStateOf(false) }
 
-    val session by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, sessionId) { value = db.sessions().get(sessionId) }
+    var sessionTick by remember { mutableStateOf(0) }
+    val session by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, sessionId, sessionTick) { value = db.sessions().get(sessionId) }
     val setsFlow = remember(sessionId) { db.sessions().observeSets(sessionId) }
     val sets by setsFlow.collectAsState(initial = emptyList())
     // Last session's actual weight and reps for each set: shown in the Previous column and as ghost text.
@@ -431,7 +432,11 @@ fun ActiveWorkoutScreen(
                     )
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         HqText(
-                            "Total Duration: " + (session?.let { clock((it.endedMs ?: now) - it.startedMs) } ?: ""),
+                            session?.let { ss ->
+                                if (ss.endedMs == null && now - ss.startedMs > 12 * 3_600_000L)
+                                    "Logging " + java.time.Instant.ofEpochMilli(ss.startedMs).atZone(java.time.ZoneId.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM", java.util.Locale.UK))
+                                else "Total Duration: " + clock((ss.endedMs ?: now) - ss.startedMs)
+                            } ?: "",
                             13.sp, FontWeight.SemiBold, c.onGradient,
                         )
                         Spacer(Modifier.height(6.dp))
@@ -460,6 +465,15 @@ fun ActiveWorkoutScreen(
                                 },
                             )
                             if (!isDone) uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Lock screen", 15.sp) }, onClick = { menu = false; locked = true })
+                            uk.woozy.fit.designsystem.GlassDropdownItem(
+                                text = {
+                                    Column {
+                                        HqText(if (session?.light == true) "Light session: on" else "Light session", 15.sp)
+                                        HqText("Counts in stats, leaves next targets alone", 12.sp, color = c.muted)
+                                    }
+                                },
+                                onClick = { menu = false; scope.launch { db.sessions().setLight(sessionId, session?.light != true); sessionTick++ }; toast = if (session?.light == true) "Light session off" else "Light session: targets stay as they were" },
+                            )
                             if (!isDone) uk.woozy.fit.designsystem.GlassDropdownItem(text = { HqText("Discard workout", 15.sp) }, onClick = { menu = false; confirmDiscard = true })
                         }
                     }

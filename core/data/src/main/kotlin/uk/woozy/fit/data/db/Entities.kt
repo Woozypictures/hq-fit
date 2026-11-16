@@ -147,6 +147,8 @@ data class WorkoutSessionEntity(
     /** 1 to 5, last night's sleep and today's energy, rated on the finish screen (optional). */
     val sleep: Int? = null,
     val energy: Int? = null,
+    /** Light session (bad day, deload): counts in your stats but is left out when working out next targets. */
+    @androidx.room.ColumnInfo(defaultValue = "0") val light: Boolean = false,
 )
 
 /**

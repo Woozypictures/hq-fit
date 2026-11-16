@@ -53,12 +53,15 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 /** Pick the weekdays for each workout, how many weeks to plan, and edit any workout's exercises. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Unit, onNewWorkout: () -> Unit) {
     val c = HqTheme.colors
     val scope = rememberCoroutineScope()
     val today = remember { LocalDate.now() }
-    val templates by produceState<List<WorkoutTemplateEntity>>(emptyList()) { value = db.templates().all() }
+    var planTick by remember { mutableStateOf(0) }
+    var plansOpen by remember { mutableStateOf(false) }
+    val templates by produceState<List<WorkoutTemplateEntity>>(emptyList(), planTick) { value = db.templates().all() }
     val days = remember { mutableStateMapOf<Long, Set<DayOfWeek>>() }
     val changed = remember { mutableStateMapOf<Long, Boolean>() }
     var weeks by remember { mutableStateOf(10) }
@@ -75,6 +78,33 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
         value = Unit
     }
 
+    if (plansOpen) androidx.compose.material3.ModalBottomSheet(onDismissRequest = { plansOpen = false }, containerColor = c.card) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            HqText("Ready-made plans", 20.sp, FontWeight.SemiBold)
+            HqText("Classic programmes built from your library. Adding one makes its workouts here, ready to give days to and change.", 13.sp, color = c.muted)
+            uk.woozy.fit.data.db.ReadyPlans.all.forEach { plan ->
+                HqCard(Modifier.fillMaxWidth()) {
+                    androidx.compose.foundation.layout.Row(Modifier.padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            HqText(plan.name, 17.sp, FontWeight.SemiBold)
+                            HqText(plan.about, 13.sp, color = c.muted)
+                            HqText(plan.days.joinToString(" \u00b7 ") { it.name } + " \u00b7 ${plan.days.size} workouts", 12.sp, color = c.muted)
+                        }
+                        HqPillButton("Add", onClick = {
+                            scope.launch {
+                                val n = uk.woozy.fit.data.db.ReadyPlans.add(db, plan)
+                                plansOpen = false; planTick++
+                                message = "Added $n workouts from ${plan.name}. Pick their days below."
+                            }
+                        }, style = PillStyle.Outline)
+                    }
+                }
+            }
+        }
+    }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("Programmes", onBack) }
         Column(
@@ -119,6 +149,7 @@ fun ProgrammesScreen(db: HqFitDatabase, onBack: () -> Unit, onEdit: (Long) -> Un
                 }
             }
             ListRow(Icons.Rounded.FitnessCenter, "New workout", "Build your own, then pick its days here", onClick = onNewWorkout)
+            ListRow(Icons.Rounded.FitnessCenter, "Ready-made plans", "Full Body, Push Pull Legs, Upper Lower, 5\u00d75", onClick = { plansOpen = true })
             message?.let { HqText(it, 13.sp, color = c.muted) }
             Spacer(Modifier.height(8.dp))
         }

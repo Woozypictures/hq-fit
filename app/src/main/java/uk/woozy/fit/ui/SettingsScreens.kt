@@ -2,6 +2,9 @@ package uk.woozy.fit.ui
 
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.runtime.mutableStateOf
 
@@ -76,7 +79,7 @@ fun SettingsScreen(
     var open by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     androidx.activity.compose.BackHandler(open.isNotEmpty() || query.isNotEmpty()) { if (open.isNotEmpty()) open = "" else query = "" }
-    val titles = mapOf("general" to "Appearance", "notifications" to "Notifications", "advanced" to "About and design")
+    val titles = mapOf("general" to "Appearance", "notifications" to "Notifications", "advanced" to "About and design", "home" to "Home")
 
     // Every row Settings can show, with extra words so search finds the setting inside each page.
     data class Entry(val group: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val title: String, val sub: String, val words: String, val go: () -> Unit)
@@ -84,6 +87,7 @@ fun SettingsScreen(
         Entry("Your app", Icons.Rounded.Palette, "Appearance", "Light or dark, colour scheme", "theme dark light system colour color scheme frosted glass look", { open = "general" }),
         Entry("Your app", Icons.Rounded.FitnessCenter, "Workout", "Rest, weight step, countdown, bar", "rest timer weight step countdown get ready barbell bar plates keypad warm-up steps", onWorkoutSettings),
         Entry("Your app", androidx.compose.material.icons.Icons.Rounded.Notifications, "Notifications", "Sunday check-in, weigh-in reminder", "reminder check-in sunday weigh-in alert", { open = "notifications" }),
+        Entry("Home and extras", Icons.Rounded.SwapVert, "Home", "Which cards show on Today, and their order", "home today cards order rearrange hide show tiles more preview", { open = "home" }),
         Entry("You and targets", Icons.Rounded.Person, "Profile", "Name and height", "name height age you", onProfile),
         Entry("You and targets", Icons.Rounded.Flag, "Targets", "Energy, macros, steps, water, nutrients", "calories kcal energy macros protein carbs fat fibre steps water nutrients goals", onTargets),
         Entry("You and targets", Icons.Rounded.MonitorWeight, "Scale and weight", "Pair your scale, type a weight, reminder", "scale pair bluetooth weight weigh-in body fat kamtron", onScale),
@@ -161,6 +165,7 @@ fun SettingsScreen(
                     HqCardlessRows { ListRow(Icons.Rounded.MonitorWeight, "Weigh-in reminder", "Set the day and time in Scale and weight", onClick = onScale) }
                 }
             }
+            if (open == "home") HomeCardsPage()
             if (open == "advanced") {
                 HqCard(Modifier.fillMaxWidth()) { AboutBlock("Woozy Fit", "hq-fit") }
                 HqCard(Modifier.fillMaxWidth()) { HqCardlessRows { ListRow(Icons.Rounded.Palette, "Design components", "Every component, in this theme", onClick = onDesign) } }
@@ -222,4 +227,59 @@ fun AboutBlock(appName: String, repo: String) {
         )
         HqText("Your data stays with you.", 13.sp, color = c.muted)
     }
+}
+
+/**
+ * Settings > Home (GymMane style): a live mini preview of Today on the left, and the cards to show, hide and move
+ * on the right (or below on a phone). Changes save straight away and show next time Today opens.
+ */
+@Composable
+private fun HomeCardsPage() {
+    val c = HqTheme.colors
+    val context = LocalContext.current
+    val prefs = rememberCardPrefs("today", TODAY_CARDS)
+    var tiles by remember { mutableStateOf(showTodayTiles(context)) }
+    val shown = prefs.order.filter { it !in prefs.hidden }
+    val heights = mapOf("workout" to 46, "energy" to 34, "nutrients" to 22, "water" to 18, "steps" to 18, "tasks" to 26, "checkin" to 24)
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Mini phone with the cards as blocks, in order.
+        Column(
+            Modifier.width(118.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
+                .background(c.page).border(1.dp, c.hairline, androidx.compose.foundation.shape.RoundedCornerShape(22.dp))
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            androidx.compose.foundation.layout.Box(Modifier.width(52.dp).height(8.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp)).background(c.ink.copy(alpha = 0.7f)))
+            shown.forEach { k ->
+                androidx.compose.foundation.layout.Box(
+                    Modifier.fillMaxWidth().height((heights[k] ?: 20).dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(7.dp))
+                        .background(if (k == "workout") c.primary.copy(alpha = 0.55f) else c.card),
+                )
+            }
+            if (tiles) androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                repeat(3) { androidx.compose.foundation.layout.Box(Modifier.weight(1f).height(18.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(5.dp)).background(c.primary.copy(alpha = 0.25f))) }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            HqText("Home cards", 13.sp, FontWeight.SemiBold, c.muted)
+            prefs.order.forEachIndexed { i, k ->
+                val on = k !in prefs.hidden
+                androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    HqText(TODAY_CARD_NAMES[k] ?: k, 14.sp, FontWeight.Medium, if (on) c.ink else c.muted, Modifier.weight(1f), maxLines = 2)
+                    androidx.compose.material3.Icon(
+                        androidx.compose.material.icons.Icons.Rounded.KeyboardArrowUp, "Move ${TODAY_CARD_NAMES[k]} up", tint = if (i > 0) c.ink else c.track,
+                        modifier = Modifier.size(32.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                            .clickable(enabled = i > 0, role = androidx.compose.ui.semantics.Role.Button) { prefs.saveOrder(prefs.order.toMutableList().apply { add(i - 1, removeAt(i)) }) }.padding(4.dp),
+                    )
+                    uk.woozy.fit.designsystem.HapticSwitch(checked = on, onCheckedChange = { prefs.saveHidden(if (it) prefs.hidden - k else prefs.hidden + k) })
+                }
+            }
+            androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                HqText("More tiles at the bottom", 14.sp, FontWeight.Medium, modifier = Modifier.weight(1f))
+                uk.woozy.fit.designsystem.HapticSwitch(checked = tiles, onCheckedChange = { tiles = it; setShowTodayTiles(context, it) })
+            }
+        }
+    }
+    HqText("You can also long-press a card on Today to drag it.", 12.sp, color = c.muted)
 }

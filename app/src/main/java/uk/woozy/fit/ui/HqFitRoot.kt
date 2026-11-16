@@ -69,6 +69,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
 import uk.woozy.fit.designsystem.glass
+import androidx.compose.ui.text.font.FontWeight
+import uk.woozy.fit.designsystem.HqText
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
 import uk.woozy.fit.designsystem.GlassMenuItem
 import uk.woozy.fit.designsystem.frostedContent
 import uk.woozy.fit.designsystem.GlassRoundButton
@@ -271,7 +275,7 @@ fun HqFitRoot(
         androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize().frostedContent(quickAdd).glassSource(backdrop), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
         val titleCollapse = remember { TitleCollapse() }
         androidx.compose.runtime.LaunchedEffect(route) { titleCollapse.reset() }
-        androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset else 0.dp), LocalTitleCollapse provides titleCollapse) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset + (if (active != null) 68.dp else 0.dp) else 0.dp), LocalTitleCollapse provides titleCollapse) {
         NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize().nestedScroll(titleCollapse.connection),
             // Snappy with a slight transition: a short crossfade.
             enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
@@ -486,7 +490,16 @@ fun HqFitRoot(
                     onNewWorkout = { scope.launch { nav.navigate("${Routes.EDIT}/${createWorkout(db, "New workout")}") } },
                 )
             }
-            composable(Routes.PAST) { PastWorkoutsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }, onTimeline = { nav.navigate(Routes.TIMELINE) }) }
+            composable(Routes.PAST) {
+                PastWorkoutsScreen(
+                    db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }, onTimeline = { nav.navigate(Routes.TIMELINE) },
+                    onLogPast = if (active != null) null else { date, templateId ->
+                        scope.launch {
+                            Sessions.startPast(db, templateId, date, WorkoutPrefs.weightStep(syncContext), WorkoutPrefs.barKg(syncContext))?.let { nav.navigate("${Routes.WORKOUT}/$it") }
+                        }
+                    },
+                )
+            }
             composable(Routes.TIMELINE) { HistoryScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
             composable(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
             composable("profile") { ProfileScreen(onBack = { nav.popBackStack() }) }
@@ -568,6 +581,35 @@ fun HqFitRoot(
             onSkip = { uk.woozy.fit.RestTimer.cancel(syncContext); restLeft = 0 },
             modifier = Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 10.dp),
         )
+        // Mini player (GymMane style): a workout left running shows above the nav on every tab; tap to go back in.
+        active?.let { a ->
+            if (route in tabRoutes) {
+                var tickNow by remember { mutableStateOf(System.currentTimeMillis()) }
+                androidx.compose.runtime.LaunchedEffect(a.id) { while (true) { tickNow = System.currentTimeMillis(); kotlinx.coroutines.delay(1000) } }
+                val mc = uk.woozy.fit.designsystem.HqTheme.colors
+                val elapsed = ((tickNow - a.startedMs) / 1000).coerceAtLeast(0)
+                val past = elapsed > 12 * 3600
+                androidx.compose.foundation.layout.Row(
+                    Modifier.align(androidx.compose.ui.Alignment.BottomCenter)
+                        .padding(bottom = navInset + 10.dp + (if (restLeft > 0) 66.dp else 0.dp), start = 20.dp, end = 20.dp)
+                        .widthIn(max = 520.dp).fillMaxWidth().height(56.dp)
+                        .glass(backdrop, gStyle, androidx.compose.foundation.shape.CircleShape)
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button, onClickLabel = "Back to workout") { nav.navigate("${Routes.WORKOUT}/${a.id}") }
+                        .padding(start = 22.dp, end = 8.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                ) {
+                    androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+                        HqText(if (past) "LOGGING" else "IN PROGRESS", 11.sp, FontWeight.SemiBold, mc.muted, letterSpacing = 1.sp)
+                        HqText(a.name, 15.sp, FontWeight.SemiBold, maxLines = 1)
+                    }
+                    if (!past) HqText("%d:%02d".format(elapsed / 60, elapsed % 60), 15.sp, FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 10.dp))
+                    androidx.compose.foundation.layout.Box(
+                        Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).background(mc.primary),
+                        contentAlignment = androidx.compose.ui.Alignment.Center,
+                    ) { androidx.compose.material3.Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = mc.onPrimary, modifier = Modifier.size(24.dp)) }
+                }
+            }
+        }
         if (route in tabRoutes) uk.woozy.fit.designsystem.GlassToast(
             toastText, showToast, backdrop, gStyle,
             Modifier.align(androidx.compose.ui.Alignment.BottomCenter).padding(bottom = navInset + 12.dp),

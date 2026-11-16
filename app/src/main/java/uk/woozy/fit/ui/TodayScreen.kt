@@ -63,6 +63,14 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/** Today's cards in their default order, and their names (shared with Settings > Home). */
+val TODAY_CARDS = listOf("workout", "energy", "nutrients", "water", "steps", "tasks", "checkin")
+val TODAY_CARD_NAMES = mapOf("workout" to "Today's workout", "energy" to "Energy and macros", "nutrients" to "Highlighted nutrients", "water" to "Water", "steps" to "Steps", "tasks" to "Tasks", "checkin" to "Sunday check-in")
+
+/** Whether the More folder tiles show at the bottom of Today (Settings > Home). */
+fun showTodayTiles(c: android.content.Context): Boolean = c.getSharedPreferences("cards", 0).getBoolean("tiles_today", true)
+fun setShowTodayTiles(c: android.content.Context, v: Boolean) = c.getSharedPreferences("cards", 0).edit().putBoolean("tiles_today", v).apply()
+
 /** One tick box in the Sunday check-in. */
 data class CheckInRow(val key: String, val label: String, val done: Boolean)
 
@@ -123,8 +131,8 @@ fun TodayScreen(
     val dateLine = remember(today) {
         "TODAY, " + today.format(DateTimeFormatter.ofPattern("MMM d", Locale.UK)).uppercase(Locale.UK)
     }
-    val defaultOrder = listOf("workout", "energy", "nutrients", "water", "steps", "tasks", "checkin")
-    val names = mapOf("workout" to "Today's workout", "energy" to "Energy and macros", "nutrients" to "Highlighted nutrients", "water" to "Water", "steps" to "Steps", "tasks" to "Tasks", "checkin" to "Sunday check-in")
+    val defaultOrder = TODAY_CARDS
+    val names = TODAY_CARD_NAMES
     val cards = rememberCardPrefs("today", defaultOrder)
     var editing by remember { mutableStateOf(false) }
     androidx.activity.compose.BackHandler(editing) { editing = false }
@@ -340,7 +348,9 @@ fun TodayScreen(
                         }
                     }
         }
-        if (onPlace != null && !editing) {
+        val tilesCtx = androidx.compose.ui.platform.LocalContext.current
+        val tilesOn = remember { showTodayTiles(tilesCtx) }
+        if (onPlace != null && !editing && tilesOn) {
             HqText("MORE", 12.sp, FontWeight.SemiBold, c.muted, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 20.dp, bottom = 10.dp))
             val places = listOf(
                 Triple("programmes", "Programmes", androidx.compose.material.icons.Icons.Rounded.CalendarMonth),

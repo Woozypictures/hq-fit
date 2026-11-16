@@ -20,7 +20,7 @@ object Coach {
 
     /** Working sets of the last [limit] finished sessions of this exercise, most recent first. */
     suspend fun recent(db: HqFitDatabase, exerciseId: Long, limit: Int = 6): List<List<SetPoint>> =
-        db.sessions().exerciseHistory(exerciseId)
+        db.sessions().progressionHistory(exerciseId)
             .groupBy { it.sessionId }.values
             .take(limit)
             .map { rows -> rows.map { SetPoint(it.weightKg, it.reps) } }

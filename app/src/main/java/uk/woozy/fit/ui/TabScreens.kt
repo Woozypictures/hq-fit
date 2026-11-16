@@ -163,6 +163,8 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
 /** Progress: weight against the goal, calories, and training. Needs the data to exist; an empty card says what feeds it. */
 @Composable
 fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit, onPast: () -> Unit = {}, onLibrary: () -> Unit = {}) {
+    var reportOpen by remember { mutableStateOf(false) }
+    if (reportOpen) ReportSheet(db) { reportOpen = false }
     val c = HqTheme.colors
     val data by produceState<ProgressData?>(null, db) { value = loadProgress(db) }
     TabPage {
@@ -330,6 +332,7 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                         ListRow(androidx.compose.material.icons.Icons.Rounded.Star, "Personal records", "Best lifts and history", onClick = onRecords)
                                         ListRow(androidx.compose.material.icons.Icons.Rounded.CalendarMonth, "History", "Every workout you have done", onClick = onPast)
                                         ListRow(androidx.compose.material.icons.Icons.Rounded.FitnessCenter, "Exercise library", "Search and filter every exercise", onClick = onLibrary)
+                                        ListRow(androidx.compose.material.icons.Icons.Rounded.FitnessCenter, "Report", "Your training for a period, as a PDF", onClick = { reportOpen = true })
                                     }
                                 }
                     }

@@ -370,6 +370,9 @@ interface SessionDao {
     @Query("UPDATE workout_session SET feeling = :feeling WHERE id = :id")
     suspend fun setFeeling(id: Long, feeling: Int?)
 
+    @Query("UPDATE workout_session SET light = :light WHERE id = :id")
+    suspend fun setLight(id: Long, light: Boolean)
+
     @Query("UPDATE workout_session SET sleep = :sleep, energy = :energy WHERE id = :id")
     suspend fun setSleepEnergy(id: Long, sleep: Int?, energy: Int?)
 
@@ -424,6 +427,15 @@ interface SessionDao {
             "ORDER BY s.startedMs DESC, l.setIndex",
     )
     suspend fun exerciseHistory(exerciseId: Long): List<HistoryRow>
+
+    /** As [exerciseHistory] but without light sessions, for working out next targets. */
+    @Query(
+        "SELECT l.sessionId AS sessionId, s.startedMs AS startedMs, l.setIndex AS setIndex, l.weightKg AS weightKg, l.reps AS reps, s.name AS sessionName " +
+            "FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
+            "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND s.light = 0 AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL AND l.setType != 'warmup' " +
+            "ORDER BY s.startedMs DESC, l.setIndex",
+    )
+    suspend fun progressionHistory(exerciseId: Long): List<HistoryRow>
 }
 
 @Dao

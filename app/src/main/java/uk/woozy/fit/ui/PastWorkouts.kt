@@ -57,12 +57,15 @@ import java.util.Locale
  * set per exercise. Tap a day to see just that day; open a card to see its summary and fix any set.
  */
 @Composable
-fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit, onTimeline: () -> Unit = {}) {
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit, onTimeline: () -> Unit = {}, onLogPast: ((LocalDate, Long) -> Unit)? = null) {
     val c = HqTheme.colors
     val zone = remember { ZoneId.systemDefault() }
     val sessions by produceState(emptyList<WorkoutSessionEntity>(), db) { value = db.sessions().doneSince(0L).reversed() }
     var month by remember { mutableStateOf(YearMonth.now()) }
     var day by remember { mutableStateOf<LocalDate?>(null) }
+    var logDay by remember { mutableStateOf<LocalDate?>(null) }
+    val templates by produceState(emptyList<uk.woozy.fit.data.db.WorkoutTemplateEntity>(), db) { value = db.templates().all() }
     fun dateOf(s: WorkoutSessionEntity): LocalDate = Instant.ofEpochMilli(s.startedMs).atZone(zone).toLocalDate()
     val inMonth = sessions.filter { YearMonth.from(dateOf(it)) == month }
     val setsBy by produceState(emptyMap<Long, List<SetLogEntity>>(), inMonth.map { it.id }) {
@@ -92,12 +95,16 @@ fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> 
                         Total("Sets", "${allSets.size}", Modifier.weight(1f))
                         Total("Volume", if (volume >= 1000) "${NumberEntry.format(Math.round(volume / 100.0) / 10.0)} t" else "${formatWhole(volume)} kg", Modifier.weight(1f))
                     }
-                    MonthGrid(month, inMonth.map { dateOf(it) }.toSet(), day) { d -> day = if (day == d) null else d }
+                    val trainedDays = inMonth.map { dateOf(it) }.toSet()
+                    MonthGrid(month, trainedDays, day, canLog = onLogPast != null) { d ->
+                        if (d in trainedDays) day = if (day == d) null else d else logDay = d
+                    }
                 }
             }
             if (shown.isEmpty()) {
                 HqText(if (day != null) "Nothing logged that day." else "No workouts this month.", 14.sp, color = c.muted, modifier = Modifier.padding(8.dp))
             }
+            if (onLogPast != null) HqText("Tap an empty day to log a workout you did then.", 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 8.dp))
             shown.forEach { s ->
                 val sets = setsBy[s.id].orEmpty()
                 HqCard(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).clickable(role = Role.Button) { onOpen(s.id) }) {
@@ -141,6 +148,24 @@ fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> 
             Spacer(Modifier.height(16.dp))
         }
     }
+    logDay?.let { d ->
+        androidx.compose.material3.ModalBottomSheet(onDismissRequest = { logDay = null }, containerColor = c.card) {
+            Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 20.dp).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                HqText("Log a workout", 19.sp, FontWeight.SemiBold, modifier = Modifier.align(Alignment.CenterHorizontally))
+                HqText(d.format(DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.UK)), 14.sp, color = c.muted, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp))
+                if (templates.isEmpty()) HqText("Make a workout in Programmes first.", 14.sp, color = c.muted)
+                templates.forEach { t ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable(role = Role.Button) { logDay = null; onLogPast?.invoke(d, t.id) }.padding(vertical = 12.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        HqText(t.name, 16.sp, FontWeight.Medium, modifier = Modifier.weight(1f), maxLines = 1)
+                        Icon(Icons.Rounded.ChevronRight, null, tint = c.muted)
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -153,7 +178,7 @@ private fun Total(label: String, value: String, modifier: Modifier) {
 }
 
 @Composable
-private fun MonthGrid(month: YearMonth, trained: Set<LocalDate>, selected: LocalDate?, onPick: (LocalDate) -> Unit) {
+private fun MonthGrid(month: YearMonth, trained: Set<LocalDate>, selected: LocalDate?, canLog: Boolean = false, onPick: (LocalDate) -> Unit) {
     val c = HqTheme.colors
     val today = LocalDate.now()
     val first = month.atDay(1)
@@ -175,7 +200,7 @@ private fun MonthGrid(month: YearMonth, trained: Set<LocalDate>, selected: Local
                             Box(
                                 Modifier.size(36.dp).clip(CircleShape)
                                     .background(if (sel) c.ink else if (on) c.primary else androidx.compose.ui.graphics.Color.Transparent)
-                                    .clickable(enabled = on, role = Role.Button) { onPick(d) },
+                                    .clickable(enabled = on || (canLog && !d.isAfter(today)), role = Role.Button) { onPick(d) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 HqText(
