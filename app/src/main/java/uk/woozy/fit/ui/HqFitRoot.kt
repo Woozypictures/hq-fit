@@ -126,7 +126,7 @@ private fun androidx.navigation.NavGraphBuilder.capped(
     route: String,
     arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
     content: @androidx.compose.runtime.Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
-) = androidx.navigation.compose.composable(route, arguments) { entry ->
+) = composable(route, arguments) { entry ->
     val scope = this
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
         androidx.compose.foundation.layout.Box(Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize()) { scope.content(entry) }
