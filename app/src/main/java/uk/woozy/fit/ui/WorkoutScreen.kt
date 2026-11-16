@@ -71,6 +71,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -503,7 +504,7 @@ fun ActiveWorkoutScreen(
                     Row(
                         Modifier.graphicsLayer { translationX = drag.value; alpha = 1f - (kotlin.math.abs(drag.value) / (skipPx * 2.2f)).coerceIn(0f, 0.6f) }
                             .pointerInput(Unit) {
-                                androidx.compose.foundation.gestures.detectHorizontalDragGestures(
+                                detectHorizontalDragGestures(
                                     onDragEnd = {
                                         if (kotlin.math.abs(drag.value) > skipPx) { restEnd = 0; RestTimer.cancel(context); scope.launch { drag.snapTo(0f) } }
                                         else scope.launch { drag.animateTo(0f, androidx.compose.animation.core.spring(dampingRatio = 0.7f, stiffness = 500f)) }
