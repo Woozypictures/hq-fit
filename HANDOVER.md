@@ -175,3 +175,10 @@ Not done from the list: muscle map, rotation, mini player, logging a past day fr
 - Today: MORE folder tiles (Programmes, History, Records, Library, Scale) under the cards, hidden while rearranging.
 - Fixed: the History route still opened the Everfit timeline, so last night's calendar was unreachable. Routes.PAST now opens the calendar (Calendar | Timeline switch); `timeline` route keeps the old screen.
 - HQ has not had the same Settings or title change yet (parity rule).
+
+## 19. 16 Nov 2026 (afternoon): muscle map, keep my order
+- `core/data/.../Muscles.kt`: catalogue/typed muscle names -> 16 regions; main muscle 1 set, each helping region 0.5; warm-ups excluded. Secondaries read from exercises.tsv by name (`ui/MuscleMap.kt` MuscleCatalog), no schema change. Tests in MusclesTest.
+- Progress card "Muscles" (`MuscleCard`, `BodyMap` canvas front/back): Week / 30 days (10 sets a week = full colour) / Recovery (72 h fade), falling behind (main regions under a third of the guide), sets per muscle bars.
+- `Rotation.kt` + Settings > Workout > Your plan > Keep my order (meta key `keep_order`): Today offers the earliest planned workout from the last 14 days on; starting one moves it to today, and if it was missed the later planned ones slide by the same days. Missed banner hidden. HQ summary's workout_today follows it. Tests in RotationTest.
+- SummaryProvider `/muscles`: region, name, week_sets, month_sets, last_hit_ms, version (HQ Health card).
+- CI 156-158 green.
