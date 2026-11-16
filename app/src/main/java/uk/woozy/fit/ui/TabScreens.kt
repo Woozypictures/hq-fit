@@ -196,11 +196,11 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
             }
         }
 
-        val cards = rememberCardPrefs("progress", listOf("weight", "calories", "training", "consistency", "strength"))
+        val cards = rememberCardPrefs("progress", listOf("weight", "calories", "training", "consistency", "muscles", "strength"))
         var editing by remember { mutableStateOf(false) }
         androidx.activity.compose.BackHandler(editing) { editing = false }
         CardColumn(
-            cards, mapOf("weight" to "Weight", "calories" to "Calories", "training" to "Training", "consistency" to "Consistency", "strength" to "Strength"),
+            cards, mapOf("weight" to "Weight", "calories" to "Calories", "training" to "Training", "consistency" to "Consistency", "muscles" to "Muscles", "strength" to "Strength"),
             editing = editing, onEditing = { editing = it },
         ) { key ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -324,6 +324,10 @@ fun ProgressScreen(db: HqFitDatabase, onRecords: () -> Unit, onScale: () -> Unit
                                         }
                                     }
                                 }
+                    }
+                    "muscles" -> {
+                                SectionLabel("Muscles")
+                                MuscleCard(db)
                     }
                     "strength" -> {
                                 SectionLabel("Strength")
