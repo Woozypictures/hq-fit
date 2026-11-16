@@ -235,7 +235,6 @@ fun ActiveWorkoutScreen(
     var plateFor by remember { mutableStateOf<Double?>(null) }
     val isDone = session?.status == "done"
     BackHandler { if (locked) Unit else if (isDone) onLeave() else confirmLeave = true }
-    var pendingDelete by remember { mutableStateOf<SetLogEntity?>(null) }
     // The undo pill shows for a few seconds after a set is deleted, then goes.
     LaunchedEffect(lastDeleted) { if (lastDeleted != null) { delay(4000); lastDeleted = null } }
 
@@ -745,19 +744,6 @@ fun ActiveWorkoutScreen(
         )
     }
 
-    pendingDelete?.let { set ->
-        SheetDialog(
-            onDismissRequest = { pendingDelete = null },
-            title = "Delete set ${set.setIndex}?",
-            message = set.exerciseName,
-            confirm = "Delete",
-            onConfirm = {
-                pendingDelete = null; lastDeleted = set
-                scope.launch { db.sessions().deleteSet(set.id) }
-            },
-            dismiss = "Keep",
-        )
-    }
     plateFor?.let { kg -> PlateSheet(kg, barKg) { plateFor = null } }
     settingsFor?.let { f ->
         ExerciseSettingsSheet(db, f.exerciseId, f.exerciseName, f.targetRepsMin, f.targetRepsMax) { settingsFor = null; prefsTick++ }
