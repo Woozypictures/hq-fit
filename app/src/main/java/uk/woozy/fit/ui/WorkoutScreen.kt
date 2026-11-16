@@ -231,12 +231,12 @@ fun ActiveWorkoutScreen(
     var confirmDiscard by remember { mutableStateOf(false) }
     var lastDeleted by remember { mutableStateOf<SetLogEntity?>(null) }
     var lastDup by remember { mutableStateOf<SetLogEntity?>(null) }
-    LaunchedEffect(lastDup) { if (lastDup != null) { delay(4000); lastDup = null } }
+    LaunchedEffect(lastDup) { if (lastDup != null) { delay(6000); lastDup = null } }
     var plateFor by remember { mutableStateOf<Double?>(null) }
     val isDone = session?.status == "done"
     BackHandler { if (locked) Unit else if (isDone) onLeave() else confirmLeave = true }
     // The undo pill shows for a few seconds after a set is deleted, then goes.
-    LaunchedEffect(lastDeleted) { if (lastDeleted != null) { delay(4000); lastDeleted = null } }
+    LaunchedEffect(lastDeleted) { if (lastDeleted != null) { delay(6000); lastDeleted = null } }
 
     fun toggle(set: SetLogEntity) {
         scope.launch {
@@ -1263,7 +1263,10 @@ internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, swapF
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
-            LazyColumn(Modifier.heightIn(max = 480.dp)) {
+            // Swaps arrive a moment after the list: jump back to the top so they are seen (a lazy list keeps its first item).
+            val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+            LaunchedEffect(swaps) { if (swaps.isNotEmpty()) listState.scrollToItem(0) }
+            LazyColumn(Modifier.heightIn(max = 480.dp), state = listState) {
                 if (text.isBlank() && swaps.isNotEmpty()) {
                     item(key = "swaps") { uk.woozy.fit.designsystem.SectionLabel("Suggested swaps", Modifier.padding(start = 16.dp, top = 12.dp, bottom = 4.dp)) }
                     items(swaps, key = { "s" + it.id }) { e ->
