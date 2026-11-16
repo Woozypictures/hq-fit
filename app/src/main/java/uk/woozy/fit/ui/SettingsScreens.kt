@@ -50,7 +50,7 @@ import uk.woozy.fit.designsystem.SectionLabel
 import uk.woozy.fit.designsystem.SegmentedChoice
 import uk.woozy.fit.model.ThemeMode
 
-/** Same structure as Woozy HQ's Settings: a list of grouped pages (Display, You and targets, ...), each opening on its own, then About. */
+/** Settings, GymMane style: search at the top, then Your app / You and targets / Data and help; each row opens its own page. */
 @Composable
 fun SettingsScreen(
     themeMode: ThemeMode,
@@ -71,89 +71,96 @@ fun SettingsScreen(
 ) {
     val c = HqTheme.colors
     var open by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
-    androidx.activity.compose.BackHandler(open.isNotEmpty()) { open = "" }
-    val titles = mapOf("general" to "Display", "profile" to "You and targets", "connections" to "Data and connections", "notifications" to "Notifications", "advanced" to "Advanced")
+    var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    androidx.activity.compose.BackHandler(open.isNotEmpty() || query.isNotEmpty()) { if (open.isNotEmpty()) open = "" else query = "" }
+    val titles = mapOf("general" to "Appearance", "notifications" to "Notifications", "advanced" to "About and design")
+
+    // Every row Settings can show, with extra words so search finds the setting inside each page.
+    data class Entry(val group: String, val icon: androidx.compose.ui.graphics.vector.ImageVector, val title: String, val sub: String, val words: String, val go: () -> Unit)
+    val entries = listOf(
+        Entry("Your app", Icons.Rounded.Palette, "Appearance", "Light or dark, colour scheme", "theme dark light system colour color scheme frosted glass look", { open = "general" }),
+        Entry("Your app", Icons.Rounded.FitnessCenter, "Workout", "Rest, weight step, countdown, bar", "rest timer weight step countdown get ready barbell bar plates keypad warm-up steps", onWorkoutSettings),
+        Entry("Your app", androidx.compose.material.icons.Icons.Rounded.Notifications, "Notifications", "Sunday check-in, weigh-in reminder", "reminder check-in sunday weigh-in alert", { open = "notifications" }),
+        Entry("You and targets", Icons.Rounded.Person, "Profile", "Name and height", "name height age you", onProfile),
+        Entry("You and targets", Icons.Rounded.Flag, "Targets", "Energy, macros, steps, water, nutrients", "calories kcal energy macros protein carbs fat fibre steps water nutrients goals", onTargets),
+        Entry("You and targets", Icons.Rounded.MonitorWeight, "Scale and weight", "Pair your scale, type a weight, reminder", "scale pair bluetooth weight weigh-in body fat kamtron", onScale),
+        Entry("Data and help", Icons.Rounded.FavoriteBorder, "Health Connect", "Permissions, steps, sleep, sync", "health connect samsung watch steps sleep sync permissions", onHealth),
+        Entry("Data and help", Icons.Rounded.Backup, "Backup, restore and import", "Encrypted backups, CSV export, Cronometer import", "backup restore export csv import cronometer everfit drive", onBackup),
+        Entry("Data and help", Icons.Rounded.Link, "HQ connection", "What HQ can read from this app", "hq connection widget desktop share", onHqConnection),
+        Entry("Data and help", Icons.Rounded.Palette, "About and design", "Version, socials, design components", "about version socials instagram youtube design components gallery", { open = "advanced" }),
+    )
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            androidx.compose.foundation.layout.Box(
-                Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button) { if (open.isNotEmpty()) open = "" else onBack() },
-                contentAlignment = androidx.compose.ui.Alignment.Center,
-            ) { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.ink, modifier = Modifier.size(24.dp)) }
-            Spacer(Modifier.width(8.dp))
-            HqText(titles[open] ?: "Settings", 26.sp, FontWeight.Bold, modifier = Modifier.weight(1f))
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            BackBar(titles[open] ?: "Settings", { if (open.isNotEmpty()) open = "" else onBack() })
         }
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            @Composable fun Section(key: String, content: @Composable () -> Unit) {
-                if (open.isEmpty()) {
-                    HqCard(Modifier.fillMaxWidth(), onClick = { open = key }) {
-                        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                            HqText(titles.getValue(key), 16.sp, FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                            HqText("\u203A", 22.sp, color = c.muted)
-                        }
-                    }
-                } else if (open == key) {
-                    HqCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { content() } }
-                }
-            }
-
-            Section("general") {
-                HqText("Appearance", 13.sp, FontWeight.Medium, c.muted)
-                val modes = ThemeMode.entries
-                SegmentedChoice(
-                    options = listOf("Light", "Dark", "System"),
-                    selectedIndex = modes.indexOf(themeMode),
-                    onSelect = { onThemeMode(modes[it]) },
-                )
-                HqText("Colour scheme", 13.sp, FontWeight.Medium, c.muted)
-                SchemePicker(
-                    selectedKey = if (frosted) HqSchemes.FROSTED_KEY else scheme,
-                    onSelect = { k -> if (k == HqSchemes.FROSTED_KEY) onFrosted(true) else { onFrosted(false); onScheme(k) } },
-                )
-            }
-            Section("profile") {
-                HqCardlessRows {
-                    ListRow(Icons.Rounded.Person, "Profile", "Name and height", onClick = onProfile)
-                    ListRow(Icons.Rounded.Flag, "Targets", "Energy, macros, steps, water, nutrients", onClick = onTargets)
-                    ListRow(Icons.Rounded.FitnessCenter, "Workout", "Weight step, rest timer", onClick = onWorkoutSettings)
-                }
-            }
-            Section("connections") {
-                HqCardlessRows {
-                    ListRow(Icons.Rounded.MonitorWeight, "Scale and weight", "Pair your scale, type a weight, weekly reminder", onClick = onScale)
-                    ListRow(Icons.Rounded.FavoriteBorder, "Health Connect", "Permissions, steps, sleep, sync", onClick = onHealth)
-                    ListRow(Icons.Rounded.Backup, "Backup, restore and import", "Encrypted backups, restore, CSV export, Cronometer import", onClick = onBackup)
-                    ListRow(Icons.Rounded.Link, "HQ connection", "What HQ can read from this app", onClick = onHqConnection)
-                }
-            }
-            Section("notifications") {
-                val context = LocalContext.current
-                var checkIn by remember { mutableStateOf(uk.woozy.fit.CheckInReminder.enabled(context)) }
-                val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
-                androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                        HqText("Sunday check-in reminder", 16.sp, FontWeight.Medium)
-                        HqText("Sunday 18:00, at most once a day", 12.sp, color = c.muted)
-                    }
-                    uk.woozy.fit.designsystem.HapticSwitch(checked = checkIn, onCheckedChange = {
-                        checkIn = it
-                        uk.woozy.fit.CheckInReminder.setEnabled(context, it)
-                        if (it && android.os.Build.VERSION.SDK_INT >= 33) ask.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                    })
-                }
-                HqCardlessRows { ListRow(Icons.Rounded.MonitorWeight, "Weigh-in reminder", "Set the day and time in Scale and weight", onClick = onScale) }
-            }
-            Section("advanced") {
-                val context = LocalContext.current
-                val version = remember { runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: "" }
-                HqText("Version $version", 14.sp, FontWeight.Medium)
-                HqCardlessRows { ListRow(Icons.Rounded.Palette, "Design components", "Every component, in this theme", onClick = onDesign) }
-            }
             if (open.isEmpty()) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = query, onValueChange = { query = it }, singleLine = true,
+                    placeholder = { HqText("Search settings", 15.sp, color = c.muted) },
+                    leadingIcon = { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Search, contentDescription = null, tint = c.muted) },
+                    trailingIcon = {
+                        if (query.isNotEmpty()) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Rounded.Close, contentDescription = "Clear search", tint = c.muted,
+                            modifier = Modifier.size(40.dp).clip(androidx.compose.foundation.shape.CircleShape).clickable(role = androidx.compose.ui.semantics.Role.Button) { query = "" }.padding(8.dp))
+                    },
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(28.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                val q = query.trim().lowercase()
+                if (q.isNotEmpty()) {
+                    val hits = entries.filter { e -> q.split(' ').filter { it.isNotBlank() }.all { w -> "${e.title} ${e.sub} ${e.words}".lowercase().contains(w) } }
+                    if (hits.isEmpty()) HqText("Nothing matches \u201c$query\u201d.", 14.sp, color = c.muted, modifier = Modifier.padding(8.dp))
+                    else HqCard(Modifier.fillMaxWidth()) { Column { hits.forEach { e -> ListRow(e.icon, e.title, "${e.group} \u00b7 ${e.sub}", onClick = { query = ""; e.go() }) } } }
+                } else {
+                    entries.groupBy { it.group }.forEach { (group, rows) ->
+                        HqText(group.uppercase(), 12.sp, FontWeight.SemiBold, c.muted, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+                        HqCard(Modifier.fillMaxWidth()) { Column { rows.forEach { e -> ListRow(e.icon, e.title, e.sub, onClick = e.go) } } }
+                    }
+                    HqCard(Modifier.fillMaxWidth()) { AboutBlock("Woozy Fit", "hq-fit") }
+                }
+            }
+            if (open == "general") HqCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HqText("Theme", 13.sp, FontWeight.Medium, c.muted)
+                    val modes = ThemeMode.entries
+                    SegmentedChoice(
+                        options = listOf("Light", "Dark", "System"),
+                        selectedIndex = modes.indexOf(themeMode),
+                        onSelect = { onThemeMode(modes[it]) },
+                    )
+                    HqText("Colour scheme", 13.sp, FontWeight.Medium, c.muted)
+                    SchemePicker(
+                        selectedKey = if (frosted) HqSchemes.FROSTED_KEY else scheme,
+                        onSelect = { k -> if (k == HqSchemes.FROSTED_KEY) onFrosted(true) else { onFrosted(false); onScheme(k) } },
+                    )
+                }
+            }
+            if (open == "notifications") HqCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val context = LocalContext.current
+                    var checkIn by remember { mutableStateOf(uk.woozy.fit.CheckInReminder.enabled(context)) }
+                    val ask = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+                    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            HqText("Sunday check-in reminder", 16.sp, FontWeight.Medium)
+                            HqText("Sunday 18:00, at most once a day", 12.sp, color = c.muted)
+                        }
+                        uk.woozy.fit.designsystem.HapticSwitch(checked = checkIn, onCheckedChange = {
+                            checkIn = it
+                            uk.woozy.fit.CheckInReminder.setEnabled(context, it)
+                            if (it && android.os.Build.VERSION.SDK_INT >= 33) ask.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                        })
+                    }
+                    HqCardlessRows { ListRow(Icons.Rounded.MonitorWeight, "Weigh-in reminder", "Set the day and time in Scale and weight", onClick = onScale) }
+                }
+            }
+            if (open == "advanced") {
                 HqCard(Modifier.fillMaxWidth()) { AboutBlock("Woozy Fit", "hq-fit") }
+                HqCard(Modifier.fillMaxWidth()) { HqCardlessRows { ListRow(Icons.Rounded.Palette, "Design components", "Every component, in this theme", onClick = onDesign) } }
             }
         }
     }

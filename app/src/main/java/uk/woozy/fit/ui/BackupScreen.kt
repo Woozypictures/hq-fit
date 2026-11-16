@@ -97,7 +97,7 @@ fun BackupScreen(db: HqFitDatabase, container: AppContainer, onBack: () -> Unit)
     fun export(name: String, make: suspend () -> String) { pendingCsv = make; saveCsv.launch(name) }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(scrollState).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        BackBar("Backup and restore", onBack)
+        BackBar("Backup and restore", onBack, collapse = false)
         message?.let { HqCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { HqText(it, 14.sp, FontWeight.Medium) } } }
 
         RecoveryKeyCard(container)

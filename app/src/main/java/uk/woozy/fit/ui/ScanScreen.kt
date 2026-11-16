@@ -105,7 +105,7 @@ fun ScanScreen(
             CameraPreview(onCode = { lookup(it) })
         }
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
-            BackBar("Scan barcode", onBack)
+            BackBar("Scan barcode", onBack, collapse = false)
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 when (val s = state) {
                     ScanState.Scanning -> HqText(

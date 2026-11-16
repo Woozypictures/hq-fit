@@ -250,7 +250,7 @@ fun NewExerciseScreen(db: HqFitDatabase, onBack: () -> Unit) {
     var notes by remember { mutableStateOf("") }
     var saved by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        BackBar("New exercise", onBack)
+        BackBar("New exercise", onBack, collapse = false)
         OutlinedTextField(value = name, onValueChange = { name = it }, label = { HqText("Name", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = muscle, onValueChange = { muscle = it }, label = { HqText("Main muscle, e.g. Chest", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(value = equipment, onValueChange = { equipment = it }, label = { HqText("Equipment, e.g. Dumbbell", 13.sp, color = c.muted) }, singleLine = true, modifier = Modifier.fillMaxWidth())

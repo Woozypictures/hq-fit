@@ -43,6 +43,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
@@ -107,6 +108,7 @@ private object Routes {
     const val HISTORY = "history"
     const val PREVIEW = "preview"
     const val LIBRARY = "library"
+    const val TIMELINE = "timeline"
 }
 
 /** Today, Train, (+), Diary, Progress. The + sits between the second and third tab. */
@@ -267,8 +269,10 @@ fun HqFitRoot(
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         // Tab pages may go wide (two columns of cards); every other page is capped so it reads well on a tablet.
         androidx.compose.foundation.layout.Box(Modifier.padding(padding).fillMaxSize().frostedContent(quickAdd).glassSource(backdrop), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
-        androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset else 0.dp)) {
-        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize(),
+        val titleCollapse = remember { TitleCollapse() }
+        androidx.compose.runtime.LaunchedEffect(route) { titleCollapse.reset() }
+        androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset else 0.dp), LocalTitleCollapse provides titleCollapse) {
+        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize().nestedScroll(titleCollapse.connection),
             // Snappy with a slight transition: a short crossfade.
             enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
             exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
@@ -279,6 +283,15 @@ fun HqFitRoot(
                 HomeScaleListener(db) { kg -> toastText = "\u2696\uFE0F Weighed ${"%.1f".format(kg)} kg, saved"; refreshToast = System.currentTimeMillis() }
                 TodayScreen(
                     name = remember { ProfilePrefs.name(syncContext) },
+                    onPlace = { key ->
+                        when (key) {
+                            "programmes" -> nav.navigate(Routes.PROGRAMMES)
+                            "history" -> nav.navigate(Routes.PAST)
+                            "records" -> nav.navigate(Routes.RECORDS)
+                            "library" -> nav.navigate(Routes.LIBRARY)
+                            "scale" -> nav.navigate(Routes.SCALE)
+                        }
+                    },
                     onSettings = { nav.navigate(Routes.SETTINGS) },
                     onStartWorkout = {
                         val a = active
@@ -473,7 +486,8 @@ fun HqFitRoot(
                     onNewWorkout = { scope.launch { nav.navigate("${Routes.EDIT}/${createWorkout(db, "New workout")}") } },
                 )
             }
-            composable(Routes.PAST) { HistoryScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
+            composable(Routes.PAST) { PastWorkoutsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }, onTimeline = { nav.navigate(Routes.TIMELINE) }) }
+            composable(Routes.TIMELINE) { HistoryScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
             composable(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
             composable("profile") { ProfileScreen(onBack = { nav.popBackStack() }) }
             composable("workoutsettings") { WorkoutSettingsScreen(onBack = { nav.popBackStack() }) }

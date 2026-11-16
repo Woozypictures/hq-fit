@@ -114,7 +114,7 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        BackBar("Scale and weight", onBack)
+        BackBar("Scale and weight", onBack, collapse = false)
 
         // Feelfit-style live readout: the number springs as the scale settles, the ring fills toward the goal, a status
         // pill says where the connection is, and the stats sit on inset tiles (14dp inside the 22dp card, 8dp in).

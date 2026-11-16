@@ -84,48 +84,51 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
     var step by remember { mutableStateOf(WorkoutPrefs.weightStep(context)) }
     var auto by remember { mutableStateOf(WorkoutPrefs.autoRest(context)) }
     var stepKeys by remember { mutableStateOf(WorkoutPrefs.stepKeys(context)) }
+    var countdown by remember { mutableStateOf(WorkoutPrefs.countdown(context)) }
+    var bar by remember { mutableStateOf(WorkoutPrefs.barKg(context)) }
+    @Composable fun Group(label: String) = HqText(label.uppercase(), 12.sp, FontWeight.SemiBold, c.muted, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
+    @Composable fun Toggle(title: String, sub: String, on: Boolean, set: (Boolean) -> Unit) {
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                HqText(title, 16.sp, FontWeight.Medium)
+                HqText(sub, 12.sp, color = c.muted)
+            }
+            uk.woozy.fit.designsystem.HapticSwitch(checked = on, onCheckedChange = set)
+        }
+    }
     SettingsPage("Workout", onBack) {
-        SectionLabel("Weight step on the keypad")
-        SegmentedChoice(
-            WorkoutPrefs.steps.map { NumberEntry.format(it) }, WorkoutPrefs.steps.indexOf(step).coerceAtLeast(0),
-            onSelect = { step = WorkoutPrefs.steps[it]; WorkoutPrefs.setWeightStep(context, step) },
-        )
+        // GymMane-style split: what happens between sets, then what happens while you train.
+        Group("Rest")
         HqCard(Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    HqText("Start rest timer after each set", 16.sp, FontWeight.Medium)
-                    HqText("Uses the rest time in the workout. Off means ticking a set starts nothing.", 12.sp, color = c.muted)
-                }
-                uk.woozy.fit.designsystem.HapticSwitch(checked = auto, onCheckedChange = { auto = it; WorkoutPrefs.setAutoRest(context, it) })
+            Column {
+                Toggle("Start rest timer after each set", "Uses the rest time in the workout, or the exercise's own. Off means ticking a set starts nothing.", auto) { auto = it; WorkoutPrefs.setAutoRest(context, it) }
             }
         }
+        HqText("Tap the rest time during a workout to change it on the dial. Each exercise can have its own rest in Settings for this exercise.", 12.sp, color = c.muted, modifier = Modifier.padding(horizontal = 4.dp))
+        Group("While you train")
         HqCard(Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    HqText("Show - and + on the keypad", 16.sp, FontWeight.Medium)
-                    HqText("Step the weight or reps up and down. Off keeps the keypad to numbers and Done.", 12.sp, color = c.muted)
+            Column {
+                Toggle("Countdown before starting", "3, 2, 1 before the first set of a workout. Tap it to start straight away.", countdown) { countdown = it; WorkoutPrefs.setCountdown(context, it) }
+                Toggle("Show - and + on the keypad", "Step the weight or reps up and down. Off keeps the keypad to numbers and Done.", stepKeys) { stepKeys = it; WorkoutPrefs.setStepKeys(context, it) }
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HqText("Weight step", 16.sp, FontWeight.Medium)
+                    HqText("What - and + add, and the step for next targets unless an exercise has its own.", 12.sp, color = c.muted)
+                    SegmentedChoice(
+                        WorkoutPrefs.steps.map { NumberEntry.format(it) }, WorkoutPrefs.steps.indexOf(step).coerceAtLeast(0),
+                        onSelect = { step = WorkoutPrefs.steps[it]; WorkoutPrefs.setWeightStep(context, step) },
+                    )
                 }
-                uk.woozy.fit.designsystem.HapticSwitch(checked = stepKeys, onCheckedChange = { stepKeys = it; WorkoutPrefs.setStepKeys(context, it) })
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HqText("Barbell weight", 16.sp, FontWeight.Medium)
+                    HqText("For plates per side and the lightest warm-up set on barbell lifts.", 12.sp, color = c.muted)
+                    val bars = listOf(10.0, 15.0, 20.0)
+                    SegmentedChoice(
+                        bars.map { "${NumberEntry.format(it)} kg" }, bars.indexOf(bar).coerceAtLeast(0),
+                        onSelect = { bar = bars[it]; WorkoutPrefs.setBarKg(context, bar) },
+                    )
+                }
             }
         }
-        var countdown by remember { mutableStateOf(WorkoutPrefs.countdown(context)) }
-        HqCard(Modifier.fillMaxWidth()) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    HqText("Countdown before starting", 16.sp, FontWeight.Medium)
-                    HqText("3, 2, 1 before the first set of a workout. Tap it to start straight away.", 12.sp, color = c.muted)
-                }
-                uk.woozy.fit.designsystem.HapticSwitch(checked = countdown, onCheckedChange = { countdown = it; WorkoutPrefs.setCountdown(context, it) })
-            }
-        }
-        var bar by remember { mutableStateOf(WorkoutPrefs.barKg(context)) }
-        SectionLabel("Barbell weight")
-        val bars = listOf(10.0, 15.0, 20.0)
-        SegmentedChoice(
-            bars.map { "${NumberEntry.format(it)} kg" }, bars.indexOf(bar).coerceAtLeast(0),
-            onSelect = { bar = bars[it]; WorkoutPrefs.setBarKg(context, bar) },
-        )
-        HqText("Used for plates per side and the lightest warm-up set on barbell lifts.", 12.sp, color = c.muted)
     }
 }
 

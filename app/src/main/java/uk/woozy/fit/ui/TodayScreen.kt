@@ -109,6 +109,8 @@ fun TodayScreen(
     onRestDay: () -> Unit = {},
     weighedToday: Boolean = false,
     onScale: () -> Unit = {},
+    /** Folder tiles at the bottom (GymMane style): programmes, history, records, library, scale. */
+    onPlace: ((String) -> Unit)? = null,
 ) {
     val c = HqTheme.colors
     // A different rest-day line each time Home opens, like Everfit.
@@ -333,8 +335,49 @@ fun TodayScreen(
                         }
                     }
         }
+        if (onPlace != null && !editing) {
+            HqText("MORE", 12.sp, FontWeight.SemiBold, c.muted, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 20.dp, bottom = 10.dp))
+            val places = listOf(
+                Triple("programmes", "Programmes", androidx.compose.material.icons.Icons.Rounded.CalendarMonth),
+                Triple("history", "History", androidx.compose.material.icons.Icons.Rounded.History),
+                Triple("records", "Records", androidx.compose.material.icons.Icons.Rounded.EmojiEvents),
+                Triple("library", "Library", androidx.compose.material.icons.Icons.Rounded.FitnessCenter),
+                Triple("scale", "Scale", androidx.compose.material.icons.Icons.Rounded.MonitorWeight),
+            )
+            places.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { (key, label, icon) -> FolderTile(label, icon, Modifier.weight(1f)) { onPlace(key) } }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
         Spacer(Modifier.height(8.dp))
     }
+    }
+}
+
+/** GymMane's folder tile: a card with a sheet peeking out behind it, an icon and a label. */
+@Composable
+private fun FolderTile(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val c = HqTheme.colors
+    androidx.compose.foundation.layout.Box(modifier.height(104.dp)) {
+        androidx.compose.foundation.layout.Box(
+            Modifier.fillMaxWidth(0.82f).height(30.dp).align(Alignment.TopCenter)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).background(c.primary.copy(alpha = 0.28f)),
+        )
+        androidx.compose.foundation.layout.Box(
+            Modifier.fillMaxWidth(0.9f).height(30.dp).align(Alignment.TopCenter).padding(top = 7.dp)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp)).background(c.primary.copy(alpha = 0.5f)),
+        )
+        Column(
+            Modifier.fillMaxWidth().height(86.dp).align(Alignment.BottomCenter)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(18.dp)).background(c.card)
+                .clickable(role = Role.Button, onClickLabel = label, onClick = onClick).padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            androidx.compose.material3.Icon(icon, contentDescription = null, tint = c.primary, modifier = Modifier.size(22.dp))
+            HqText(label, 14.sp, FontWeight.SemiBold, maxLines = 1)
+        }
     }
 }
 

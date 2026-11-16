@@ -67,7 +67,7 @@ fun HealthScreen(db: HqFitDatabase, onBack: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        BackBar("Health Connect", onBack)
+        BackBar("Health Connect", onBack, collapse = false)
 
         if (!hc.available) {
             HqCard(Modifier.fillMaxWidth()) {

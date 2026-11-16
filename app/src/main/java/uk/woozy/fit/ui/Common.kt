@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,24 +39,72 @@ fun ScreenTitle(title: String, modifier: Modifier = Modifier) {
     HqText(title, if (HqTheme.colors.flat) 36.sp else 28.sp, FontWeight.Bold, modifier = modifier, letterSpacing = if (HqTheme.colors.flat) (-1).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
 }
 
-/** Back arrow and title, for Settings and the design gallery. */
+/**
+ * Shrinking titles (GymMane style): the page title starts big under a round back button and, as the page scrolls,
+ * folds into a small centred title in the top bar. One shared state at the root listens to every page's scrolling
+ * (nested scroll), so any scrollable page under a [BackBar] gets it without its own wiring. It resets on each page.
+ */
+class TitleCollapse {
+    var offset by androidx.compose.runtime.mutableFloatStateOf(0f)
+    /** Height the big title can fold away; 0 while no collapsing [BackBar] is on screen. */
+    var maxPx = 0f
+    internal var users = 0
+    fun reset() { offset = 0f }
+    val connection = object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {
+        override fun onPreScroll(available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+            if (available.y >= 0f || maxPx <= 0f) return androidx.compose.ui.geometry.Offset.Zero
+            val old = offset
+            offset = (offset - available.y).coerceAtMost(maxPx)
+            return androidx.compose.ui.geometry.Offset(0f, old - offset)
+        }
+        override fun onPostScroll(consumed: androidx.compose.ui.geometry.Offset, available: androidx.compose.ui.geometry.Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): androidx.compose.ui.geometry.Offset {
+            if (available.y <= 0f || maxPx <= 0f) return androidx.compose.ui.geometry.Offset.Zero
+            val old = offset
+            offset = (offset - available.y).coerceAtLeast(0f)
+            return androidx.compose.ui.geometry.Offset(0f, old - offset)
+        }
+    }
+}
+
+val LocalTitleCollapse = androidx.compose.runtime.staticCompositionLocalOf<TitleCollapse?> { null }
+
+/**
+ * A page's top: round back button, then the big title. With [collapse] (the default, for pages whose content
+ * scrolls below the bar) the big title folds into a small centred one as you scroll. Pages that scroll the bar
+ * itself away pass collapse = false.
+ */
 @Composable
-fun BackBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-            contentDescription = "Back",
-            tint = HqTheme.colors.ink,
-            modifier = Modifier
-                .size(48.dp)
-                .clickable(role = Role.Button, onClick = onBack)
-                .padding(12.dp),
-        )
-        Spacer(Modifier.width(4.dp))
-        HqText(title, 22.sp, FontWeight.Bold)
+fun BackBar(title: String, onBack: () -> Unit, modifier: Modifier = Modifier, collapse: Boolean = true) {
+    val c = HqTheme.colors
+    val state = LocalTitleCollapse.current?.takeIf { collapse }
+    val bigPx = with(androidx.compose.ui.platform.LocalDensity.current) { 48.dp.toPx() }
+    if (state != null) androidx.compose.runtime.DisposableEffect(state, bigPx) {
+        state.users++; state.maxPx = bigPx
+        onDispose { state.users--; if (state.users <= 0) { state.users = 0; state.maxPx = 0f; state.offset = 0f } }
+    }
+    val offset = state?.offset ?: 0f
+    val frac = (offset / bigPx).coerceIn(0f, 1f)
+    Column(modifier.fillMaxWidth()) {
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            androidx.compose.foundation.layout.Box(
+                Modifier.size(44.dp).clip(androidx.compose.foundation.shape.CircleShape).background(c.track)
+                    .clickable(role = Role.Button, onClickLabel = "Back", onClick = onBack),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back", tint = c.ink, modifier = Modifier.size(22.dp))
+            }
+            HqText(
+                title, 17.sp, FontWeight.SemiBold, maxLines = 1,
+                modifier = Modifier.align(Alignment.Center).padding(horizontal = 56.dp).alpha(((frac - 0.5f) * 2f).coerceIn(0f, 1f)),
+            )
+        }
+        val h = with(androidx.compose.ui.platform.LocalDensity.current) { (bigPx - offset).coerceAtLeast(0f).toDp() }
+        androidx.compose.foundation.layout.Box(
+            Modifier.fillMaxWidth().then(if (state != null) Modifier.height(h) else Modifier).clipToBounds(),
+            contentAlignment = Alignment.BottomStart,
+        ) {
+            HqText(title, 30.sp, FontWeight.Bold, maxLines = 1, letterSpacing = (-0.6).sp, modifier = Modifier.padding(start = 4.dp, bottom = 2.dp).alpha(1f - frac))
+        }
     }
 }
 

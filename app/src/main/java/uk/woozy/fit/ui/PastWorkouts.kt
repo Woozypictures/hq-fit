@@ -57,7 +57,7 @@ import java.util.Locale
  * set per exercise. Tap a day to see just that day; open a card to see its summary and fix any set.
  */
 @Composable
-fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit) {
+fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> Unit, onTimeline: () -> Unit = {}) {
     val c = HqTheme.colors
     val zone = remember { ZoneId.systemDefault() }
     val sessions by produceState(emptyList<WorkoutSessionEntity>(), db) { value = db.sessions().doneSince(0L).reversed() }
@@ -74,6 +74,7 @@ fun PastWorkoutsScreen(db: HqFitDatabase, onBack: () -> Unit, onOpen: (Long) -> 
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar("History", onBack) }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            uk.woozy.fit.designsystem.SegmentedChoice(listOf("Calendar", "Timeline"), 0, onSelect = { if (it == 1) onTimeline() })
             HqCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
