@@ -719,6 +719,7 @@ fun GlassRestPill(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
     solid: Boolean = false,
+    onTapTime: (() -> Unit)? = null,
 ) {
     val shape = CircleShape
     val frac = if (totalMs > 0) (leftMs.toFloat() / totalMs).coerceIn(0f, 1f) else 0f
@@ -737,12 +738,17 @@ fun GlassRestPill(
             .padding(start = 20.dp, end = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text("Rest", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Normal, color = style.muted))
-        Spacer(Modifier.width(10.dp))
-        Text(
-            "%d:%02d".format(sec / 60, sec % 60),
-            style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, color = style.ink, letterSpacing = (-0.4).sp, fontFeatureSettings = "tnum"),
-        )
+        Row(
+            (if (onTapTime != null) Modifier.clip(CircleShape).selectable(selected = false, role = Role.Button, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = NoIndication, onClick = onTapTime) else Modifier),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("Rest", style = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Normal, color = style.muted))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "%d:%02d".format(sec / 60, sec % 60),
+                style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, color = style.ink, letterSpacing = (-0.4).sp, fontFeatureSettings = "tnum"),
+            )
+        }
         Spacer(Modifier.width(14.dp))
         Box(
             Modifier.clip(CircleShape).selectable(selected = false, role = Role.Button, interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = NoIndication, onClick = onAdd)

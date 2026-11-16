@@ -72,6 +72,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
@@ -129,6 +130,7 @@ private data class Editing(val setId: Long, val weight: Boolean, val buffer: Str
  * The full-screen workout. Every change is written to the database as it happens, so closing the app or losing
  * the process leaves the session exactly as it was; Today shows "Resume workout".
  */
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ActiveWorkoutScreen(
     db: HqFitDatabase,
@@ -169,6 +171,18 @@ fun ActiveWorkoutScreen(
     val context = LocalContext.current
     val weightStep = remember { WorkoutPrefs.weightStep(context) }
     val stepKeys = remember { WorkoutPrefs.stepKeys(context) }
+    val barKg = remember { WorkoutPrefs.barKg(context) }
+    // Equipment per exercise, for plates per side on barbell lifts.
+    val equipment by produceState(emptyMap<Long, String>(), sets.map { it.exerciseId }.toSet()) {
+        value = sets.map { it.exerciseId }.distinct().associateWith { db.sessions().exercise(it)?.equipment.orEmpty() }
+    }
+    var locked by remember { mutableStateOf(false) }
+    // 3-2-1 before the first set: the section waiting to open and the number showing.
+    var countdown by remember { mutableStateOf(0) }
+    var countdownSec by remember { mutableStateOf<String?>(null) }
+    var toast by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(toast) { if (toast != null) { delay(2200); toast = null } }
+    var restSheet by remember { mutableStateOf(false) }
     var restEnd by remember { mutableLongStateOf(RestTimer.endMs(context).takeIf { it > System.currentTimeMillis() } ?: 0L) }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var asked by remember { mutableStateOf(false) }
@@ -210,7 +224,7 @@ fun ActiveWorkoutScreen(
     var confirmDiscard by remember { mutableStateOf(false) }
     var lastDeleted by remember { mutableStateOf<SetLogEntity?>(null) }
     val isDone = session?.status == "done"
-    BackHandler { if (isDone) onLeave() else confirmLeave = true }
+    BackHandler { if (locked) Unit else if (isDone) onLeave() else confirmLeave = true }
     var pendingDelete by remember { mutableStateOf<SetLogEntity?>(null) }
     // The undo pill shows for a few seconds after a set is deleted, then goes.
     LaunchedEffect(lastDeleted) { if (lastDeleted != null) { delay(4000); lastDeleted = null } }
@@ -295,6 +309,10 @@ fun ActiveWorkoutScreen(
     val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { sectionKeys.size + 1 })
     val phases = remember { androidx.compose.runtime.mutableStateMapOf<String, SectionPhase>() }
     var infoFor by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(countdown) {
+        if (countdown > 0) { delay(1000); countdown -= 1 }
+        else countdownSec?.let { sec -> tick(view); phases[sec] = SectionPhase.ACTIVE; countdownSec = null }
+    }
     var noteFor by remember { mutableStateOf<Pair<Int, String>?>(null) }
     var menu by remember { mutableStateOf(false) }
 
@@ -340,6 +358,15 @@ fun ActiveWorkoutScreen(
     @Composable
     fun ExerciseBlock(group: List<SetLogEntity>) {
         val first = group.first()
+        val barbell = equipment[first.exerciseId].orEmpty().contains("barbell", true) || first.exerciseName.contains("barbell", true)
+        val loadSet = group.firstOrNull { !it.done && it.setType != "warmup" } ?: group.lastOrNull { it.setType != "warmup" }
+        val plates = if (!barbell) null else loadSet?.weightKg?.let { w -> uk.woozy.fit.model.Plates.perSide(w, barKg)?.let { "Per side: ${uk.woozy.fit.model.Plates.label(it)} kg" } }
+        val warm: (() -> Unit)? = if (isDone || first.durationSec != null || group.any { it.setType == "warmup" }) null else ({
+            scope.launch {
+                val n = Sessions.addWarmups(db, sessionId, first.position, weightStep, if (barbell) barKg else null)
+                toast = if (n > 0) "$n warm-up sets added" else "Set a working weight first"
+            }
+        })
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ExerciseHero(first.exerciseName, onClick = { infoFor = first.exerciseName })
             ExerciseCard(
@@ -368,6 +395,8 @@ fun ActiveWorkoutScreen(
                 onHistory = { onHistory(first.exerciseId) },
                 onNote = { noteFor = first.position to first.note },
                 onMarkAll = { tick(view); scope.launch { markAllDone(db, group) } },
+                plates = plates,
+                onWarmup = warm,
             )
         }
     }
@@ -389,6 +418,14 @@ fun ActiveWorkoutScreen(
                         )
                         Spacer(Modifier.height(6.dp))
                         Dots(sectionKeys.size + 1, pager.currentPage, c.onGradient)
+                        val working = sets.filter { it.setType != "warmup" }
+                        if (working.isNotEmpty()) {
+                            val doneN = working.count { it.done }
+                            val vol = working.filter { it.done && it.durationSec == null }.sumOf { (it.weightKg ?: 0.0) * (it.reps ?: 0) }
+                            Spacer(Modifier.height(6.dp))
+                            HqText("$doneN of ${working.size} sets" + (if (vol > 0) " \u00b7 ${formatWhole(vol)} kg" else ""), 12.sp, color = c.onGradient.copy(alpha = 0.85f))
+                            uk.woozy.fit.designsystem.HqProgressBar(doneN / working.size.toFloat(), c.onGradient, Modifier.padding(top = 6.dp).width(160.dp), height = 3.dp)
+                        }
                     }
                     Box {
                         Icon(
@@ -404,13 +441,14 @@ fun ActiveWorkoutScreen(
                                     else scope.launch { RestTimer.cancel(context); Sessions.finish(db, sessionId, System.currentTimeMillis()); onFinished() }
                                 },
                             )
+                            if (!isDone) DropdownMenuItem(text = { HqText("Lock screen", 15.sp) }, onClick = { menu = false; locked = true })
                             if (!isDone) DropdownMenuItem(text = { HqText("Discard workout", 15.sp) }, onClick = { menu = false; confirmDiscard = true })
                         }
                     }
                 }
                 if (restLeft > 0 && !c.flat) {
                     Row(Modifier.padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        HqText("Rest ${clock(restLeft + 999)}", if (c.flat) 24.sp else 15.sp, FontWeight.Bold, c.onGradient, Modifier.weight(1f), letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
+                        HqText("Rest ${clock(restLeft + 999)}", if (c.flat) 24.sp else 15.sp, FontWeight.Bold, c.onGradient, Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = "Change rest") { restSheet = true }, letterSpacing = if (c.flat) (-0.5).sp else androidx.compose.ui.unit.TextUnit.Unspecified)
                         HqText(
                             "Skip", 14.sp, FontWeight.SemiBold, c.onGradient,
                             Modifier.clip(CircleShape).clickable(role = Role.Button) { restEnd = 0; RestTimer.cancel(context) }.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -434,7 +472,10 @@ fun ActiveWorkoutScreen(
                 val pages = pagesOf(sec)
                 val count = pages.sumOf { it.size }
                 when (phases[sec] ?: SectionPhase.INTRO) {
-                    SectionPhase.INTRO -> SectionIntro(title, count, pages.flatten(), onStart = { phases[sec] = SectionPhase.ACTIVE })
+                    SectionPhase.INTRO -> SectionIntro(title, count, pages.flatten(), onStart = {
+                        if (!isDone && sets.none { it.done } && WorkoutPrefs.countdown(context)) { countdownSec = sec; countdown = 3 }
+                        else phases[sec] = SectionPhase.ACTIVE
+                    })
                     SectionPhase.COMPLETE -> SectionComplete(
                         title, count, last = page == sectionKeys.lastIndex,
                         onEdit = { phases[sec] = SectionPhase.ACTIVE },
@@ -470,7 +511,10 @@ fun ActiveWorkoutScreen(
                                     if (allDone && !wasDone) {
                                         tick(view)
                                         delay(500)
-                                        if (i < pages.lastIndex) inner.animateScrollToPage(i + 1)
+                                        if (i < pages.lastIndex) {
+                                            toast = "Next: " + pages[i + 1].first().first().exerciseName
+                                            inner.animateScrollToPage(i + 1)
+                                        }
                                         else {
                                             // Last exercise of the section done: complete it and glide on to the next section, already started.
                                             phases[sec] = SectionPhase.COMPLETE
@@ -541,6 +585,7 @@ fun ActiveWorkoutScreen(
                         backdrop = backdrop, style = gStyle, accent = c.primary, solid = true,
                         onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest", extend = true) },
                         onSkip = { restEnd = 0; RestTimer.cancel(context) },
+                        onTapTime = { restSheet = true },
                     )
                 }
             }
@@ -556,6 +601,7 @@ fun ActiveWorkoutScreen(
                 backdrop = backdrop, style = gStyle, accent = c.primary,
                 onAdd = { restEnd += 15_000; RestTimer.start(context, restEnd, "Rest", extend = true) },
                 onSkip = { restEnd = 0; RestTimer.cancel(context) },
+                onTapTime = { restSheet = true },
                 modifier = Modifier.align(Alignment.BottomCenter).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars).padding(bottom = 16.dp),
             )
         }
@@ -570,6 +616,45 @@ fun ActiveWorkoutScreen(
             action = "Undo",
             onAction = { lastDeleted?.let { gone -> scope.launch { db.sessions().restoreSet(gone) } }; lastDeleted = null },
         )
+        var toastText by remember { mutableStateOf("") }
+        toast?.let { toastText = it }
+        uk.woozy.fit.designsystem.GlassToast(
+            toastText, toast != null, backdrop, gStyleT,
+            Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top = 104.dp),
+        )
+        countdownSec?.takeIf { countdown > 0 }?.let { sec ->
+            val firstName = sets.filter { it.section == sec }.minByOrNull { it.position }?.exerciseName.orEmpty()
+            Box(
+                Modifier.fillMaxSize().background(c.page).clickable(role = Role.Button, onClickLabel = "Start now") { countdown = 0 },
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(32.dp)) {
+                    HqText("GET READY", 13.sp, FontWeight.SemiBold, c.muted, letterSpacing = 2.sp)
+                    HqText("$countdown", 120.sp, FontWeight.Bold, c.ink)
+                    HqText(firstName, 20.sp, FontWeight.SemiBold, textAlign = TextAlign.Center)
+                    HqText("Tap to start now", 13.sp, color = c.muted)
+                }
+            }
+        }
+        if (locked) {
+            Box(
+                Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.72f))
+                    .pointerInput(Unit) { awaitPointerEventScope { while (true) { awaitPointerEvent().changes.forEach { it.consume() } } } },
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    val white = androidx.compose.ui.graphics.Color.White
+                    HqText(session?.let { clock((it.endedMs ?: now) - it.startedMs) } ?: "", 44.sp, FontWeight.Bold, white, letterSpacing = (-1).sp)
+                    if (restLeft > 0) HqText("Rest ${clock(restLeft + 999)}", 18.sp, FontWeight.SemiBold, white.copy(alpha = 0.85f))
+                    Spacer(Modifier.height(24.dp))
+                    Box(
+                        Modifier.clip(CircleShape).background(white.copy(alpha = 0.16f))
+                            .combinedClickable(onClick = {}, onLongClick = { tick(view); locked = false }, onLongClickLabel = "Unlock")
+                            .padding(horizontal = 28.dp, vertical = 14.dp),
+                    ) { HqText("Hold to unlock", 16.sp, FontWeight.SemiBold, white) }
+                }
+            }
+        }
     }
 
     picking?.let { (position, mode) ->
@@ -603,6 +688,26 @@ fun ActiveWorkoutScreen(
             },
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { HqText("Keep", 15.sp, color = c.muted) } },
         )
+    }
+    if (restSheet) {
+        var pick by remember { mutableStateOf((((restLeft + 999) / 1000 / 5) * 5).toDouble().coerceAtLeast(30.0)) }
+        ModalBottomSheet(onDismissRequest = { restSheet = false }, containerColor = c.card) {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                HqText("Rest timer", 15.sp, FontWeight.SemiBold, c.muted)
+                HqText(clock(pick.toLong() * 1000), 48.sp, FontWeight.Bold, letterSpacing = (-1).sp)
+                RulerPicker(pick, { pick = it }, 0.0, 600.0, 5.0, 6, { clock(it.toLong() * 1000) }, description = "Rest time")
+                HqText("Drag the ruler to change the time left.", 13.sp, color = c.muted)
+                HqPillButton("Set", onClick = {
+                    if (pick <= 0.0) { restEnd = 0; RestTimer.cancel(context) }
+                    else { restEnd = System.currentTimeMillis() + pick.toLong() * 1000; RestTimer.start(context, restEnd, "Rest", extend = true) }
+                    restSheet = false
+                }, modifier = Modifier.fillMaxWidth())
+                TextButton(onClick = { restEnd = 0; RestTimer.cancel(context); restSheet = false }) { HqText("Skip rest", 15.sp, FontWeight.SemiBold, c.muted) }
+            }
+        }
     }
     if (confirmLeave) {
         AlertDialog(
@@ -663,6 +768,8 @@ private fun ExerciseCard(
     onHistory: () -> Unit,
     onNote: () -> Unit,
     showThumb: Boolean = true,
+    plates: String? = null,
+    onWarmup: (() -> Unit)? = null,
 ) {
     val c = HqTheme.colors
     val first = group.first()
@@ -682,6 +789,7 @@ private fun ExerciseCard(
                         else -> ""
                     }
                     if (target.isNotEmpty()) HqText(target, 13.sp, color = c.muted)
+                    if (first.note.isNotBlank()) HqText("Note: ${first.note}", 13.sp, color = c.primary, maxLines = 2)
                 }
                 }
             }
@@ -743,6 +851,12 @@ private fun ExerciseCard(
                             }
                         }
                     }
+                }
+            }
+            if (plates != null || onWarmup != null) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    HqText(plates.orEmpty(), 13.sp, color = c.muted, modifier = Modifier.weight(1f))
+                    if (onWarmup != null) TextButton(onClick = onWarmup) { HqText("Add warm-up", 14.sp, FontWeight.SemiBold, c.primary) }
                 }
             }
             if (group.any { !it.done }) {

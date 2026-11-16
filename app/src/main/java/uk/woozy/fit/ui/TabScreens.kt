@@ -125,7 +125,7 @@ private suspend fun loadProgress(db: HqFitDatabase): ProgressData {
     val weeks = (7 downTo 0).map { monday.minusWeeks(it.toLong()) }
     val sched = db.schedule().between(weeks.first().toString(), weeks.last().plusDays(6).toString())
     val sessions = db.sessions().doneSince(weeks.first().atStartOfDay(zone).toInstant().toEpochMilli())
-    val sets = sessions.flatMap { s -> db.sessions().sets(s.id).filter { it.done && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }.map { s to it } }
+    val sets = sessions.flatMap { s -> db.sessions().sets(s.id).filter { it.done && it.setType != "warmup" && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }.map { s to it } }
     val oldest = all.lastOrNull()
     // A change over N days needs a weigh-in inside the window as well as one before it; otherwise it shows a dash.
     fun kgAt(daysAgo: Long): Double? { val t = today.minusDays(daysAgo).atStartOfDay(zone).toInstant().toEpochMilli(); if ((all.firstOrNull()?.epochMs ?: 0L) <= t) return null; return all.firstOrNull { it.epochMs <= t }?.kg }

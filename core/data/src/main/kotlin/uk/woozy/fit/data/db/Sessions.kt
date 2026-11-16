@@ -1,5 +1,6 @@
 package uk.woozy.fit.data.db
 
+import uk.woozy.fit.model.Plates
 import uk.woozy.fit.model.RecordType
 import uk.woozy.fit.model.SetPoint
 import uk.woozy.fit.model.Strength
@@ -30,13 +31,15 @@ object Sessions {
         val items = db.templates().items(scheduled.templateId)
         val rows = ArrayList<SetLogEntity>()
         items.forEach { item ->
+            // A note pinned last time (seat height, grip) carries over when the programme has none of its own.
+            val note = item.note.ifBlank { db.sessions().lastNote(item.exerciseId, sessionId).orEmpty() }
             for (i in 1..item.sets) {
                 val prev = if (item.durationSec == null) db.sessions().previous(item.exerciseId, i, sessionId) else null
                 rows += SetLogEntity(
                     sessionId = sessionId, position = item.position, setIndex = i, section = item.section,
                     exerciseId = item.exerciseId, exerciseName = item.exerciseName, supersetGroup = item.supersetGroup,
                     durationSec = item.durationSec, targetRepsMin = item.repsMin, targetRepsMax = item.repsMax,
-                    restSec = item.restSec, note = item.note,
+                    restSec = item.restSec, note = note,
                     weightKg = prev?.weightKg ?: item.weightKg, reps = null,
                 )
             }
@@ -59,7 +62,7 @@ object Sessions {
         val s = db.sessions().get(sessionId) ?: return null
         val sets = db.sessions().sets(sessionId)
         val done = sets.filter { it.done }
-        val lifted = done.filter { it.durationSec == null && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }
+        val lifted = done.filter { it.durationSec == null && it.setType != "warmup" && (it.weightKg ?: 0.0) > 0 && (it.reps ?: 0) > 0 }
             .map { it to SetPoint(it.weightKg!!, it.reps!!) }
         val records = lifted.groupBy { it.first.exerciseId }.mapNotNull { (exerciseId, pairs) ->
             val today = pairs.map { it.second }
@@ -75,6 +78,32 @@ object Sessions {
             volumeKg = Strength.volume(lifted.map { it.second }),
             records = records,
         )
+    }
+
+    /**
+     * Puts ramp-up warm-up sets (see [Plates.warmups]) before the first working set of the exercise at [position],
+     * replacing any unticked warm-ups already there. They get negative set numbers so the working sets keep 1, 2, 3
+     * (and so "last time" still lines up), show as W, and are left out of volume, records and history.
+     * Returns how many were added; 0 when there is no working weight yet.
+     */
+    suspend fun addWarmups(db: HqFitDatabase, sessionId: Long, position: Int, stepKg: Double, barKg: Double?): Int {
+        val group = db.sessions().sets(sessionId).filter { it.position == position }
+        val work = group.filter { it.setType != "warmup" }.minByOrNull { it.setIndex } ?: return 0
+        if (work.durationSec != null) return 0
+        val kg = work.weightKg ?: db.sessions().previous(work.exerciseId, work.setIndex, sessionId)?.weightKg ?: return 0
+        val ramp = Plates.warmups(kg, stepKg, barKg ?: 0.0)
+        if (ramp.isEmpty()) return 0
+        db.sessions().deleteOpenWarmups(sessionId, position)
+        val firstIndex = (group.filter { it.setType == "warmup" && it.done }.minOfOrNull { it.setIndex } ?: 0) - ramp.size
+        db.sessions().insertSets(
+            ramp.mapIndexed { i, w ->
+                work.copy(
+                    id = 0, setIndex = firstIndex + i, setType = "warmup", weightKg = w.weightKg, reps = w.reps,
+                    targetRepsMin = w.reps, targetRepsMax = w.reps, restSec = 60, done = false, doneAtMs = null, rpe = null,
+                )
+            },
+        )
+        return ramp.size
     }
 
     /** Swaps the exercise in a position for another. Weights stay, ticks and reps are cleared. */

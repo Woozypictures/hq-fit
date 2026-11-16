@@ -108,6 +108,24 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
                 uk.woozy.fit.designsystem.HapticSwitch(checked = stepKeys, onCheckedChange = { stepKeys = it; WorkoutPrefs.setStepKeys(context, it) })
             }
         }
+        var countdown by remember { mutableStateOf(WorkoutPrefs.countdown(context)) }
+        HqCard(Modifier.fillMaxWidth()) {
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    HqText("Countdown before starting", 16.sp, FontWeight.Medium)
+                    HqText("3, 2, 1 before the first set of a workout. Tap it to start straight away.", 12.sp, color = c.muted)
+                }
+                uk.woozy.fit.designsystem.HapticSwitch(checked = countdown, onCheckedChange = { countdown = it; WorkoutPrefs.setCountdown(context, it) })
+            }
+        }
+        var bar by remember { mutableStateOf(WorkoutPrefs.barKg(context)) }
+        SectionLabel("Barbell weight")
+        val bars = listOf(10.0, 15.0, 20.0)
+        SegmentedChoice(
+            bars.map { "${NumberEntry.format(it)} kg" }, bars.indexOf(bar).coerceAtLeast(0),
+            onSelect = { bar = bars[it]; WorkoutPrefs.setBarKg(context, bar) },
+        )
+        HqText("Used for plates per side and the lightest warm-up set on barbell lifts.", 12.sp, color = c.muted)
     }
 }
 

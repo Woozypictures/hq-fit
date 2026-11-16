@@ -218,6 +218,20 @@ fun ScaleScreen(db: HqFitDatabase, onBack: () -> Unit) {
         SectionLabel("Type a weight")
         HqCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Ruler dial (drag sideways, 0.1 kg a tick), starting from the last weigh-in; typing still works below.
+                val lastKg by androidx.compose.runtime.produceState<Double?>(null) { value = db.weights().latest()?.kg }
+                val shown = manual.toDoubleOrNull() ?: lastKg ?: 80.0
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+                    HqText(uk.woozy.fit.model.NumberEntry.format(Math.round(shown * 10.0) / 10.0), 44.sp, FontWeight.Bold, letterSpacing = (-1).sp)
+                    HqText(" kg", 16.sp, FontWeight.Medium, c.muted, Modifier.padding(bottom = 8.dp))
+                }
+                RulerPicker(
+                    value = Math.round(shown * 10.0) / 10.0,
+                    onChange = { manual = uk.woozy.fit.model.NumberEntry.format(Math.round(it * 10.0) / 10.0) },
+                    min = 20.0, max = 400.0, step = 0.1, majorEvery = 10,
+                    label = { uk.woozy.fit.model.NumberEntry.format(Math.round(it).toDouble()) },
+                    description = "Weight in kilograms",
+                )
                 NumberField("Weight (kg)", manual) { manual = it }
                 HqPillButton("Save weight", enabled = (manual.toDoubleOrNull() ?: 0.0) in 20.0..400.0, onClick = {
                     val kg = manual.toDouble()

@@ -14,4 +14,10 @@ object WorkoutPrefs {
     fun setStepKeys(c: Context, v: Boolean) = p(c).edit().putBoolean("step_keys", v).apply()
     fun autoRest(c: Context): Boolean = p(c).getBoolean("auto_rest", true)
     fun setAutoRest(c: Context, v: Boolean) = p(c).edit().putBoolean("auto_rest", v).apply()
+    /** 3-2-1 "Get ready" before the first set of a workout. On by default. */
+    fun countdown(c: Context): Boolean = p(c).getBoolean("countdown", true)
+    fun setCountdown(c: Context, v: Boolean) = p(c).edit().putBoolean("countdown", v).apply()
+    /** Empty barbell weight, for plates per side and the lightest warm-up. */
+    fun barKg(c: Context): Double = p(c).getFloat("bar", 20f).toDouble()
+    fun setBarKg(c: Context, v: Double) = p(c).edit().putFloat("bar", v.toFloat()).apply()
 }

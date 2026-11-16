@@ -372,15 +372,26 @@ interface SessionDao {
     /** The same set number from the last time this exercise was done (finished sessions only). */
     @Query(
         "SELECT l.* FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
-            "WHERE l.exerciseId = :exerciseId AND l.setIndex = :setIndex AND l.done = 1 AND s.status = 'done' " +
+            "WHERE l.exerciseId = :exerciseId AND l.setIndex = :setIndex AND l.done = 1 AND s.status = 'done' AND l.setType != 'warmup' " +
             "AND l.sessionId != :excludeSession ORDER BY l.doneAtMs DESC LIMIT 1",
     )
     suspend fun previous(exerciseId: Long, setIndex: Int, excludeSession: Long): SetLogEntity?
 
+    /** The most recent non-empty exercise note from a finished session, so a pinned note carries to the next time. */
+    @Query(
+        "SELECT l.note FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
+            "WHERE l.exerciseId = :exerciseId AND l.note != '' AND s.status = 'done' AND l.sessionId != :excludeSession " +
+            "ORDER BY s.startedMs DESC LIMIT 1",
+    )
+    suspend fun lastNote(exerciseId: Long, excludeSession: Long): String?
+
+    @Query("DELETE FROM set_log WHERE sessionId = :sessionId AND position = :position AND setType = 'warmup' AND done = 0")
+    suspend fun deleteOpenWarmups(sessionId: Long, position: Int)
+
     /** Every finished set of this exercise from other sessions, for records. */
     @Query(
         "SELECT l.* FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
-            "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND l.sessionId != :excludeSession " +
+            "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND l.sessionId != :excludeSession AND l.setType != 'warmup' " +
             "AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL",
     )
     suspend fun history(exerciseId: Long, excludeSession: Long): List<SetLogEntity>
@@ -390,7 +401,7 @@ interface SessionDao {
             "MAX(CASE WHEN l.reps <= 1 THEN l.weightKg ELSE l.weightKg * (1 + l.reps / 30.0) END) AS bestE1rm, " +
             "COUNT(DISTINCT l.sessionId) AS sessions, MAX(l.doneAtMs) AS lastMs " +
             "FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
-            "WHERE l.done = 1 AND s.status = 'done' AND l.durationSec IS NULL AND l.weightKg > 0 AND l.reps > 0 " +
+            "WHERE l.done = 1 AND s.status = 'done' AND l.durationSec IS NULL AND l.weightKg > 0 AND l.reps > 0 AND l.setType != 'warmup' " +
             "GROUP BY l.exerciseId ORDER BY lastMs DESC",
     )
     fun observeRecords(): Flow<List<RecordRow>>
@@ -398,7 +409,7 @@ interface SessionDao {
     @Query(
         "SELECT l.sessionId AS sessionId, s.startedMs AS startedMs, l.setIndex AS setIndex, l.weightKg AS weightKg, l.reps AS reps, s.name AS sessionName " +
             "FROM set_log l JOIN workout_session s ON s.id = l.sessionId " +
-            "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL " +
+            "WHERE l.exerciseId = :exerciseId AND l.done = 1 AND s.status = 'done' AND l.weightKg IS NOT NULL AND l.reps IS NOT NULL AND l.setType != 'warmup' " +
             "ORDER BY s.startedMs DESC, l.setIndex",
     )
     suspend fun exerciseHistory(exerciseId: Long): List<HistoryRow>

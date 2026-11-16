@@ -71,7 +71,7 @@ object DeskSync {
         db.sessions().doneSince(from).sortedByDescending { it.startedMs }.forEach { s ->
             val sets = db.sessions().sets(s.id).filter { it.done }
             sets.forEach { usedIds += it.exerciseId }
-            val vol = sets.sumOf { (it.weightKg ?: 0.0) * (it.reps ?: 0) }
+            val vol = sets.filter { it.setType != "warmup" }.sumOf { (it.weightKg ?: 0.0) * (it.reps ?: 0) }
             ses.put(JSONObject().put("id", s.id).put("name", s.name).put("start", s.startedMs).put("end", s.endedMs ?: JSONObject.NULL)
                 .put("feeling", s.feeling ?: JSONObject.NULL).put("sets", sets.size).put("vol", Math.round(vol))
                 .put("ex", JSONArray(sets.map { it.exerciseName }.distinct())))
