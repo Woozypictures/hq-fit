@@ -1266,7 +1266,8 @@ internal fun ExercisePickerSheet(db: HqFitDatabase, onDismiss: () -> Unit, swapF
         val from = swapFor?.let { db.exercises().findById(it) } ?: return@LaunchedEffect
         val pool = db.exercises().similar(from.muscle, from.equipment, from.id, 40)
         val done = pool.filter { db.sessions().latestRow(it.id) != null }.map { it.id }.toSet()
-        swaps = pool.sortedByDescending { e -> (if (e.id in done) 2 else 0) + (if (e.equipment == from.equipment) 1 else 0) }.take(8)
+        swaps = pool.sortedByDescending { e -> (if (e.id in done) 2 else 0) + (if (e.equipment == from.equipment) 1 else 0) }
+            .distinctBy { it.name.trim().lowercase() }.take(8) // the library has a few same-named entries
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
