@@ -228,7 +228,7 @@ fun HqFitRoot(
     val active by activeFlow.collectAsState(initial = null)
     fun startOrResume(s: ScheduledWorkoutEntity) {
         scope.launch {
-            val id = Sessions.start(db, s, System.currentTimeMillis())
+            val id = Sessions.start(db, s, System.currentTimeMillis(), WorkoutPrefs.weightStep(syncContext), WorkoutPrefs.barKg(syncContext))
             nav.navigate("${Routes.WORKOUT}/$id")
         }
     }

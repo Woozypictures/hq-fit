@@ -366,6 +366,9 @@ interface SessionDao {
     @Query("UPDATE workout_session SET feeling = :feeling WHERE id = :id")
     suspend fun setFeeling(id: Long, feeling: Int?)
 
+    @Query("UPDATE workout_session SET sleep = :sleep, energy = :energy WHERE id = :id")
+    suspend fun setSleepEnergy(id: Long, sleep: Int?, energy: Int?)
+
     @Query("DELETE FROM workout_session WHERE id = :id")
     suspend fun deleteSession(id: Long)
 
@@ -384,6 +387,10 @@ interface SessionDao {
             "ORDER BY s.startedMs DESC LIMIT 1",
     )
     suspend fun lastNote(exerciseId: Long, excludeSession: Long): String?
+
+    /** The newest working set row of an exercise, for its programme rep targets outside a workout. */
+    @Query("SELECT * FROM set_log WHERE exerciseId = :exerciseId AND setType != 'warmup' ORDER BY id DESC LIMIT 1")
+    suspend fun latestRow(exerciseId: Long): SetLogEntity?
 
     @Query("DELETE FROM set_log WHERE sessionId = :sessionId AND position = :position AND setType = 'warmup' AND done = 0")
     suspend fun deleteOpenWarmups(sessionId: Long, position: Int)
@@ -513,4 +520,19 @@ interface CheckInDao {
 
     @Query("SELECT * FROM check_in WHERE date = :date")
     suspend fun forDate(date: String): List<CheckInEntity>
+}
+
+@Dao
+interface ExercisePrefDao {
+    @Query("SELECT * FROM exercise_pref WHERE exerciseId = :exerciseId")
+    suspend fun get(exerciseId: Long): ExercisePrefEntity?
+
+    @Query("SELECT * FROM exercise_pref WHERE exerciseId = :exerciseId")
+    fun observe(exerciseId: Long): Flow<ExercisePrefEntity?>
+
+    @Query("SELECT * FROM exercise_pref")
+    suspend fun all(): List<ExercisePrefEntity>
+
+    @androidx.room.Upsert
+    suspend fun upsert(row: ExercisePrefEntity)
 }

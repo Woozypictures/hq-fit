@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase
  * migration, and the exported schema JSON under core/data/schemas shows every step.
  */
 /** The Room schema version. Backups record it, so there is one place to bump. */
-const val DB_VERSION = 7
+const val DB_VERSION = 8
 
 @Database(
     entities = [
@@ -30,9 +30,10 @@ const val DB_VERSION = 7
         DiaryEntryEntity::class,
         RecurringFoodEntity::class,
         CheckInEntity::class,
+        ExercisePrefEntity::class,
     ],
     version = DB_VERSION,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3), AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6), AutoMigration(from = 6, to = 7), AutoMigration(from = 7, to = 8)],
     exportSchema = true,
 )
 abstract class HqFitDatabase : RoomDatabase() {
@@ -50,4 +51,5 @@ abstract class HqFitDatabase : RoomDatabase() {
     abstract fun diary(): DiaryDao
     abstract fun recurring(): RecurringDao
     abstract fun checkIns(): CheckInDao
+    abstract fun exercisePrefs(): ExercisePrefDao
 }

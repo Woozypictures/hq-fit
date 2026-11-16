@@ -96,6 +96,14 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
     val history by produceState(emptyList<HistoryRow>(), exerciseId) { value = db.sessions().exerciseHistory(exerciseId) }
     // Everfit-style: newest first, each session with its workout name, estimated 1RM and volume.
     val bySession = history.groupBy { it.sessionId }.values.toList()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var prefsTick by remember { mutableStateOf(0) }
+    var settingsOpen by remember { mutableStateOf(false) }
+    val row by produceState<uk.woozy.fit.data.db.SetLogEntity?>(null, exerciseId) { value = db.sessions().latestRow(exerciseId) }
+    val next by produceState<uk.woozy.fit.model.Progression.Target?>(null, exerciseId, prefsTick, row) {
+        value = uk.woozy.fit.data.db.Coach.next(db, exerciseId, row?.targetRepsMin, row?.targetRepsMax, WorkoutPrefs.weightStep(context))
+    }
+    if (settingsOpen) ExerciseSettingsSheet(db, exerciseId, name, row?.targetRepsMin, row?.targetRepsMax) { settingsOpen = false; prefsTick++ }
     var range by remember { mutableStateOf(HistoryRange.MONTHS_2) }
     val cutoff = range.days?.let { System.currentTimeMillis() - it * 86_400_000L } ?: Long.MIN_VALUE
     val chart = bySession.filter { it.first().startedMs >= cutoff }
@@ -103,6 +111,16 @@ fun ExerciseHistoryScreen(db: HqFitDatabase, exerciseId: Long, onBack: () -> Uni
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { BackBar(name.ifEmpty { "History" }, onBack) }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HqCard(Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        HqText("NEXT TIME", 12.sp, FontWeight.SemiBold, c.muted, letterSpacing = 1.sp)
+                        HqText(next?.let { uk.woozy.fit.model.Progression.label(it) } ?: "No target yet", 20.sp, FontWeight.Bold)
+                        next?.let { HqText(it.why, 13.sp, color = c.primary) }
+                    }
+                    HqText("Settings", 14.sp, FontWeight.SemiBold, c.primary, Modifier.clickable(role = Role.Button) { settingsOpen = true }.padding(8.dp))
+                }
+            }
             if (bySession.isEmpty()) {
                 EmptyCard("No history yet", "It appears after your first workout with this exercise.", emoji = "\uD83D\uDCC8")
             } else {

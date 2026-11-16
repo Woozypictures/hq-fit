@@ -183,6 +183,15 @@ fun ActiveWorkoutScreen(
     var toast by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(toast) { if (toast != null) { delay(2200); toast = null } }
     var restSheet by remember { mutableStateOf(false) }
+    // Next targets (progression), refreshed when an exercise's settings change.
+    var prefsTick by remember { mutableStateOf(0) }
+    var settingsFor by remember { mutableStateOf<SetLogEntity?>(null) }
+    val targets by produceState(emptyMap<Long, uk.woozy.fit.model.Progression.Target?>(), sets.map { it.exerciseId }.toSet(), prefsTick) {
+        value = sets.filter { it.durationSec == null }.groupBy { it.exerciseId }.mapValues { (id, rows) ->
+            val f = rows.first()
+            uk.woozy.fit.data.db.Coach.next(db, id, f.targetRepsMin, f.targetRepsMax, weightStep)
+        }
+    }
     var restEnd by remember { mutableLongStateOf(RestTimer.endMs(context).takeIf { it > System.currentTimeMillis() } ?: 0L) }
     val askNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var asked by remember { mutableStateOf(false) }
@@ -367,6 +376,15 @@ fun ActiveWorkoutScreen(
                 toast = if (n > 0) "$n warm-up sets added" else "Set a working weight first"
             }
         })
+        val target = targets[first.exerciseId]
+        val nextLine = target?.let { "Today ${uk.woozy.fit.model.Progression.label(it)} \u00b7 ${it.why}" }
+        val open = group.filter { !it.done && it.setType != "warmup" }
+        val useTarget: (() -> Unit)? = if (target == null || isDone || open.none { it.weightKg != target.weightKg || it.reps != target.reps }) null else ({
+            scope.launch {
+                open.forEach { db.sessions().updateValues(it.id, target.weightKg, target.reps) }
+                toast = "Target filled in"
+            }
+        })
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             ExerciseHero(first.exerciseName, onClick = { infoFor = first.exerciseName })
             ExerciseCard(
@@ -397,6 +415,9 @@ fun ActiveWorkoutScreen(
                 onMarkAll = { tick(view); scope.launch { markAllDone(db, group) } },
                 plates = plates,
                 onWarmup = warm,
+                nextLine = nextLine,
+                onUseTarget = useTarget,
+                onSettings = { settingsFor = first },
             )
         }
     }
@@ -689,6 +710,9 @@ fun ActiveWorkoutScreen(
             dismissButton = { TextButton(onClick = { pendingDelete = null }) { HqText("Keep", 15.sp, color = c.muted) } },
         )
     }
+    settingsFor?.let { f ->
+        ExerciseSettingsSheet(db, f.exerciseId, f.exerciseName, f.targetRepsMin, f.targetRepsMax) { settingsFor = null; prefsTick++ }
+    }
     if (restSheet) {
         var pick by remember { mutableStateOf((((restLeft + 999) / 1000 / 5) * 5).toDouble().coerceAtLeast(30.0)) }
         ModalBottomSheet(onDismissRequest = { restSheet = false }, containerColor = c.card) {
@@ -770,6 +794,9 @@ private fun ExerciseCard(
     showThumb: Boolean = true,
     plates: String? = null,
     onWarmup: (() -> Unit)? = null,
+    nextLine: String? = null,
+    onUseTarget: (() -> Unit)? = null,
+    onSettings: () -> Unit = {},
 ) {
     val c = HqTheme.colors
     val first = group.first()
@@ -793,8 +820,15 @@ private fun ExerciseCard(
                 }
                 }
             }
+            if (nextLine != null) {
+                Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    HqText(nextLine, 13.sp, FontWeight.Medium, c.ink, Modifier.weight(1f), maxLines = 2)
+                    if (onUseTarget != null) TextButton(onClick = onUseTarget) { HqText("Use", 14.sp, FontWeight.SemiBold, c.primary) }
+                }
+            }
             ExerciseIconRow(
                 hasNote = first.note.isNotBlank(),
+                onSettings = onSettings,
                 onHistory = onHistory, onNote = onNote,
                 onReplace = { onPick(PickMode.REPLACE) },
                 onAdd = onPick, onInfo = onInfo, onMarkAll = onMarkAll,
@@ -1220,6 +1254,7 @@ private fun SectionComplete(title: String, count: Int, last: Boolean, onEdit: ()
 @Composable
 private fun ExerciseIconRow(
     hasNote: Boolean,
+    onSettings: () -> Unit,
     onHistory: () -> Unit,
     onNote: () -> Unit,
     onReplace: () -> Unit,
@@ -1257,6 +1292,7 @@ private fun ExerciseIconRow(
             Tool(Icons.Rounded.MoreVert, "More options", onClick = { moreMenu = true })
             DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }) {
                 DropdownMenuItem(text = { HqText("How to do it", 15.sp) }, onClick = { moreMenu = false; onInfo() })
+                DropdownMenuItem(text = { HqText("Settings for this exercise", 15.sp) }, onClick = { moreMenu = false; onSettings() })
                 DropdownMenuItem(text = { HqText("Mark all complete", 15.sp) }, onClick = { moreMenu = false; onMarkAll() })
             }
         }

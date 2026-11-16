@@ -23,14 +23,16 @@ object Sessions {
      * Starts the scheduled workout, or returns the one already running. Sets are laid out from the template; the
      * weight starts at last time's weight for that set number, else the programme's.
      */
-    suspend fun start(db: HqFitDatabase, scheduled: ScheduledWorkoutEntity, nowMs: Long): Long {
+    suspend fun start(db: HqFitDatabase, scheduled: ScheduledWorkoutEntity, nowMs: Long, stepKg: Double = 2.5, barKg: Double = 20.0): Long {
         db.sessions().active()?.let { return it.id }
         val sessionId = db.sessions().insertSession(
             WorkoutSessionEntity(scheduledId = scheduled.id, templateId = scheduled.templateId, name = scheduled.templateName, startedMs = nowMs),
         )
         val items = db.templates().items(scheduled.templateId)
         val rows = ArrayList<SetLogEntity>()
+        val prefs = db.exercisePrefs().all().associateBy { it.exerciseId }
         items.forEach { item ->
+            val pref = prefs[item.exerciseId]
             // A note pinned last time (seat height, grip) carries over when the programme has none of its own.
             val note = item.note.ifBlank { db.sessions().lastNote(item.exerciseId, sessionId).orEmpty() }
             for (i in 1..item.sets) {
@@ -39,12 +41,18 @@ object Sessions {
                     sessionId = sessionId, position = item.position, setIndex = i, section = item.section,
                     exerciseId = item.exerciseId, exerciseName = item.exerciseName, supersetGroup = item.supersetGroup,
                     durationSec = item.durationSec, targetRepsMin = item.repsMin, targetRepsMax = item.repsMax,
-                    restSec = item.restSec, note = note,
+                    restSec = pref?.restSec ?: item.restSec, note = note,
                     weightKg = prev?.weightKg ?: item.weightKg, reps = null,
                 )
             }
         }
         db.sessions().insertSets(rows)
+        // Exercises set to start with warm-ups get them now (barbell lifts never go below the empty bar).
+        items.filter { prefs[it.exerciseId]?.warmups == true && it.durationSec == null }.map { it.position }.distinct().forEach { pos ->
+            val item = items.first { it.position == pos }
+            val barbell = db.sessions().exercise(item.exerciseId)?.equipment?.contains("barbell", ignoreCase = true) == true
+            addWarmups(db, sessionId, pos, prefs[item.exerciseId]?.stepKg ?: stepKg, if (barbell) prefs[item.exerciseId]?.barKg ?: barKg else null)
+        }
         return sessionId
     }
 

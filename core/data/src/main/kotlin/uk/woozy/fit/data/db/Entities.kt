@@ -144,6 +144,31 @@ data class WorkoutSessionEntity(
     val status: String = "active",
     /** 1 to 5, how it felt. */
     val feeling: Int? = null,
+    /** 1 to 5, last night's sleep and today's energy, rated on the finish screen (optional). */
+    val sleep: Int? = null,
+    val energy: Int? = null,
+)
+
+/**
+ * Your settings for one exercise, wherever it appears (GymMane's "Settings for this exercise"). Null fields fall
+ * back to the programme or the app setting. [rule] is "auto" (rep range -> double progression, else linear),
+ * "double", "linear" or "manual" (no suggestions).
+ */
+@Entity(tableName = "exercise_pref")
+data class ExercisePrefEntity(
+    @PrimaryKey val exerciseId: Long,
+    val rule: String = "auto",
+    val repsMin: Int? = null,
+    val repsMax: Int? = null,
+    val stepKg: Double? = null,
+    val restSec: Int? = null,
+    /** Sessions in a row without every rep before it suggests going lighter; 0 never. */
+    val deloadAfter: Int = 3,
+    /** Assisted machines: less weight is the harder direction. */
+    val assisted: Boolean = false,
+    /** Add warm-up sets automatically when a workout starts. */
+    val warmups: Boolean = false,
+    val barKg: Double? = null,
 )
 
 /**
