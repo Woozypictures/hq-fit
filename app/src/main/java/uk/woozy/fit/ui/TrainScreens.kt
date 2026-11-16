@@ -157,6 +157,8 @@ fun WorkoutPreviewScreen(
     var reload by remember { mutableStateOf(0) }
     val scheduled by produceState<ScheduledWorkoutEntity?>(null, scheduledId, reload) { value = db.schedule().get(scheduledId) }
     val s = scheduled
+    // An unfinished session for this day means the button resumes it (onStart already resumes; this fixes the label).
+    val resumeId by produceState<Long?>(null, scheduledId, reload) { value = db.sessions().active()?.takeIf { it.scheduledId == scheduledId }?.id }
     val itemsFlow = remember(s?.templateId) {
         s?.let { db.templates().observeItems(it.templateId) } ?: kotlinx.coroutines.flow.flowOf(emptyList())
     }
@@ -206,7 +208,7 @@ fun WorkoutPreviewScreen(
                         if (s.date != s.originalDate) HqText("Moved from ${LocalDate.parse(s.originalDate).format(dayLine)}", 13.sp, color = c.onGradient.copy(alpha = 0.8f))
                     }
                     Spacer(Modifier.height(10.dp))
-                    HqPillButton(if (s?.status == "done") "Train again" else "Start Workout", onClick = { s?.let(onStart) }, style = PillStyle.OnGradient, modifier = Modifier.widthIn(min = 160.dp))
+                    HqPillButton(if (s?.status == "done") "Train again" else if (resumeId != null) "Resume workout" else "Start Workout", onClick = { s?.let(onStart) }, style = PillStyle.OnGradient, modifier = Modifier.widthIn(min = 160.dp))
                 }
             }
         }
