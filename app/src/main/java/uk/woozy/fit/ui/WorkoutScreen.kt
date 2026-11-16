@@ -235,6 +235,7 @@ fun ActiveWorkoutScreen(
     var lastDup by remember { mutableStateOf<SetLogEntity?>(null) }
     LaunchedEffect(lastDup) { if (lastDup != null) { delay(6000); lastDup = null } }
     var plateFor by remember { mutableStateOf<Double?>(null) }
+    var plateBar by remember { mutableStateOf(20.0) }
     val isDone = session?.status == "done"
     BackHandler { if (locked) Unit else if (isDone) onLeave() else confirmLeave = true }
     // The undo pill shows for a few seconds after a set is deleted, then goes.
@@ -371,10 +372,13 @@ fun ActiveWorkoutScreen(
         val first = group.first()
         val barbell = equipment[first.exerciseId].orEmpty().contains("barbell", true) || first.exerciseName.contains("barbell", true)
         val loadSet = group.firstOrNull { !it.done && it.setType != "warmup" } ?: group.lastOrNull { it.setType != "warmup" }
-        val plates = if (!barbell) null else loadSet?.weightKg?.let { w -> uk.woozy.fit.model.Plates.perSide(w, barKg)?.let { "Per side: ${uk.woozy.fit.model.Plates.label(it)} kg" } }
+        // An EZ bar weighs about 10 kg, not the 20 kg of an Olympic bar.
+        val ez = equipment[first.exerciseId].orEmpty().contains("ez", true) || first.exerciseName.contains("ez bar", true) || first.exerciseName.contains("ez-bar", true) || first.exerciseName.contains("preacher", true)
+        val bar = if (ez) 10.0 else barKg
+        val plates = if (!barbell) null else loadSet?.weightKg?.let { w -> uk.woozy.fit.model.Plates.perSide(w, bar)?.let { "Per side: ${uk.woozy.fit.model.Plates.label(it)} kg" } }
         val warm: (() -> Unit)? = if (isDone || first.durationSec != null || group.any { it.setType == "warmup" }) null else ({
             scope.launch {
-                val n = Sessions.addWarmups(db, sessionId, first.position, weightStep, if (barbell) barKg else null)
+                val n = Sessions.addWarmups(db, sessionId, first.position, weightStep, if (barbell) bar else null)
                 toast = if (n > 0) "$n warm-up sets added" else "Set a working weight first"
             }
         })
@@ -423,7 +427,7 @@ fun ActiveWorkoutScreen(
                         toast = "Last time copied"
                     }
                 },
-                onPlates = loadSet?.weightKg?.let { w -> { plateFor = w } },
+                onPlates = loadSet?.weightKg?.let { w -> { plateFor = w; plateBar = bar } },
                 onSetType = { set, t -> scope.launch { db.sessions().updateType(set.id, t) } },
                 onSetRpe = { set, r -> scope.launch { db.sessions().updateRpe(set.id, r) } },
                 onInfo = { infoFor = first.exerciseName },
@@ -775,7 +779,7 @@ fun ActiveWorkoutScreen(
         )
     }
 
-    plateFor?.let { kg -> PlateSheet(kg, barKg) { plateFor = null } }
+    plateFor?.let { kg -> PlateSheet(kg, plateBar) { plateFor = null } }
     settingsFor?.let { f ->
         ExerciseSettingsSheet(db, f.exerciseId, f.exerciseName, f.targetRepsMin, f.targetRepsMax) { settingsFor = null; prefsTick++ }
     }
