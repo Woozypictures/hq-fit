@@ -139,3 +139,32 @@ v0.60 exercise history chart/1RM/volume; v0.61 Highlighted nutrients (Today) and
 
 ## 16. 12 Nov 2026 (evening): profile picture comes from HQ
 Choose/Remove photo removed. `Avatar.syncFromHq` (ui/Avatar.kt) copies HQ's picture (the Notion DASHBOARD page icon) from `content://uk.woozy.hq.avatar/avatar` when its `stamp` changes, at most once a minute, from `AvatarCircle`. HQ not installed or without a picture: the stored picture stays. Permission `uk.woozy.hq.permission.READ_AVATAR` is declared here too (same key). NOT tested on a phone.
+
+## 17. 16 Nov 2026 (01:00-01:40): GymMane round (runs 148-150, Opus)
+Rollback point: branch `backup/pre-gymmane` = bee3fa5 (v0.147). Tag push is blocked by the proxy, so only the branch exists. To undo: reset main to that branch and push; schema 8 is additive (new table, two nullable columns), so an older build would need a reinstall only if it refuses the newer database.
+
+Greens (run 148, v0.148):
+- Add warm-up (button under the set table): 40% x 10, 60% x 5, 80% x 3, rounded down to the weight step, never below the bar on barbell lifts (`Plates.warmups`, `Sessions.addWarmups`). Warm-ups get negative set numbers so working sets keep 1..n; every volume, record, history and "previous" query now skips `setType = 'warmup'`.
+- Plates per side under barbell exercises (`Plates.perSide`, bar weight in Settings > Workout).
+- Exercise note shows under the name and carries to the next session when the plan has none (`SessionDao.lastNote`).
+- 3-2-1 Get ready before the first set (tap to skip; Settings > Workout > Countdown).
+- Header: "N of M sets . X kg" with a thin progress bar (warm-ups not counted).
+- Toast "Next: <exercise>" on auto-slide.
+- Tap the rest time (header text or glass pill) for a ruler-dial sheet: set time or Skip (`RulerPicker`, ui/Ruler.kt).
+- Lock screen in the workout menu: dark overlay with the clock and rest, Hold to unlock.
+- Scale > Type a weight: ruler dial (0.1 kg ticks) from the last weigh-in.
+- Back already asked (Leave keeps it running); not changed.
+
+Red #1 and Orange #6 (run 149, v0.149, schema 8):
+- `exercise_pref` table (ExercisePrefEntity, `db.exercisePrefs()`): rule auto/double/linear/manual, rep range, weight step, rest, deload after N misses, assisted, auto warm-ups, bar weight.
+- `Progression` (core/model, tested): double = all sets at top of range -> +step and back to bottom, else +1 rep; linear = all sets at target -> +step, else hold; N stalled sessions (missed and not beating the session before) -> about 10% lighter; assisted runs the other way. `Coach` (core/data) resolves settings and history.
+- Workout: "Today 62.5 kg x 8 . why" under each exercise with Use (fills unticked working sets). More menu > Settings for this exercise (ExerciseSettingsSheet, ui/ExerciseSettings.kt). Exercise history: Next time card + Settings.
+- Session start applies the exercise's own rest and auto warm-ups.
+- `workout_session.sleep`, `.energy` (1-5).
+
+Orange #5, #7, #8 (run 150, v0.150):
+- Finish screen: headline (New personal record / Streak alive / Another one in the bank), volume vs the last session of the same name, sleep and energy bars (optional, tap again to clear), Save as a workout (template from what you did; schedule it in Programmes).
+- Past workouts is now History: month calendar (tap a trained day to filter), month totals, cards with best set per exercise.
+- Progress: Consistency card (12-week map, week streak, days trained); new card key "consistency".
+
+Not done from the list: muscle map, rotation, mini player, logging a past day from the calendar, light session, ready-made plans, home card preview, PDF report. None of tonight's work has been checked on the phone.
