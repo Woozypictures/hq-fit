@@ -251,12 +251,17 @@ fun HqFitRoot(
     val (dayFrom, dayTo) = dayBounds(today)
     val waterFlow = remember(db, dayFrom) { db.water().observeTotal(dayFrom, dayTo) }
     val waterToday by waterFlow.collectAsState(initial = 0)
-    val todays = calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
+    // Keep my order (Settings > Workout): Today offers the next workout in the plan's order on any day.
+    val keepOrder by produceState(false, route) { value = uk.woozy.fit.data.db.Rotation.on(db) }
+    val upNext by produceState<ScheduledWorkoutEntity?>(null, route, calendar, keepOrder) {
+        value = if (keepOrder) uk.woozy.fit.data.db.Rotation.upNext(db, today) else null
+    }
+    val todays = (if (keepOrder) upNext else null) ?: calendar.firstOrNull { it.date == today.toString() && it.status == "planned" }
     // A workout finished today keeps its card (marked complete) instead of turning the day into a rest day.
     val doneToday by produceState<uk.woozy.fit.data.db.WorkoutSessionEntity?>(null, route, dayFrom, calendar) {
         value = db.sessions().doneSince(dayFrom).lastOrNull { it.startedMs < dayTo }
     }
-    val missed = calendar.count { it.status == "planned" && it.date < today.toString() && it.date >= today.minusDays(7).toString() }
+    val missed = if (keepOrder) 0 else calendar.count { it.status == "planned" && it.date < today.toString() && it.date >= today.minusDays(7).toString() }
     val weighedToday by produceState(false, route, dayFrom) {
         value = db.weights().observeAllOnce().any { it.epochMs in dayFrom until dayTo }
     }
@@ -300,7 +305,11 @@ fun HqFitRoot(
                     onStartWorkout = {
                         val a = active
                         if (a != null) nav.navigate("${Routes.WORKOUT}/${a.id}")
-                        else if (todays != null) nav.navigate("${Routes.PREVIEW}/${todays.id}")
+                        else if (todays != null) {
+                            val t = todays
+                            if (t.date != today.toString()) scope.launch { uk.woozy.fit.data.db.Rotation.bringToToday(db, t, today); nav.navigate("${Routes.PREVIEW}/${t.id}") }
+                            else nav.navigate("${Routes.PREVIEW}/${t.id}")
+                        }
                         else doneToday?.let { nav.navigate("${Routes.SUMMARY}/${it.id}") }
                     },
                     workoutTitle = active?.name ?: todays?.templateName ?: doneToday?.name,
@@ -350,7 +359,8 @@ fun HqFitRoot(
                     workoutCaption = when {
                         active != null -> "In progress"
                         todays == null && doneToday != null -> "Completed today" + (next?.let { n -> ". Next: ${n.templateName}, " + LocalDate.parse(n.date).format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.UK)) } ?: "")
-                        todays != null -> "Scheduled for today"
+                        todays != null && todays.date != today.toString() -> "Next in your order" + if (todays.date < today.toString()) ", from " + LocalDate.parse(todays.date).format(DateTimeFormatter.ofPattern("EEEE", Locale.UK)) else ""
+                        todays != null -> if (keepOrder) "Next in your order" else "Scheduled for today"
                         next != null -> "Next: ${next.templateName}, " +
                             LocalDate.parse(next.date).format(DateTimeFormatter.ofPattern("EEEE d MMM", Locale.UK))
                         else -> "Nothing scheduled"
@@ -503,7 +513,7 @@ fun HqFitRoot(
             composable(Routes.TIMELINE) { HistoryScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
             composable(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
             composable("profile") { ProfileScreen(onBack = { nav.popBackStack() }) }
-            composable("workoutsettings") { WorkoutSettingsScreen(onBack = { nav.popBackStack() }) }
+            composable("workoutsettings") { WorkoutSettingsScreen(db, onBack = { nav.popBackStack() }) }
             composable("hqconnection") { HqConnectionScreen(db = db, onBack = { nav.popBackStack() }) }
             composable(Routes.TARGETS) { TargetsEditorScreen(db = db, onBack = { nav.popBackStack() }) }
             composable("${Routes.NUTRIENTS}/{date}", arguments = listOf(navArgument("date") { type = NavType.StringType })) { backStack ->

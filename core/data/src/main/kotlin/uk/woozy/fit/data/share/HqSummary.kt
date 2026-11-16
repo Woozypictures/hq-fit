@@ -51,6 +51,8 @@ object HqSummaryBuilder {
         val sunday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY))
         val ticks = db.checkIns().forDate(sunday.toString()).filter { it.done }.map { it.item }.toSet()
         val todays = week.firstOrNull { it.date == today.toString() }
+        // Keep my order: HQ shows the next workout in the order, whatever day it is.
+        val ordered = if (todays?.status != "done" && uk.woozy.fit.data.db.Rotation.on(db)) uk.woozy.fit.data.db.Rotation.upNext(db, today) else null
         // A workout logged without a scheduled day still counts, the same way the Train screen counts it.
         val sessionDays = db.sessions().doneSince(monday.atStartOfDay(zone).toInstant().toEpochMilli())
             .map { Instant.ofEpochMilli(it.startedMs).atZone(zone).toLocalDate().toString() }.toSet()
@@ -70,7 +72,7 @@ object HqSummaryBuilder {
             fatTarget = targets[Nutrients.FAT] ?: d.fatG.toDouble(),
             weightKg = weight?.kg,
             weightAtMs = weight?.epochMs,
-            workoutToday = todays?.templateName,
+            workoutToday = (ordered ?: todays)?.templateName,
             workoutTodayDone = todays?.status == "done",
             workoutsDoneThisWeek = doneDays.size,
             workoutsPlannedThisWeek = maxOf(plannedDays.size, doneDays.size),

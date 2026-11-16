@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import uk.woozy.fit.data.db.HqFitDatabase
 import uk.woozy.fit.data.share.HqSummary
 import uk.woozy.fit.data.share.HqSummaryBuilder
@@ -78,7 +79,7 @@ fun ProfileScreen(onBack: () -> Unit) {
 }
 
 @Composable
-fun WorkoutSettingsScreen(onBack: () -> Unit) {
+fun WorkoutSettingsScreen(db: HqFitDatabase, onBack: () -> Unit) {
     val context = LocalContext.current
     val c = HqTheme.colors
     var step by remember { mutableStateOf(WorkoutPrefs.weightStep(context)) }
@@ -86,6 +87,9 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
     var stepKeys by remember { mutableStateOf(WorkoutPrefs.stepKeys(context)) }
     var countdown by remember { mutableStateOf(WorkoutPrefs.countdown(context)) }
     var bar by remember { mutableStateOf(WorkoutPrefs.barKg(context)) }
+    var order by remember { mutableStateOf(false) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.compose.runtime.LaunchedEffect(db) { order = uk.woozy.fit.data.db.Rotation.on(db) }
     @Composable fun Group(label: String) = HqText(label.uppercase(), 12.sp, FontWeight.SemiBold, c.muted, letterSpacing = 1.sp, modifier = Modifier.padding(start = 4.dp, top = 8.dp))
     @Composable fun Toggle(title: String, sub: String, on: Boolean, set: (Boolean) -> Unit) {
         Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -98,6 +102,12 @@ fun WorkoutSettingsScreen(onBack: () -> Unit) {
     }
     SettingsPage("Workout", onBack) {
         // GymMane-style split: what happens between sets, then what happens while you train.
+        Group("Your plan")
+        HqCard(Modifier.fillMaxWidth()) {
+            Column {
+                Toggle("Keep my order", "Today shows the next workout in your plan's order on any day you train. A missed one comes first and the rest move on.", order) { order = it; scope.launch { uk.woozy.fit.data.db.Rotation.set(db, it) } }
+            }
+        }
         Group("Rest")
         HqCard(Modifier.fillMaxWidth()) {
             Column {
