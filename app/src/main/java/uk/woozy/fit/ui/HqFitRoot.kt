@@ -118,6 +118,21 @@ private object Routes {
 /** Today, Train, (+), Diary, Progress. The + sits between the second and third tab. */
 private val tabRoutes = listOf(Routes.TODAY, Routes.TRAIN, Routes.DIARY, Routes.PROGRESS)
 
+/**
+ * A destination with its own width cap (wide for tabs, narrower for forms), so the cap never changes while two pages
+ * cross-fade. Capping the whole NavHost by the current route squeezed the outgoing page into the new width mid-fade.
+ */
+private fun androidx.navigation.NavGraphBuilder.capped(
+    route: String,
+    arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @androidx.compose.runtime.Composable androidx.compose.animation.AnimatedContentScope.(androidx.navigation.NavBackStackEntry) -> Unit,
+) = androidx.navigation.compose.composable(route, arguments) { entry ->
+    val scope = this
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
+        androidx.compose.foundation.layout.Box(Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize()) { scope.content(entry) }
+    }
+}
+
 private val barItems = listOf(
     BarItem("Home", Icons.Rounded.Home),
     BarItem("Train", Icons.Rounded.FitnessCenter),
@@ -281,14 +296,14 @@ fun HqFitRoot(
         val titleCollapse = remember { TitleCollapse() }
         androidx.compose.runtime.LaunchedEffect(route) { titleCollapse.reset() }
         androidx.compose.runtime.CompositionLocalProvider(LocalGlassInset provides (if (route in tabRoutes) navInset + (if (active != null) 68.dp else 0.dp) else 0.dp), LocalTitleCollapse provides titleCollapse) {
-        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.widthIn(max = if (route in tabRoutes) CARDS_MAX else FORM_MAX).fillMaxSize().nestedScroll(titleCollapse.connection),
+        NavHost(navController = nav, startDestination = Routes.TODAY, modifier = Modifier.fillMaxSize().nestedScroll(titleCollapse.connection),
             // Snappy with a slight transition: a short crossfade.
             enterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
             exitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
             popEnterTransition = { androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(150)) },
             popExitTransition = { androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)) },
         ) {
-            composable(Routes.TODAY) {
+            capped(Routes.TODAY) {
                 HomeScaleListener(db) { kg -> toastText = "\u2696\uFE0F Weighed ${"%.1f".format(kg)} kg, saved"; refreshToast = System.currentTimeMillis() }
                 TodayScreen(
                     name = remember { ProfilePrefs.name(syncContext) },
@@ -367,7 +382,7 @@ fun HqFitRoot(
                     },
                 )
             }
-            composable(Routes.TRAIN) {
+            capped(Routes.TRAIN) {
                 val doneDates by produceState(emptySet<String>(), db, calendar) {
                     val zone = java.time.ZoneId.systemDefault()
                     val from = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -386,7 +401,7 @@ fun HqFitRoot(
                     onTraining = { nav.navigate(Routes.TRAINING) },
                 )
             }
-            composable(Routes.TRAINING) {
+            capped(Routes.TRAINING) {
                 val sessions by produceState(emptyList<uk.woozy.fit.data.db.WorkoutSessionEntity>(), db, calendar) {
                     val zone = java.time.ZoneId.systemDefault()
                     val from = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -404,13 +419,13 @@ fun HqFitRoot(
                     onHistory = { nav.navigate(Routes.PAST) },
                 )
             }
-            composable(Routes.REARRANGE) {
+            capped(Routes.REARRANGE) {
                 RearrangeScreen(calendar = calendar, onBack = { nav.popBackStack() }, onMove = { id, date -> db.schedule().move(id, date) })
             }
-            composable(Routes.DIARY) {
+            capped(Routes.DIARY) {
                 DiaryScreen(db = db, onAdd = { meal, date -> nav.navigate("${Routes.ADD}/${meal.key}/$date") }, onNutrients = { nav.navigate("${Routes.NUTRIENTS}/$it") })
             }
-            composable(
+            capped(
                 "${Routes.ADD}/{meal}/{date}?quick={quick}",
                 arguments = listOf(
                     navArgument("meal") { type = NavType.StringType },
@@ -434,7 +449,7 @@ fun HqFitRoot(
                     },
                 )
             }
-            composable(
+            capped(
                 "${Routes.SCAN}/{meal}/{date}",
                 arguments = listOf(navArgument("meal") { type = NavType.StringType }, navArgument("date") { type = NavType.StringType }),
             ) { backStack ->
@@ -448,14 +463,14 @@ fun HqFitRoot(
                     onLogged = { nav.popBackStack(Routes.DIARY, inclusive = false) },
                 )
             }
-            composable(
+            capped(
                 "${Routes.CUSTOM_FOOD}?barcode={barcode}",
                 arguments = listOf(navArgument("barcode") { type = NavType.StringType; nullable = true; defaultValue = null }),
             ) { backStack ->
                 CustomFoodScreen(db = db, barcode = backStack.arguments?.getString("barcode"), onBack = { nav.popBackStack() })
             }
-            composable(Routes.PROGRESS) { ProgressScreen(db = db, onRecords = { nav.navigate(Routes.RECORDS) }, onScale = { nav.navigate(Routes.SCALE) }, onPast = { nav.navigate(Routes.PAST) }, onLibrary = { nav.navigate(Routes.LIBRARY) }) }
-            composable(Routes.SETTINGS) {
+            capped(Routes.PROGRESS) { ProgressScreen(db = db, onRecords = { nav.navigate(Routes.RECORDS) }, onScale = { nav.navigate(Routes.SCALE) }, onPast = { nav.navigate(Routes.PAST) }, onLibrary = { nav.navigate(Routes.LIBRARY) }) }
+            capped(Routes.SETTINGS) {
                 SettingsScreen(
                     themeMode = themeMode,
                     onThemeMode = onThemeMode,
@@ -474,11 +489,11 @@ fun HqFitRoot(
                     onTargets = { nav.navigate(Routes.TARGETS) },
                 )
             }
-            composable(Routes.BACKUP) { BackupScreen(db = db, container = container, onBack = { nav.popBackStack() }) }
-            composable(Routes.HEALTH) { HealthScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable(Routes.SCALE) { ScaleScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable(Routes.DESIGN) { DesignScreen(onBack = { nav.popBackStack() }) }
-            composable(
+            capped(Routes.BACKUP) { BackupScreen(db = db, container = container, onBack = { nav.popBackStack() }) }
+            capped(Routes.HEALTH) { HealthScreen(db = db, onBack = { nav.popBackStack() }) }
+            capped(Routes.SCALE) { ScaleScreen(db = db, onBack = { nav.popBackStack() }) }
+            capped(Routes.DESIGN) { DesignScreen(onBack = { nav.popBackStack() }) }
+            capped(
                 "${Routes.PREVIEW}/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
             ) { backStack ->
@@ -490,17 +505,17 @@ fun HqFitRoot(
                     onEdit = { nav.navigate("${Routes.EDIT}/$it") },
                 )
             }
-            composable("${Routes.EDIT}/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { backStack ->
+            capped("${Routes.EDIT}/{id}", arguments = listOf(navArgument("id") { type = NavType.LongType })) { backStack ->
                 TemplateEditorScreen(db = db, templateId = backStack.arguments?.getLong("id") ?: 0L, onBack = { nav.popBackStack() })
             }
-            composable(Routes.PROGRAMMES) {
+            capped(Routes.PROGRAMMES) {
                 ProgrammesScreen(
                     db = db, onBack = { nav.popBackStack() },
                     onEdit = { nav.navigate("${Routes.EDIT}/$it") },
                     onNewWorkout = { scope.launch { nav.navigate("${Routes.EDIT}/${createWorkout(db, "New workout")}") } },
                 )
             }
-            composable(Routes.PAST) {
+            capped(Routes.PAST) {
                 PastWorkoutsScreen(
                     db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }, onTimeline = { nav.navigate(Routes.TIMELINE) },
                     onLogPast = if (active != null) null else { date, templateId ->
@@ -510,27 +525,27 @@ fun HqFitRoot(
                     },
                 )
             }
-            composable(Routes.TIMELINE) { HistoryScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
-            composable(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable("profile") { ProfileScreen(onBack = { nav.popBackStack() }) }
-            composable("workoutsettings") { WorkoutSettingsScreen(db, onBack = { nav.popBackStack() }) }
-            composable("hqconnection") { HqConnectionScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable(Routes.TARGETS) { TargetsEditorScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable("${Routes.NUTRIENTS}/{date}", arguments = listOf(navArgument("date") { type = NavType.StringType })) { backStack ->
+            capped(Routes.TIMELINE) { HistoryScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.SUMMARY}/$it") }) }
+            capped(Routes.RECIPE) { RecipeScreen(db = db, onBack = { nav.popBackStack() }) }
+            capped("profile") { ProfileScreen(onBack = { nav.popBackStack() }) }
+            capped("workoutsettings") { WorkoutSettingsScreen(db, onBack = { nav.popBackStack() }) }
+            capped("hqconnection") { HqConnectionScreen(db = db, onBack = { nav.popBackStack() }) }
+            capped(Routes.TARGETS) { TargetsEditorScreen(db = db, onBack = { nav.popBackStack() }) }
+            capped("${Routes.NUTRIENTS}/{date}", arguments = listOf(navArgument("date") { type = NavType.StringType })) { backStack ->
                 NutrientSummaryScreen(db = db, date = backStack.arguments?.getString("date") ?: LocalDate.now().toString(), onBack = { nav.popBackStack() })
             }
-            composable(Routes.NEW_EXERCISE) { NewExerciseScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable(Routes.RECORDS) {
+            capped(Routes.NEW_EXERCISE) { NewExerciseScreen(db = db, onBack = { nav.popBackStack() }) }
+            capped(Routes.RECORDS) {
                 RecordsScreen(db = db, onBack = { nav.popBackStack() }, onOpen = { nav.navigate("${Routes.HISTORY}/$it") })
             }
-            composable(
+            capped(
                 "${Routes.HISTORY}/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
             ) { backStack ->
                 ExerciseHistoryScreen(db = db, exerciseId = backStack.arguments?.getLong("id") ?: 0L, onBack = { nav.popBackStack() })
             }
-            composable(Routes.LIBRARY) { LibraryScreen(db = db, onBack = { nav.popBackStack() }) }
-            composable(
+            capped(Routes.LIBRARY) { LibraryScreen(db = db, onBack = { nav.popBackStack() }) }
+            capped(
                 "${Routes.WORKOUT}/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
             ) { backStack ->
@@ -546,7 +561,7 @@ fun HqFitRoot(
                     onDiscarded = { nav.popBackStack(Routes.TODAY, inclusive = false) },
                 )
             }
-            composable(
+            capped(
                 "${Routes.SUMMARY}/{id}",
                 arguments = listOf(navArgument("id") { type = NavType.LongType }),
             ) { backStack ->
