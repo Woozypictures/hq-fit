@@ -78,8 +78,16 @@ object Sessions {
         return start(db, sched, at, stepKg, barKg)
     }
 
-    /** Throws the session away (a started-by-mistake workout). The calendar day stays planned. */
-    suspend fun discard(db: HqFitDatabase, sessionId: Long) = db.sessions().deleteSession(sessionId)
+    /**
+     * Throws the session away (a started-by-mistake workout). A planned calendar day stays planned, but the one-off
+     * day made by logging a past workout (no programme, dated before today) goes too, so it never shows as missed.
+     */
+    suspend fun discard(db: HqFitDatabase, sessionId: Long) {
+        val s = db.sessions().get(sessionId)
+        db.sessions().deleteSession(sessionId)
+        val sched = s?.scheduledId?.let { db.schedule().get(it) } ?: return
+        if (sched.programmeId == null && sched.date < java.time.LocalDate.now().toString()) db.schedule().deletePlannedById(sched.id)
+    }
 
     suspend fun summary(db: HqFitDatabase, sessionId: Long, nowMs: Long): SessionSummary? {
         val s = db.sessions().get(sessionId) ?: return null
