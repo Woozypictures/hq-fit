@@ -664,6 +664,18 @@ fun ActiveWorkoutScreen(
                     )
                 }
             }
+            // What you are typing, always visible: the keypad can cover the set row on a small or busy page.
+            val es = sets.firstOrNull { it.id == e.setId }
+            if (es != null) {
+                val shown = if (e.fresh) (if (e.weight) es.weightKg?.let { NumberEntry.format(it) } else es.reps?.toString()).orEmpty() else e.buffer
+                Row(
+                    Modifier.fillMaxWidth().background(c.card).padding(horizontal = 20.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HqText("${es.exerciseName.take(28)} \u00b7 set ${es.setIndex}", 13.sp, color = c.muted, modifier = Modifier.weight(1f), maxLines = 1)
+                    HqText(shown.ifEmpty { "-" } + if (e.weight) " kg" else " reps", 22.sp, FontWeight.Bold)
+                }
+            }
             NumberKeypad(onKey = ::key, stepLabel = if (e.weight) "${NumberEntry.format(weightStep)} kg" else "1 rep", showSteps = stepKeys)
         } else {
             Spacer(Modifier.navigationBarsPadding())
